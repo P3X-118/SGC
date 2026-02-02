@@ -102,8 +102,8 @@ We recommend the following `vars.yml` (e.g. `inventory/host_vars/example.com-imm
 sgc_pgsk: ""
 
 # Override service names and directory path prefixes
-mash_playbook_service_identifier_prefix: 'mash-immich-'
-mash_playbook_service_base_directory_name_prefix: 'immich-'
+service_id_prefix: 'mash-immich-'
+service_directory_prefix: 'immich-'
 
 ########################################################################
 #                                                                      #

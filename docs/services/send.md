@@ -149,8 +149,8 @@ After creating the directory, add a new `vars.yml` file inside it with a content
 sgc_pgsk: ''
 
 # Override service names and directory path prefixes
-mash_playbook_service_identifier_prefix: 'mash-send-'
-mash_playbook_service_base_directory_name_prefix: 'send-'
+service_id_prefix: 'mash-send-'
+service_directory_prefix: 'send-'
 
 ########################################################################
 #                                                                      #

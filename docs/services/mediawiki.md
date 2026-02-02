@@ -128,8 +128,8 @@ After creating the directory, add a new `vars.yml` file inside it with a content
 sgc_pgsk: RANDOM_STRING_HERE
 
 # Override service names and directory path prefixes
-mash_playbook_service_identifier_prefix: "mash-mediawiki-"
-mash_playbook_service_base_directory_name_prefix: "mediawiki-"
+service_id_prefix: "mash-mediawiki-"
+service_directory_prefix: "mediawiki-"
 
 ########################################################################
 #                                                                      #

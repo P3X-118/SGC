@@ -1,7 +1,6 @@
-#  2026 - 2026 Oneill
+# SGC-FileCopyrightText: 2026 - 2026 Oneill
 #
-#  AGPL-3.0-or-later
-
+# SGC-License-Identifier: AGPL-3.0-or-later
 ---
 
 - name: Fail if required playbook settings not defined
@@ -16,10 +15,10 @@
 
 - name: Fail if playbook_reverse_proxy_type is set incorrectly
   ansible.builtin.fail:
-    msg: "Detected that variable rev_proxy_type (current value: `{{ rev_proxy_type }}`) appears to be set incorrectly. See roles/custom/mash_playbook_base/defaults/main.yml for valid choices."
+    msg: "Detected that variable rev_proxy_type (current value: `{{ rev_proxy_type }}`) appears to be set incorrectly. See roles/custom/sgc_playbook_base/defaults/main.yml for valid choices."
   when: rev_proxy_type not in ['playbook-managed-traefik', 'other-traefik-container', 'none']
 
-- name: (Deprecation) Catch and report renamed mash-playbook settings
+- name: (Deprecation) Catch and report renamed playbook settings
   ansible.builtin.fail:
     msg: >-
       Your configuration contains a variable, which now has a different name.

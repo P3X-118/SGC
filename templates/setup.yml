@@ -20,7 +20,7 @@
     # /role-specific:systemd_docker_base
 
     # role-specific:docker
-    - when: mash_playbook_docker_installation_enabled | bool
+    - when: sgc_docker_install | bool
       role: galaxy/docker
       vars:
         docker_install_compose: false

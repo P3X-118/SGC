@@ -88,8 +88,8 @@ For the supplementary host for NetBox, create `inventory/host_vars/mash.example.
 sgc_pgsk: ''
 
 # Override service names and directory path prefixes
-mash_playbook_service_identifier_prefix: 'mash-netbox-'
-mash_playbook_service_base_directory_name_prefix: 'netbox-'
+service_id_prefix: 'mash-netbox-'
+service_directory_prefix: 'netbox-'
 
 ########################################################################
 #                                                                      #
@@ -130,8 +130,8 @@ For the supplementary host for PeerTube, create `inventory/host_vars/mash.exampl
 sgc_pgsk: ''
 
 # Override service names and directory path prefixes
-mash_playbook_service_identifier_prefix: 'mash-peertube-'
-mash_playbook_service_base_directory_name_prefix: 'peertube-'
+service_id_prefix: 'mash-peertube-'
+service_directory_prefix: 'peertube-'
 
 ########################################################################
 #                                                                      #
