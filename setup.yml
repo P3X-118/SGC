@@ -324,10 +324,10 @@
     #- role: galaxy/gitea
     # /role-specific:gitea
 
-    - role: galaxy/go
-      tags: 
-        - golang
-        - install-golang
+    #- role: galaxy/go
+    #  tags: 
+    #    - golang
+    #    - install-golang
 
     # role-specific:gothub
     #- role: galaxy/gothub
