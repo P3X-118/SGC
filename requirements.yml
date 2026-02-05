@@ -771,9 +771,9 @@
   version: v1.4.1-0
   name: systemd_docker_base
   activation_prefix: ""
-#- src: git+https://github.com/devture/com.devture.ansible.role.systemd_service_manager.git
-#  version: v1.0.0-4
-#  name: systemd_service_manager
+- src: git+https://github.com/P3X-118/systemd_service_manager-ar.git
+  version: v1.0.0-4
+  name: systemd_service_manager
 #  activation_prefix: ""
 #- src: git+https://github.com/IUCCA/ansible-role-tandoor.git
 #  version: v2.3.6-0
