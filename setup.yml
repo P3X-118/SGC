@@ -14,7 +14,7 @@
     - role: mash/playbook_base
     - role: mash/playbook_migration
 
-    - role: galaxy/ar-mirotalk
+    - role: galaxy/mirotalk-ar
       when: mirotalk_enabled | bool 
       tags:
         - setup-all 
