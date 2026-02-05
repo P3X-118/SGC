@@ -14,12 +14,12 @@
     - role: mash/playbook_base
     - role: mash/playbook_migration
 
-    - role: galaxy/mirotalk-ar
-      when: mirotalk_enabled | bool 
-      tags:
-        - setup-all 
-        - install-all 
-        - mirotalk
+    #- role: galaxy/mirotalk-ar
+    #  when: mirotalk_enabled | bool 
+    #  tags:
+    #    - setup-all 
+    #    - install-all 
+    #    - mirotalk
 
     # role-specific:systemd_docker_base
     # This role has no tasks at all

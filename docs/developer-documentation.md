@@ -84,7 +84,7 @@ See below for details about what to configure. Note that not all roles require t
 <details>
 <summary>Wire the role to systemd_service_manager</summary>
 
-You have to add the role to `mash_playbook_devture_systemd_service_manager_services_list_auto_itemized` so that it is wired to `systemd_service_manager`.
+You have to add the role to `sgc_sysd_srvc_list_auto_itemized` so that it is wired to `systemd_service_manager`.
 
 See below for an example:
 
@@ -96,7 +96,7 @@ See below for an example:
 #                                                                      #
 ########################################################################
 
-mash_playbook_devture_systemd_service_manager_services_list_auto_itemized:
+sgc_sysd_srvc_list_auto_itemized:
   [...]
   # role-specific:YOUR-SERVICE
   - |-

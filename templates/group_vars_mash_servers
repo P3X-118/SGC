@@ -83,7 +83,7 @@ system_swap_enabled: false
 #                                                                      #
 ########################################################################
 
-mash_playbook_devture_systemd_service_manager_services_list_auto_itemized:
+sgc_sysd_srvc_list_auto_itemized:
   # Dummy entry, which is not role-specific.
   # Ensures there's at least one entry defined in the list.
   - "{{ omit }}"
@@ -1159,7 +1159,7 @@ mash_playbook_devture_systemd_service_manager_services_list_auto_itemized:
     {{ ({'name': (yourls_identifier  + '.service'), 'priority': 2000, 'groups': ['mash', 'yourls']} if yourls_enabled else omit) }}
   # /role-specific:yourls
 
-devture_systemd_service_manager_services_list_auto: "{{ mash_playbook_devture_systemd_service_manager_services_list_auto_itemized | reject('equalto', omit) }}"
+devture_systemd_service_manager_services_list_auto: "{{ sgc_sysd_srvc_list_auto_itemized | reject('equalto', omit) }}"
 
 ########################################################################
 #                                                                      #
