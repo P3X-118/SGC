@@ -783,7 +783,7 @@ sgc_sysd_srvc_list_auto_itemized:
 
   # role-specific:owncast
   - |-
-    {{ ({'name': (owncast_identifier + '.service'), 'priority': 2000, 'groups': ['mash', 'owncast']} if owncast_enabled else omit) }}
+    {{ ({'name': (owncast_identifier + '.service'), 'priority': 2000, 'groups': ['sgc', 'owncast']} if owncast_enabled else omit) }}
   # /role-specific:owncast
 
   # role-specific:oxitraffic
