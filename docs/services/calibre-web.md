@@ -162,7 +162,7 @@ As the Calibre-Web instance does not support configuring the mailer with environ
 To set up with the default exim-relay settings, open `https://mash.example.com/calibre-web/admin/mailsettings` to add the following configuration:
 
 - **Email Account Type**: Standard Email Account
-- **SMTP Hostname**: `mash-exim-relay`
+- **SMTP Hostname**: `sgc-exim-relay`
 - **SMTP Port**: 8025
 - **Encryption**: None
 - **SMTP Login**: (Empty)

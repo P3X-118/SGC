@@ -541,7 +541,7 @@ You need to go to **Administration** settings / **Settings** (a URL of `/admin/s
 
 - **Enable email notifications** = enabled
 
-- **Host**: point to your SMTP host or to `exim-relay`'s container name (e.g. `mash-exim-relay`) if using [exim-relay](exim-relay.md)
+- **Host**: point to your SMTP host or to `exim-relay`'s container name (e.g. `sgc-exim-relay`) if using [exim-relay](exim-relay.md)
 
 - **Port**: point to your SMTP port or to `exim-relay`'s container port (e.g. `8025`) if using [exim-relay](exim-relay.md)
 

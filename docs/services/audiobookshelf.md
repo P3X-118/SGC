@@ -152,7 +152,7 @@ As the audiobookshelf instance does not support configuring the mailer with envi
 
 To set up with the default exim-relay settings, open `https://audiobookshelf.example.com/audiobookshelf/config/email` to add the following configuration:
 
-- **Host**: `mash-exim-relay`
+- **Host**: `sgc-exim-relay`
 - **Port**: 8025
 - **Secure**: (off)
 - **Reject unauthorized certificates**: (off)
