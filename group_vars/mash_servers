@@ -2093,14 +2093,14 @@ postgres_backup_databases_auto: "{{ postgres_managed_databases | map(attribute='
 #                                                                      #
 ########################################################################
 
-# To completely disable this feature, use `devture_playbook_state_preserver_enabled: false`.
+# To completely disable this feature, use `playbook_state_preserve: false`.
 
-devture_playbook_state_preserver_uid: "{{ sgc_playbook_uid }}"
-devture_playbook_state_preserver_gid: "{{ sgc_playbook_gid }}"
+playbook_state_preserve_uid: "{{ sgc_playbook_uid }}"
+playbook_state_preserve_gid: "{{ sgc_playbook_gid }}"
 
-devture_playbook_state_preserver_vars_preservation_dst: "{{ sgc_playbook_base_path }}/{{ service_directory_prefix }}vars.yml"
+playbook_state_var_dst: "{{ sgc_playbook_base_path }}/{{ service_directory_prefix }}vars.yml"
 
-devture_playbook_state_preserver_commit_hash_preservation_dst: "{{ sgc_playbook_base_path }}/{{ service_directory_prefix }}git_hash.yml"
+playbook_state_commit_hash_dst: "{{ sgc_playbook_base_path }}/{{ service_directory_prefix }}git_hash.yml"
 
 ########################################################################
 #                                                                      #
