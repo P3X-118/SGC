@@ -154,7 +154,7 @@
     # /role-specific:autobrr
 
     # role-specific:backup
-    - role: galaxy/backup
+    #- role: galaxy/backup
     # /role-specific:backup
 
     # role-specific:barassistant
