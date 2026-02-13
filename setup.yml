@@ -153,9 +153,9 @@
     #- role: galaxy/autobrr
     # /role-specific:autobrr
 
-    # role-specific:backup_borg
-    - role: galaxy/backup_borg
-    # /role-specific:backup_borg
+    # role-specific:backup
+    - role: galaxy/backup
+    # /role-specific:backup
 
     # role-specific:barassistant
     #- role: galaxy/barassistant

@@ -64,10 +64,10 @@
   version: v1.0.0-5
   name: auxiliary
   activation_prefix: aux_
-- src: git+https://github.com/mother-of-all-self-hosting/ansible-role-backup_borg.git
+- src: git+https://github.com/mother-of-all-self-hosting/ansible-role-backup.git
   version: v1.4.2-2.0.12-0
-  name: backup_borg
-  activation_prefix: backup_borg_
+  name: backup
+  activation_prefix: backup_
 - src: git+https://seed.radicle.garden/z3JDUHjeHMqbZ3YLxquSUbCmAJLi.git
   version: v5.10.0-0
   name: barassistant

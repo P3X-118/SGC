@@ -19,7 +19,7 @@
     <outline text="authelia" title="authelia" type="rss" htmlUrl="https://github.com/authelia/authelia" xmlUrl="https://github.com/authelia/authelia/releases.atom" />
     <outline text="authentik" title="authentik" type="rss" htmlUrl="https://github.com/goauthentik/authentik" xmlUrl="https://github.com/goauthentik/authentik/releases.atom" />
     <outline text="autobrr" title="autobrr" type="rss" htmlUrl="https://github.com/autobrr/autobrr" xmlUrl="https://github.com/autobrr/autobrr/releases.atom" />
-    <outline text="backup_borg" title="backup_borg" type="rss" htmlUrl="https://github.com/etkecc/borgmatic" xmlUrl="https://github.com/etkecc/borgmatic/releases.atom" />
+    <outline text="backup" title="backup" type="rss" htmlUrl="https://github.com/etkecc/borgmatic" xmlUrl="https://github.com/etkecc/borgmatic/releases.atom" />
     <outline text="barassistant" title="barassistant" type="rss" htmlUrl="https://github.com/karlomikus/bar-assistant/" xmlUrl="https://github.com/karlomikus/bar-assistant//releases.atom" />
     <outline text="bentopdf" title="bentopdf" type="rss" htmlUrl="https://github.com/alam00000/bentopdf" xmlUrl="https://github.com/alam00000/bentopdf/releases.atom" />
     <outline text="bind" title="bind" type="rss" htmlUrl="https://gitlab.isc.org/isc-projects/bind9" xmlUrl="https://gitlab.isc.org/isc-projects/bind9/-/tags?format=atom" />
