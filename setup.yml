@@ -32,15 +32,15 @@
         - install-all
     # /role-specific:docker
 
-    # role-specific:docker_sdk_for_python
-    - when: devture_docker_sdk_for_python_installation_enabled | bool
-      role: galaxy/docker_sdk_for_python
+    # role-specific:docker_python_sdk
+    - when: docker_python_sdk_enabled | bool
+      role: galaxy/docker_python_sdk
       tags:
         - setup-docker
         - setup-all
         - install-docker
         - install-all
-    # /role-specific:docker_sdk_for_python
+    # /role-specific:docker_python_sdk
 
     # role-specific:timesync
     - when: devture_timesync_installation_enabled | bool

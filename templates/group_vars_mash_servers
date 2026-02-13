@@ -2416,21 +2416,21 @@ traefik_config_providers_docker_endpoint: "{{ container_socket_proxy_endpoint if
 
 
 
-# role-specific:docker_sdk_for_python
+# role-specific:docker_python_sdk
 ########################################################################
 #                                                                      #
-# docker_sdk_for_python                                                #
+# docker_python_sdk                                                #
 #                                                                      #
 ########################################################################
 
-devture_docker_sdk_for_python_installation_enabled: false
+docker_python_sdk_enabled: false
 
 ########################################################################
 #                                                                      #
-# /docker_sdk_for_python                                               #
+# /docker_python_sdk                                               #
 #                                                                      #
 ########################################################################
-# /role-specific:docker_sdk_for_python
+# /role-specific:docker_python_sdk
 
 
 

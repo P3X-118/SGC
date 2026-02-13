@@ -151,10 +151,10 @@
 #  version: v1.0.0-4
 #  name: docker_registry_purger
 #  activation_prefix: docker_registry_purger_
-- src: git+https://github.com/P3X-118/ansible-role-docker_sdk_for_python.git
+- src: git+https://github.com/P3X-118/ansible-role-docker_python_sdk.git
   version: 542a2d68db4e9a8e9bb4b508052760b900c7dce6
-  name: docker_sdk_for_python
-  activation_prefix: devture_docker_sdk_for_python_installation_enabled
+  name: docker_python_sdk
+  activation_prefix: docker_python_sdk_enabled
 #- src: git+https://github.com/P3X-118/ansible-role-docmost.git
 #  version: v0.24.1-0
 #  name: docmost

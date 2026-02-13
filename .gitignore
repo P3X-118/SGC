@@ -10,8 +10,8 @@
 # ignores macos files
 .DS_Store
 
-#/requirements.yml
-#/setup.yml
+/requirements.yml
+/setup.yml
 #/group_vars/mash_servers
 /group_vars/mash_servers
 
