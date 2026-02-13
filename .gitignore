@@ -22,5 +22,3 @@
 
 # Ignore bad git practice objects
 *.og
-
-*requirements.*
