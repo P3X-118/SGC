@@ -60,8 +60,8 @@
     # /role-specific:cleanup
 
     # role-specific:fail2ban
-    - when: system_security_fail2ban_enabled | bool
-      role: galaxy/fail2ban
+   # - when: system_security_fail2ban_enabled | bool
+   #   role: galaxy/fail2ban
     # /role-specific:fail2ban
 
     # role-specific:ssh
