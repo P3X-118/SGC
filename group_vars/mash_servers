@@ -2423,7 +2423,7 @@ traefik_config_providers_docker_endpoint: "{{ container_socket_proxy_endpoint if
 #                                                                      #
 ########################################################################
 
-devture_docker_sdk_for_python_installation_enabled: false
+docker_python_sdk_enabled: false
 
 ########################################################################
 #                                                                      #
