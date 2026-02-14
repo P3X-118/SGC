@@ -187,8 +187,8 @@
 #  version: v2.5.2-2
 #  name: etherpad
 #  activation_prefix: etherpad_
-- src: git+https://github.com/P3X-118/ansible-role-excalidraw.git
-  version: v2025.12.5-1
+- src: git+https://github.com/P3X-118/excalidraw-ar.git
+  version: v2026.12.5-2
   name: excalidraw
   activation_prefix: excalidraw_
 - src: git+https://github.com/P3X-118/ansible-role-excalidraw-room.git
