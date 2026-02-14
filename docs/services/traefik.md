@@ -61,7 +61,7 @@ revproxy_service_networks: traefik
 # For this to work, you will need to define a compress middleware (https://doc.traefik.io/traefik/middlewares/http/compress/) for your Traefik instance
 # using a file (https://doc.traefik.io/traefik/providers/file/) or Docker (https://doc.traefik.io/traefik/providers/docker/) configuration provider.
 #
-# revprox_middleout_compression_enabled: true
+# revproxy_middleout_compression_enabled: true
 # revproxy_middleout_compression_name: my-compression-middleware@file
 ```
 

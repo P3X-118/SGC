@@ -5207,8 +5207,8 @@ forgejo_container_additional_networks_auto: |
 
 forgejo_container_labels_traefik_enabled: "{{ traefik_labels_enabled }}"
 forgejo_container_labels_traefik_docker_network: "{{ revproxy_service_networks }}"
-forgejo_container_labels_traefik_compression_middleware_enabled: "{{ revprox_middleout_compression_enabled }}"
-forgejo_container_labels_traefik_compression_middleware_name: "{{ revproxy_middleout_compression_name if revprox_middleout_compression_enabled else '' }}"
+forgejo_container_labels_traefik_compression_middleware_enabled: "{{ revproxy_middleout_compression_enabled }}"
+forgejo_container_labels_traefik_compression_middleware_name: "{{ revproxy_middleout_compression_name if revproxy_middleout_compression_enabled else '' }}"
 
 forgejo_database_type: "{{ 'postgres' if postgres_enabled | default(false) else 'sqlite' }}"
 
@@ -5556,8 +5556,8 @@ gitea_container_additional_networks_auto: |
 
 gitea_container_labels_traefik_enabled: "{{ traefik_labels_enabled }}"
 gitea_container_labels_traefik_docker_network: "{{ revproxy_service_networks }}"
-gitea_container_labels_traefik_compression_middleware_enabled: "{{ revprox_middleout_compression_enabled }}"
-gitea_container_labels_traefik_compression_middleware_name: "{{ revproxy_middleout_compression_name if revprox_middleout_compression_enabled else '' }}"
+gitea_container_labels_traefik_compression_middleware_enabled: "{{ revproxy_middleout_compression_enabled }}"
+gitea_container_labels_traefik_compression_middleware_name: "{{ revproxy_middleout_compression_name if revproxy_middleout_compression_enabled else '' }}"
 
 # role-specific:exim_relay
 gitea_config_mailer_enabled: "{{ exim_relay_enabled }}"
@@ -7237,8 +7237,8 @@ immich_server_container_additional_networks_auto: |
 
 immich_server_container_labels_traefik_enabled: "{{ traefik_labels_enabled }}"
 immich_server_container_labels_traefik_docker_network: "{{ revproxy_service_networks }}"
-immich_server_container_labels_traefik_compression_middleware_enabled: "{{ revprox_middleout_compression_enabled }}"
-immich_server_container_labels_traefik_compression_middleware_name: "{{ revproxy_middleout_compression_name if revprox_middleout_compression_enabled else '' }}"
+immich_server_container_labels_traefik_compression_middleware_enabled: "{{ revproxy_middleout_compression_enabled }}"
+immich_server_container_labels_traefik_compression_middleware_name: "{{ revproxy_middleout_compression_name if revproxy_middleout_compression_enabled else '' }}"
 
 # role-specific:traefik
 immich_server_container_labels_traefik_entrypoints: "{{ traefik_entrypoint_primary }}"
@@ -8096,8 +8096,8 @@ labelstudio_container_additional_networks_auto: |
 
 labelstudio_container_labels_traefik_enabled: "{{ traefik_labels_enabled }}"
 labelstudio_container_labels_traefik_docker_network: "{{ revproxy_service_networks }}"
-labelstudio_container_labels_traefik_compression_middleware_enabled: "{{ revprox_middleout_compression_enabled }}"
-labelstudio_container_labels_traefik_compression_middleware_name: "{{ revproxy_middleout_compression_name if revprox_middleout_compression_enabled else '' }}"
+labelstudio_container_labels_traefik_compression_middleware_enabled: "{{ revproxy_middleout_compression_enabled }}"
+labelstudio_container_labels_traefik_compression_middleware_name: "{{ revproxy_middleout_compression_name if revproxy_middleout_compression_enabled else '' }}"
 
 labelstudio_postgres_backend_enabled: "{{ postgres_enabled }}"
 
@@ -9101,8 +9101,8 @@ matomo_container_additional_networks_auto: |
 
 matomo_container_labels_traefik_enabled: "{{ traefik_labels_enabled }}"
 matomo_container_labels_traefik_docker_network: "{{ revproxy_service_networks }}"
-matomo_container_labels_traefik_compression_middleware_enabled: "{{ revprox_middleout_compression_enabled }}"
-matomo_container_labels_traefik_compression_middleware_name: "{{ revproxy_middleout_compression_name if revprox_middleout_compression_enabled else '' }}"
+matomo_container_labels_traefik_compression_middleware_enabled: "{{ revproxy_middleout_compression_enabled }}"
+matomo_container_labels_traefik_compression_middleware_name: "{{ revproxy_middleout_compression_name if revproxy_middleout_compression_enabled else '' }}"
 
 # role-specific:mariadb
 matomo_database_hostname: "{{ mariadb_connection_hostname if mariadb_enabled else '' }}"
@@ -9352,8 +9352,8 @@ miniflux_container_additional_networks_auto: |
 
 miniflux_container_labels_traefik_enabled: "{{ traefik_labels_enabled }}"
 miniflux_container_labels_traefik_docker_network: "{{ revproxy_service_networks }}"
-miniflux_container_labels_traefik_compression_middleware_enabled: "{{ revprox_middleout_compression_enabled }}"
-miniflux_container_labels_traefik_compression_middleware_name: "{{ revproxy_middleout_compression_name if revprox_middleout_compression_enabled else '' }}"
+miniflux_container_labels_traefik_compression_middleware_enabled: "{{ revproxy_middleout_compression_enabled }}"
+miniflux_container_labels_traefik_compression_middleware_name: "{{ revproxy_middleout_compression_name if revproxy_middleout_compression_enabled else '' }}"
 
 # role-specific:postgres
 miniflux_database_hostname: "{{ postgres_connection_hostname if postgres_enabled else '' }}"
@@ -9877,8 +9877,8 @@ navidrome_container_additional_networks_auto: |
 
 navidrome_container_labels_traefik_enabled: "{{ traefik_labels_enabled }}"
 navidrome_container_labels_traefik_docker_network: "{{ revproxy_service_networks }}"
-navidrome_container_labels_traefik_compression_middleware_enabled: "{{ revprox_middleout_compression_enabled }}"
-navidrome_container_labels_traefik_compression_middleware_name: "{{ revproxy_middleout_compression_name if revprox_middleout_compression_enabled else '' }}"
+navidrome_container_labels_traefik_compression_middleware_enabled: "{{ revproxy_middleout_compression_enabled }}"
+navidrome_container_labels_traefik_compression_middleware_name: "{{ revproxy_middleout_compression_name if revproxy_middleout_compression_enabled else '' }}"
 
 # role-specific:traefik
 navidrome_container_labels_traefik_entrypoints: "{{ traefik_entrypoint_primary }}"
@@ -10032,8 +10032,8 @@ nextcloud_container_additional_networks_auto: |
 
 nextcloud_container_labels_traefik_enabled: "{{ traefik_labels_enabled }}"
 nextcloud_container_labels_traefik_docker_network: "{{ revproxy_service_networks }}"
-nextcloud_container_labels_traefik_compression_middleware_enabled: "{{ revprox_middleout_compression_enabled }}"
-nextcloud_container_labels_traefik_compression_middleware_name: "{{ revproxy_middleout_compression_name if revprox_middleout_compression_enabled else '' }}"
+nextcloud_container_labels_traefik_compression_middleware_enabled: "{{ revproxy_middleout_compression_enabled }}"
+nextcloud_container_labels_traefik_compression_middleware_name: "{{ revproxy_middleout_compression_name if revproxy_middleout_compression_enabled else '' }}"
 
 nextcloud_database_type: "{{ 'postgres' if postgres_enabled | default(false) else 'sqlite' }}"
 
@@ -13903,8 +13903,8 @@ vaultwarden_container_additional_networks_auto: |
 
 vaultwarden_container_labels_traefik_enabled: "{{ traefik_labels_enabled }}"
 vaultwarden_container_labels_traefik_docker_network: "{{ revproxy_service_networks }}"
-vaultwarden_container_labels_traefik_compression_middleware_enabled: "{{ revprox_middleout_compression_enabled }}"
-vaultwarden_container_labels_traefik_compression_middleware_name: "{{ revproxy_middleout_compression_name if revprox_middleout_compression_enabled else '' }}"
+vaultwarden_container_labels_traefik_compression_middleware_enabled: "{{ revproxy_middleout_compression_enabled }}"
+vaultwarden_container_labels_traefik_compression_middleware_name: "{{ revproxy_middleout_compression_name if revproxy_middleout_compression_enabled else '' }}"
 
 # role-specific:exim_relay
 vaultwarden_config_smtp_host: "{{ exim_relay_identifier if exim_relay_enabled else '' }}"
@@ -14329,8 +14329,8 @@ woodpecker_ci_server_container_additional_networks_auto: |
 woodpecker_ci_server_container_labels_traefik_enabled: "{{ traefik_labels_enabled }}"
 woodpecker_ci_server_container_labels_traefik_docker_network: "{{ revproxy_service_networks }}"
 
-woodpecker_ci_server_container_labels_traefik_compression_middleware_enabled: "{{ revprox_middleout_compression_enabled }}"
-woodpecker_ci_server_container_labels_traefik_compression_middleware_name: "{{ revproxy_middleout_compression_name if revprox_middleout_compression_enabled else '' }}"
+woodpecker_ci_server_container_labels_traefik_compression_middleware_enabled: "{{ revproxy_middleout_compression_enabled }}"
+woodpecker_ci_server_container_labels_traefik_compression_middleware_name: "{{ revproxy_middleout_compression_name if revproxy_middleout_compression_enabled else '' }}"
 
 woodpecker_ci_server_database_type: "{{ 'postgres' if postgres_enabled | default(false) else 'sqlite3' }}"
 
