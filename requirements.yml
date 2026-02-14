@@ -576,7 +576,7 @@
 #  name: plausible
 #  activation_prefix: plausible_
 - src: git+https://github.com/P3X-118/playbook_help-ar
-  version: 0.0.1
+  version: 0.0.2
   name: playbook_help
   activation_prefix: ""
 - src: git+https://github.com/P3X-118/playbook_runtime_messages-ar
