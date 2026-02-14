@@ -34,7 +34,7 @@
 
     # role-specific:docker_sdk_for_python
     - when: docker_python_sdk_enabled | bool
-      role: galaxy/docker_sdk_for_python
+      role: galaxy/docker_python_sdk
       tags:
         - setup-docker
         - setup-all
