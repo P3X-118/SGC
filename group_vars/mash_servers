@@ -3453,7 +3453,7 @@ bitmagnet_enabled: false
 
 bitmagnet_identifier: "{{ mash_playbook_service_identifier_prefix }}bitmagnet"
 
-bitmagnet_base_path: "{{ mash_playbook_base_path }}/{{ mash_playbook_service_base_directory_name_prefix }}bitmagnet"
+bitmagnet_base_path: "{{ sgc_playbook_base_path }}/{{ sgc_service_basedir_prefix }}bitmagnet"
 
 bitmagnet_uid: "{{ mash_playbook_uid }}"
 bitmagnet_gid: "{{ mash_playbook_gid }}"
@@ -3465,13 +3465,13 @@ bitmagnet_systemd_required_services_list_auto: |
 
 bitmagnet_container_additional_networks_auto: |
   {{
-    ([mash_playbook_reverse_proxyable_services_additional_network] if mash_playbook_reverse_proxyable_services_additional_network else [])
+    ([revproxy_service_networks] if revproxy_service_networks else [])
     +
     ([postgres_container_network] if postgres_enabled and bitmagnet_database_hostname == postgres_connection_hostname and bitmagnet_container_network != postgres_container_network else [])
   }}
 
-bitmagnet_container_labels_traefik_enabled: "{{ mash_playbook_traefik_labels_enabled }}"
-bitmagnet_container_labels_traefik_docker_network: "{{ mash_playbook_reverse_proxyable_services_additional_network }}"
+bitmagnet_container_labels_traefik_enabled: "{{ traefik_labels_enabled }}"
+bitmagnet_container_labels_traefik_docker_network: "{{ revproxy_service_networks }}"
 
 # role-specific:postgres
 bitmagnet_database_hostname: "{{ postgres_connection_hostname if postgres_enabled else '' }}"
@@ -3659,18 +3659,18 @@ cinny_enabled: false
 
 cinny_identifier: "{{ mash_playbook_service_identifier_prefix }}cinny"
 
-cinny_base_path: "{{ mash_playbook_base_path }}/{{ mash_playbook_service_base_directory_name_prefix }}cinny"
+cinny_base_path: "{{ sgc_playbook_base_path }}/{{ sgc_service_basedir_prefix }}cinny"
 
 cinny_uid: "{{ mash_playbook_uid }}"
 cinny_gid: "{{ mash_playbook_gid }}"
 
 cinny_container_additional_networks_auto: |
   {{
-    ([mash_playbook_reverse_proxyable_services_additional_network] if mash_playbook_reverse_proxyable_services_additional_network else [])
+    ([revproxy_service_networks] if revproxy_service_networks else [])
   }}
 
-cinny_container_labels_traefik_enabled: "{{ mash_playbook_traefik_labels_enabled }}"
-cinny_container_labels_traefik_docker_network: "{{ mash_playbook_reverse_proxyable_services_additional_network }}"
+cinny_container_labels_traefik_enabled: "{{ traefik_labels_enabled }}"
+cinny_container_labels_traefik_docker_network: "{{ revproxy_service_networks }}"
 
 # role-specific:traefik
 cinny_container_labels_traefik_entrypoints: "{{ traefik_entrypoint_primary }}"
@@ -3741,7 +3741,7 @@ codimd_enabled: false
 
 codimd_identifier: "{{ mash_playbook_service_identifier_prefix }}codimd"
 
-codimd_base_path: "{{ mash_playbook_base_path }}/{{ mash_playbook_service_base_directory_name_prefix }}codimd"
+codimd_base_path: "{{ sgc_playbook_base_path }}/{{ sgc_service_basedir_prefix }}codimd"
 
 # Runs as 1500:1500
 codimd_uid: "1500"
@@ -3765,15 +3765,15 @@ codimd_container_additional_networks_auto: |
     +
     ([mariadb_container_network] if mariadb_enabled | default(false) and codimd_database_mysql_hostname == mariadb_connection_hostname and codimd_container_network != mariadb_container_network and codimd_database_type == 'mysql' else [])
     +
-    ([mash_playbook_reverse_proxyable_services_additional_network] if mash_playbook_reverse_proxyable_services_additional_network else [])
+    ([revproxy_service_networks] if revproxy_service_networks else [])
     +
     ([postgres_container_network] if postgres_enabled | default(false) and codimd_database_postgres_hostname == postgres_connection_hostname and codimd_container_network != postgres_container_network and codimd_database_type == 'postgres' else [])
   }}
 
 codimd_environment_variables_cmd_session_secret: "{{ (mash_playbook_generic_secret_key + ':codimd.s') | hash('sha512') | to_uuid }}"
 
-codimd_container_labels_traefik_enabled: "{{ mash_playbook_traefik_labels_enabled }}"
-codimd_container_labels_traefik_docker_network: "{{ mash_playbook_reverse_proxyable_services_additional_network }}"
+codimd_container_labels_traefik_enabled: "{{ traefik_labels_enabled }}"
+codimd_container_labels_traefik_docker_network: "{{ revproxy_service_networks }}"
 
 # role-specific:mariadb
 codimd_database_mysql_hostname: "{{ mariadb_connection_hostname if mariadb_enabled else '' }}"
@@ -3860,18 +3860,18 @@ converse_enabled: false
 
 converse_identifier: "{{ mash_playbook_service_identifier_prefix }}converse"
 
-converse_base_path: "{{ mash_playbook_base_path }}/{{ mash_playbook_service_base_directory_name_prefix }}converse"
+converse_base_path: "{{ sgc_playbook_base_path }}/{{ sgc_service_basedir_prefix }}converse"
 
 converse_uid: "{{ mash_playbook_uid }}"
 converse_gid: "{{ mash_playbook_gid }}"
 
 converse_container_additional_networks_auto: |
   {{
-    ([mash_playbook_reverse_proxyable_services_additional_network] if mash_playbook_reverse_proxyable_services_additional_network else [])
+    ([revproxy_service_networks] if revproxy_service_networks else [])
   }}
 
-converse_container_labels_traefik_enabled: "{{ mash_playbook_traefik_labels_enabled }}"
-converse_container_labels_traefik_docker_network: "{{ mash_playbook_reverse_proxyable_services_additional_network }}"
+converse_container_labels_traefik_enabled: "{{ traefik_labels_enabled }}"
+converse_container_labels_traefik_docker_network: "{{ revproxy_service_networks }}"
 
 # role-specific:traefik
 converse_container_labels_traefik_entrypoints: "{{ traefik_entrypoint_primary }}"
@@ -3969,18 +3969,18 @@ cryptpad_enabled: false
 
 cryptpad_identifier: "{{ mash_playbook_service_identifier_prefix }}cryptpad"
 
-cryptpad_base_path: "{{ mash_playbook_base_path }}/{{ mash_playbook_service_base_directory_name_prefix }}cryptpad"
+cryptpad_base_path: "{{ sgc_playbook_base_path }}/{{ sgc_service_basedir_prefix }}cryptpad"
 
 cryptpad_uid: "{{ mash_playbook_uid }}"
 cryptpad_gid: "{{ mash_playbook_gid }}"
 
 cryptpad_container_additional_networks: |
   {{
-    ([mash_playbook_reverse_proxyable_services_additional_network] if mash_playbook_reverse_proxyable_services_additional_network else [])
+    ([revproxy_service_networks] if revproxy_service_networks else [])
   }}
 
-cryptpad_container_labels_traefik_enabled: "{{ mash_playbook_traefik_labels_enabled }}"
-cryptpad_container_labels_traefik_docker_network: "{{ mash_playbook_reverse_proxyable_services_additional_network }}"
+cryptpad_container_labels_traefik_enabled: "{{ traefik_labels_enabled }}"
+cryptpad_container_labels_traefik_docker_network: "{{ revproxy_service_networks }}"
 
 # role-specific:traefik
 cryptpad_main_container_labels_traefik_entrypoints: "{{ traefik_entrypoint_primary }}"
@@ -4045,7 +4045,7 @@ databasus_enabled: false
 
 databasus_identifier: "{{ mash_playbook_service_identifier_prefix }}databasus"
 
-databasus_base_path: "{{ mash_playbook_base_path }}/{{ mash_playbook_service_base_directory_name_prefix }}databasus"
+databasus_base_path: "{{ sgc_playbook_base_path }}/{{ sgc_service_basedir_prefix }}databasus"
 
 # databasus runs only as root user
 databasus_uid: 0
@@ -4064,15 +4064,15 @@ databasus_container_additional_networks_auto: |
   {{
     ([mariadb_container_network] if mariadb_enabled | default(false) and databasus_container_network != mariadb_container_network else [])
     +
-    ([mash_playbook_reverse_proxyable_services_additional_network] if mash_playbook_reverse_proxyable_services_additional_network else [])
+    ([revproxy_service_networks] if revproxy_service_networks else [])
     +
     ([mongodb_container_network] if mongodb_enabled | default(false) and databasus_container_network != mongodb_container_network else [])
     +
     ([postgres_container_network] if postgres_enabled | default(false) and databasus_container_network != postgres_container_network else [])
   }}
 
-databasus_container_labels_traefik_enabled: "{{ mash_playbook_traefik_labels_enabled }}"
-databasus_container_labels_traefik_docker_network: "{{ mash_playbook_reverse_proxyable_services_additional_network }}"
+databasus_container_labels_traefik_enabled: "{{ traefik_labels_enabled }}"
+databasus_container_labels_traefik_docker_network: "{{ revproxy_service_networks }}"
 
 # role-specific:traefik
 databasus_container_labels_traefik_entrypoints: "{{ traefik_entrypoint_primary }}"
@@ -4099,7 +4099,7 @@ ddclient_enabled: false
 
 ddclient_identifier: "{{ mash_playbook_service_identifier_prefix }}ddclient"
 
-ddclient_base_path: "{{ mash_playbook_base_path }}/{{ mash_playbook_service_base_directory_name_prefix }}ddclient"
+ddclient_base_path: "{{ sgc_playbook_base_path }}/{{ sgc_service_basedir_prefix }}ddclient"
 
 ddclient_uid: "{{ mash_playbook_uid }}"
 ddclient_gid: "{{ mash_playbook_gid }}"
@@ -4835,7 +4835,7 @@ fider_enabled: false
 
 fider_identifier: "{{ mash_playbook_service_identifier_prefix }}fider"
 
-fider_base_path: "{{ mash_playbook_base_path }}/{{ mash_playbook_service_base_directory_name_prefix }}fider"
+fider_base_path: "{{ sgc_playbook_base_path }}/{{ sgc_service_basedir_prefix }}fider"
 
 fider_uid: "{{ mash_playbook_uid }}"
 fider_gid: "{{ mash_playbook_gid }}"
@@ -4854,13 +4854,13 @@ fider_container_additional_networks_auto: |
   {{
     ([exim_relay_container_network | default('mash-exim-relay')] if (exim_relay_enabled | default(false) and fider_environment_variables_email_smtp_host == exim_relay_identifier | default('mash-exim-relay') and fider_container_network != exim_relay_container_network) else [])
     +
-    ([mash_playbook_reverse_proxyable_services_additional_network] if mash_playbook_reverse_proxyable_services_additional_network else [])
+    ([revproxy_service_networks] if revproxy_service_networks else [])
     +
     ([postgres_container_network] if postgres_enabled and fider_database_hostname == postgres_connection_hostname and fider_container_network != postgres_container_network else [])
   }}
 
-fider_container_labels_traefik_enabled: "{{ mash_playbook_traefik_labels_enabled }}"
-fider_container_labels_traefik_docker_network: "{{ mash_playbook_reverse_proxyable_services_additional_network }}"
+fider_container_labels_traefik_enabled: "{{ traefik_labels_enabled }}"
+fider_container_labels_traefik_docker_network: "{{ revproxy_service_networks }}"
 
 fider_environment_variables_jwt_secret: "{{ (mash_playbook_generic_secret_key + ':s.fider') | hash('sha512') | to_uuid }}"
 
@@ -7952,23 +7952,23 @@ keyoxide_proxy_enabled: false
 
 keyoxide_identifier: "{{ mash_playbook_service_identifier_prefix }}keyoxide"
 
-keyoxide_base_path: "{{ mash_playbook_base_path }}/{{ mash_playbook_service_base_directory_name_prefix }}keyoxide"
+keyoxide_base_path: "{{ sgc_playbook_base_path }}/{{ sgc_service_basedir_prefix }}keyoxide"
 
 keyoxide_uid: "{{ mash_playbook_uid }}"
 keyoxide_gid: "{{ mash_playbook_gid }}"
 
 keyoxide_container_additional_networks_auto: |
   {{
-    ([mash_playbook_reverse_proxyable_services_additional_network] if mash_playbook_reverse_proxyable_services_additional_network else [])
+    ([revproxy_service_networks] if revproxy_service_networks else [])
   }}
 
 keyoxide_proxy_container_additional_networks_auto: |
   {{
-    ([mash_playbook_reverse_proxyable_services_additional_network] if mash_playbook_reverse_proxyable_services_additional_network else [])
+    ([revproxy_service_networks] if revproxy_service_networks else [])
   }}
 
-keyoxide_container_labels_traefik_enabled: "{{ mash_playbook_traefik_labels_enabled }}"
-keyoxide_container_labels_traefik_docker_network: "{{ mash_playbook_reverse_proxyable_services_additional_network }}"
+keyoxide_container_labels_traefik_enabled: "{{ traefik_labels_enabled }}"
+keyoxide_container_labels_traefik_docker_network: "{{ revproxy_service_networks }}"
 
 # role-specific:traefik
 keyoxide_container_labels_traefik_entrypoints: "{{ traefik_entrypoint_primary }}"
@@ -8651,18 +8651,18 @@ mailpit_enabled: false
 
 mailpit_identifier: "{{ mash_playbook_service_identifier_prefix }}mailpit"
 
-mailpit_base_path: "{{ mash_playbook_base_path }}/{{ mash_playbook_service_base_directory_name_prefix }}mailpit"
+mailpit_base_path: "{{ sgc_playbook_base_path }}/{{ sgc_service_basedir_prefix }}mailpit"
 
 mailpit_uid: "{{ mash_playbook_uid }}"
 mailpit_gid: "{{ mash_playbook_gid }}"
 
 mailpit_container_additional_networks_auto: |
   {{
-    ([mash_playbook_reverse_proxyable_services_additional_network] if mash_playbook_reverse_proxyable_services_additional_network else [])
+    ([revproxy_service_networks] if revproxy_service_networks else [])
   }}
 
-mailpit_container_labels_traefik_enabled: "{{ mash_playbook_traefik_labels_enabled }}"
-mailpit_container_labels_traefik_docker_network: "{{ mash_playbook_reverse_proxyable_services_additional_network }}"
+mailpit_container_labels_traefik_enabled: "{{ traefik_labels_enabled }}"
+mailpit_container_labels_traefik_docker_network: "{{ revproxy_service_networks }}"
 
 # role-specific:traefik
 mailpit_container_labels_traefik_entrypoints: "{{ traefik_entrypoint_primary }}"
@@ -9511,18 +9511,18 @@ monerooo_enabled: false
 
 monerooo_identifier: "{{ mash_playbook_service_identifier_prefix }}monerooo"
 
-monerooo_base_path: "{{ mash_playbook_base_path }}/{{ mash_playbook_service_base_directory_name_prefix }}monerooo"
+monerooo_base_path: "{{ sgc_playbook_base_path }}/{{ sgc_service_basedir_prefix }}monerooo"
 
 monerooo_uid: "{{ mash_playbook_uid }}"
 monerooo_gid: "{{ mash_playbook_gid }}"
 
 monerooo_container_additional_networks_auto: |
   {{
-    ([mash_playbook_reverse_proxyable_services_additional_network] if mash_playbook_reverse_proxyable_services_additional_network else [])
+    ([revproxy_service_networks] if revproxy_service_networks else [])
   }}
 
-monerooo_container_labels_traefik_enabled: "{{ mash_playbook_traefik_labels_enabled }}"
-monerooo_container_labels_traefik_docker_network: "{{ mash_playbook_reverse_proxyable_services_additional_network }}"
+monerooo_container_labels_traefik_enabled: "{{ traefik_labels_enabled }}"
+monerooo_container_labels_traefik_docker_network: "{{ revproxy_service_networks }}"
 
 # role-specific:traefik
 monerooo_container_labels_traefik_entrypoints: "{{ traefik_entrypoint_primary }}"
@@ -9732,7 +9732,7 @@ mumble_enabled: false
 
 mumble_identifier: "{{ mash_playbook_service_identifier_prefix }}mumble"
 
-mumble_base_path: "{{ mash_playbook_base_path }}/{{ mash_playbook_service_base_directory_name_prefix }}mumble"
+mumble_base_path: "{{ sgc_playbook_base_path }}/{{ sgc_service_basedir_prefix }}mumble"
 
 mumble_uid: "{{ mash_playbook_uid }}"
 mumble_gid: "{{ mash_playbook_gid }}"
@@ -9750,7 +9750,7 @@ mumble_container_additional_networks_auto: |
   {{
     ([mariadb_container_network] if mariadb_enabled | default(false) and mumble_database_mysql_hostname == mariadb_connection_hostname and mumble_container_network != mariadb_container_network and mumble_database_type == 'mysql' else [])
     +
-    ([mash_playbook_reverse_proxyable_services_additional_network] if mash_playbook_reverse_proxyable_services_additional_network else [])
+    ([revproxy_service_networks] if revproxy_service_networks else [])
     +
     ([postgres_container_network] if postgres_enabled | default(false) and mumble_database_postgres_hostname == postgres_connection_hostname and mumble_container_network != postgres_container_network and mumble_database_type == 'postgres' else [])
   }}
@@ -10376,7 +10376,7 @@ onion_service_tor_enabled: false
 
 onion_service_tor_identifier: "{{ mash_playbook_service_identifier_prefix }}onion-service-tor"
 
-onion_service_tor_base_path: "{{ mash_playbook_base_path }}/{{ mash_playbook_service_base_directory_name_prefix }}onion-service-tor"
+onion_service_tor_base_path: "{{ sgc_playbook_base_path }}/{{ sgc_service_basedir_prefix }}onion-service-tor"
 
 # Runs as root
 onion_service_tor_uid: "0"
@@ -10384,11 +10384,11 @@ onion_service_tor_gid: "0"
 
 onion_service_tor_container_additional_networks_auto: |
   {{
-    ([mash_playbook_reverse_proxyable_services_additional_network] if mash_playbook_reverse_proxyable_services_additional_network else [])
+    ([revproxy_service_networks] if revproxy_service_networks else [])
   }}
 
-onion_service_tor_container_labels_traefik_enabled: "{{ mash_playbook_traefik_labels_enabled }}"
-onion_service_tor_container_labels_traefik_docker_network: "{{ mash_playbook_reverse_proxyable_services_additional_network }}"
+onion_service_tor_container_labels_traefik_enabled: "{{ traefik_labels_enabled }}"
+onion_service_tor_container_labels_traefik_docker_network: "{{ revproxy_service_networks }}"
 
 # role-specific:traefik
 onion_service_tor_container_labels_traefik_entrypoints: "{{ traefik_config_entrypoint_web_name }}"
@@ -10703,18 +10703,18 @@ ots_enabled: false
 
 ots_identifier: "{{ mash_playbook_service_identifier_prefix }}ots"
 
-ots_base_path: "{{ mash_playbook_base_path }}/{{ mash_playbook_service_base_directory_name_prefix }}ots"
+ots_base_path: "{{ sgc_playbook_base_path }}/{{ sgc_service_basedir_prefix }}ots"
 
 ots_uid: "{{ mash_playbook_uid }}"
 ots_gid: "{{ mash_playbook_gid }}"
 
 ots_container_additional_networks_auto: |
   {{
-    ([mash_playbook_reverse_proxyable_services_additional_network] if mash_playbook_reverse_proxyable_services_additional_network else [])
+    ([revproxy_service_networks] if revproxy_service_networks else [])
   }}
 
-ots_container_labels_traefik_enabled: "{{ mash_playbook_traefik_labels_enabled }}"
-ots_container_labels_traefik_docker_network: "{{ mash_playbook_reverse_proxyable_services_additional_network }}"
+ots_container_labels_traefik_enabled: "{{ traefik_labels_enabled }}"
+ots_container_labels_traefik_docker_network: "{{ revproxy_service_networks }}"
 
 # role-specific:traefik
 ots_container_labels_traefik_entrypoints: "{{ traefik_entrypoint_primary }}"
@@ -12025,7 +12025,7 @@ prunemate_enabled: false
 
 prunemate_identifier: "{{ mash_playbook_service_identifier_prefix }}prunemate"
 
-prunemate_base_path: "{{ mash_playbook_base_path }}/{{ mash_playbook_service_base_directory_name_prefix }}prunemate"
+prunemate_base_path: "{{ sgc_playbook_base_path }}/{{ sgc_service_basedir_prefix }}prunemate"
 
 prunemate_uid: "{{ mash_playbook_uid }}"
 prunemate_gid: "{{ mash_playbook_gid }}"
@@ -12041,13 +12041,13 @@ prunemate_container_additional_networks_auto: |
     +
     ([gotify_container_network] if gotify_enabled | default(false) and prunemate_container_network != gotify_container_network else [])
     +
-    ([mash_playbook_reverse_proxyable_services_additional_network] if mash_playbook_reverse_proxyable_services_additional_network else [])
+    ([revproxy_service_networks] if revproxy_service_networks else [])
     +
     ([ntfy_container_network] if ntfy_enabled | default(false) and prunemate_container_network != ntfy_container_network else [])
   }}
 
-prunemate_container_labels_traefik_enabled: "{{ mash_playbook_traefik_labels_enabled }}"
-prunemate_container_labels_traefik_docker_network: "{{ mash_playbook_reverse_proxyable_services_additional_network }}"
+prunemate_container_labels_traefik_enabled: "{{ traefik_labels_enabled }}"
+prunemate_container_labels_traefik_docker_network: "{{ revproxy_service_networks }}"
 
 # role-specific:container_socket_proxy
 prunemate_docker_endpoint_is_unix_socket: "{{ false if prunemate_docker_endpoint.startswith('tcp://') else true }}"
@@ -13211,18 +13211,18 @@ soundcloak_enabled: false
 
 soundcloak_identifier: "{{ mash_playbook_service_identifier_prefix }}soundcloak"
 
-soundcloak_base_path: "{{ mash_playbook_base_path }}/{{ mash_playbook_service_base_directory_name_prefix }}soundcloak"
+soundcloak_base_path: "{{ sgc_playbook_base_path }}/{{ sgc_service_basedir_prefix }}soundcloak"
 
 soundcloak_uid: "{{ mash_playbook_uid }}"
 soundcloak_gid: "{{ mash_playbook_gid }}"
 
 soundcloak_container_additional_networks_auto: |
   {{
-    ([mash_playbook_reverse_proxyable_services_additional_network] if mash_playbook_reverse_proxyable_services_additional_network else [])
+    ([revproxy_service_networks] if revproxy_service_networks else [])
   }}
 
-soundcloak_container_labels_traefik_enabled: "{{ mash_playbook_traefik_labels_enabled }}"
-soundcloak_container_labels_traefik_docker_network: "{{ mash_playbook_reverse_proxyable_services_additional_network }}"
+soundcloak_container_labels_traefik_enabled: "{{ traefik_labels_enabled }}"
+soundcloak_container_labels_traefik_docker_network: "{{ revproxy_service_networks }}"
 
 # role-specific:traefik
 soundcloak_container_labels_traefik_entrypoints: "{{ traefik_entrypoint_primary }}"
@@ -13519,7 +13519,7 @@ termix_enabled: false
 
 termix_identifier: "{{ mash_playbook_service_identifier_prefix }}termix"
 
-termix_base_path: "{{ mash_playbook_base_path }}/{{ mash_playbook_service_base_directory_name_prefix }}termix"
+termix_base_path: "{{ sgc_playbook_base_path }}/{{ sgc_service_basedir_prefix }}termix"
 
 # Termix runs as `node`
 termix_uid: 1000
@@ -13527,11 +13527,11 @@ termix_gid: 1000
 
 termix_container_additional_networks_auto: |
   {{
-    ([mash_playbook_reverse_proxyable_services_additional_network] if mash_playbook_reverse_proxyable_services_additional_network else [])
+    ([revproxy_service_networks] if revproxy_service_networks else [])
   }}
 
-termix_container_labels_traefik_enabled: "{{ mash_playbook_traefik_labels_enabled }}"
-termix_container_labels_traefik_docker_network: "{{ mash_playbook_reverse_proxyable_services_additional_network }}"
+termix_container_labels_traefik_enabled: "{{ traefik_labels_enabled }}"
+termix_container_labels_traefik_docker_network: "{{ revproxy_service_networks }}"
 
 # role-specific:traefik
 termix_container_labels_traefik_entrypoints: "{{ traefik_entrypoint_primary }}"
