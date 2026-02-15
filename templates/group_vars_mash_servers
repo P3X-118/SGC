@@ -3451,7 +3451,7 @@ bind_systemd_required_services_list_auto: |
 
 bitmagnet_enabled: false
 
-bitmagnet_identifier: "{{ mash_playbook_service_identifier_prefix }}bitmagnet"
+bitmagnet_identifier: "{{ sgc_service_id_prefix }}bitmagnet"
 
 bitmagnet_base_path: "{{ sgc_playbook_base_path }}/{{ sgc_service_basedir_prefix }}bitmagnet"
 
@@ -3657,7 +3657,7 @@ changedetection_container_labels_traefik_tls_certResolver: "{{ traefik_certResol
 
 cinny_enabled: false
 
-cinny_identifier: "{{ mash_playbook_service_identifier_prefix }}cinny"
+cinny_identifier: "{{ sgc_service_id_prefix }}cinny"
 
 cinny_base_path: "{{ sgc_playbook_base_path }}/{{ sgc_service_basedir_prefix }}cinny"
 
@@ -3739,7 +3739,7 @@ clickhouse_managed_databases_auto: "{{ clickhouse_managed_databases_auto_itemize
 
 codimd_enabled: false
 
-codimd_identifier: "{{ mash_playbook_service_identifier_prefix }}codimd"
+codimd_identifier: "{{ sgc_service_id_prefix }}codimd"
 
 codimd_base_path: "{{ sgc_playbook_base_path }}/{{ sgc_service_basedir_prefix }}codimd"
 
@@ -3858,7 +3858,7 @@ collabora_online_container_labels_traefik_tls_certResolver: "{{ traefik_certReso
 
 converse_enabled: false
 
-converse_identifier: "{{ mash_playbook_service_identifier_prefix }}converse"
+converse_identifier: "{{ sgc_service_id_prefix }}converse"
 
 converse_base_path: "{{ sgc_playbook_base_path }}/{{ sgc_service_basedir_prefix }}converse"
 
@@ -3967,7 +3967,7 @@ couchdb_config_couch_chttpd_auth_secret: "{{ '%s' | format(sgc_pgsk) | password_
 
 cryptpad_enabled: false
 
-cryptpad_identifier: "{{ mash_playbook_service_identifier_prefix }}cryptpad"
+cryptpad_identifier: "{{ sgc_service_id_prefix }}cryptpad"
 
 cryptpad_base_path: "{{ sgc_playbook_base_path }}/{{ sgc_service_basedir_prefix }}cryptpad"
 
@@ -4043,7 +4043,7 @@ cyberchef_container_labels_traefik_tls_certResolver: "{{ traefik_certResolver_pr
 
 databasus_enabled: false
 
-databasus_identifier: "{{ mash_playbook_service_identifier_prefix }}databasus"
+databasus_identifier: "{{ sgc_service_id_prefix }}databasus"
 
 databasus_base_path: "{{ sgc_playbook_base_path }}/{{ sgc_service_basedir_prefix }}databasus"
 
@@ -4097,7 +4097,7 @@ databasus_container_labels_traefik_tls_certResolver: "{{ traefik_certResolver_pr
 
 ddclient_enabled: false
 
-ddclient_identifier: "{{ mash_playbook_service_identifier_prefix }}ddclient"
+ddclient_identifier: "{{ sgc_service_id_prefix }}ddclient"
 
 ddclient_base_path: "{{ sgc_playbook_base_path }}/{{ sgc_service_basedir_prefix }}ddclient"
 
@@ -4833,7 +4833,7 @@ farmos_container_labels_traefik_tls_certResolver: "{{ traefik_certResolver_prima
 
 fider_enabled: false
 
-fider_identifier: "{{ mash_playbook_service_identifier_prefix }}fider"
+fider_identifier: "{{ sgc_service_id_prefix }}fider"
 
 fider_base_path: "{{ sgc_playbook_base_path }}/{{ sgc_service_basedir_prefix }}fider"
 
@@ -7950,7 +7950,7 @@ keyoxide_enabled: false
 
 keyoxide_proxy_enabled: false
 
-keyoxide_identifier: "{{ mash_playbook_service_identifier_prefix }}keyoxide"
+keyoxide_identifier: "{{ sgc_service_id_prefix }}keyoxide"
 
 keyoxide_base_path: "{{ sgc_playbook_base_path }}/{{ sgc_service_basedir_prefix }}keyoxide"
 
@@ -8649,7 +8649,7 @@ mailcrab_container_labels_traefik_tls_certResolver: "{{ traefik_certResolver_pri
 
 mailpit_enabled: false
 
-mailpit_identifier: "{{ mash_playbook_service_identifier_prefix }}mailpit"
+mailpit_identifier: "{{ sgc_service_id_prefix }}mailpit"
 
 mailpit_base_path: "{{ sgc_playbook_base_path }}/{{ sgc_service_basedir_prefix }}mailpit"
 
@@ -9509,7 +9509,7 @@ mobilizon_container_labels_traefik_tls_certResolver: "{{ traefik_certResolver_pr
 
 monerooo_enabled: false
 
-monerooo_identifier: "{{ mash_playbook_service_identifier_prefix }}monerooo"
+monerooo_identifier: "{{ sgc_service_id_prefix }}monerooo"
 
 monerooo_base_path: "{{ sgc_playbook_base_path }}/{{ sgc_service_basedir_prefix }}monerooo"
 
@@ -9730,7 +9730,7 @@ mrs_container_labels_traefik_tls_certResolver: "{{ traefik_certResolver_primary 
 
 mumble_enabled: false
 
-mumble_identifier: "{{ mash_playbook_service_identifier_prefix }}mumble"
+mumble_identifier: "{{ sgc_service_id_prefix }}mumble"
 
 mumble_base_path: "{{ sgc_playbook_base_path }}/{{ sgc_service_basedir_prefix }}mumble"
 
@@ -10374,7 +10374,7 @@ oauth2_proxy_container_labels_traefik_tls_certResolver: "{{ traefik_certResolver
 
 onion_service_tor_enabled: false
 
-onion_service_tor_identifier: "{{ mash_playbook_service_identifier_prefix }}onion-service-tor"
+onion_service_tor_identifier: "{{ sgc_service_id_prefix }}onion-service-tor"
 
 onion_service_tor_base_path: "{{ sgc_playbook_base_path }}/{{ sgc_service_basedir_prefix }}onion-service-tor"
 
@@ -10701,7 +10701,7 @@ origamivault_container_labels_traefik_tls_certResolver: "{{ traefik_certResolver
 
 ots_enabled: false
 
-ots_identifier: "{{ mash_playbook_service_identifier_prefix }}ots"
+ots_identifier: "{{ sgc_service_id_prefix }}ots"
 
 ots_base_path: "{{ sgc_playbook_base_path }}/{{ sgc_service_basedir_prefix }}ots"
 
@@ -12023,7 +12023,7 @@ promtail_container_labels_traefik_tls_certResolver: "{{ traefik_certResolver_pri
 
 prunemate_enabled: false
 
-prunemate_identifier: "{{ mash_playbook_service_identifier_prefix }}prunemate"
+prunemate_identifier: "{{ sgc_service_id_prefix }}prunemate"
 
 prunemate_base_path: "{{ sgc_playbook_base_path }}/{{ sgc_service_basedir_prefix }}prunemate"
 
@@ -13209,7 +13209,7 @@ sonarr_container_labels_traefik_tls_certResolver: "{{ traefik_certResolver_prima
 
 soundcloak_enabled: false
 
-soundcloak_identifier: "{{ mash_playbook_service_identifier_prefix }}soundcloak"
+soundcloak_identifier: "{{ sgc_service_id_prefix }}soundcloak"
 
 soundcloak_base_path: "{{ sgc_playbook_base_path }}/{{ sgc_service_basedir_prefix }}soundcloak"
 
@@ -13517,7 +13517,7 @@ telegraf_systemd_required_services_list_auto: |
 
 termix_enabled: false
 
-termix_identifier: "{{ mash_playbook_service_identifier_prefix }}termix"
+termix_identifier: "{{ sgc_service_id_prefix }}termix"
 
 termix_base_path: "{{ sgc_playbook_base_path }}/{{ sgc_service_basedir_prefix }}termix"
 
