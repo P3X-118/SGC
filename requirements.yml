@@ -303,10 +303,10 @@
 #  version: v1.0.4-0
 #  name: ilmo
 #  activation_prefix: ilmo_
-#- src: git+https://github.com/P3X-118/ansible-role-immich.git
-#  version: v2.3.1-1
-#  name: immich
-#  activation_prefix: immich_
+- src: git+https://github.com/P3X-118/ansible-role-immich.git
+  version: v2.4.1-2
+  name: immich
+  activation_prefix: immich_
 #- src: git+https://github.com/P3X-118/immich_kiosk-ar.git
 #  version: v0.30.1-1
 #  name: immich_kiosk
