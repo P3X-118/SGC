@@ -398,7 +398,7 @@
     # /role-specific:infisical
 
     # role-specific:immich
-    #- role: galaxy/immich
+    - role: galaxy/immich
     # /role-specific:immich
 
     # role-specific:immich_kiosk
