@@ -142,7 +142,7 @@
     # /role-specific:audiobookshelf
 
     # role-specific:authelia
-    #- role: galaxy/authelia
+    - role: galaxy/authelia
     # /role-specific:authelia
 
     # role-specific:authentik

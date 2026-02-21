@@ -8071,13 +8071,8 @@ kutt_container_labels_traefik_tls_certResolver: "{{ traefik_certResolver_primary
 ########################################################################
 
 labelstudio_enabled: false
-
 labelstudio_identifier: "{{ service_id_prefix }}labelstudio"
-
 labelstudio_base_path: "{{ sgc_playbook_base_path }}/{{ service_directory_prefix }}labelstudio"
-
-labelstudio_uid: "{{ mash_playbook_uid }}"
-labelstudio_gid: "{{ mash_playbook_gid }}"
 
 labelstudio_systemd_required_services_list_auto: |
   {{

@@ -54,7 +54,7 @@
 #  version: v2.31.0-0
 #  name: audiobookshelf
 #  activation_prefix: audiobookshelf_
-#- src: git+https://github.com/P3X-118/ansible-role-authelia.git
+#- src: git+https://github.com/P3X-118/authelia-ar.git
 #  version: v4.37.5-10
 #  name: authelia
 #  activation_prefix: authelia_
