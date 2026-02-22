@@ -191,7 +191,7 @@
   name: excalidraw
   activation_prefix: excalidraw_
 - src: git+https://github.com/P3X-118/ansible-role-excalidraw-room.git
-  version: v2023.12.15-4
+  version: 2023.12.15-5
   name: excalidraw_room
   activation_prefix: excalidraw_room_
 - src: git+https://github.com/P3X-118/exim-ar.git
