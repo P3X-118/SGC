@@ -142,7 +142,7 @@
     # /role-specific:audiobookshelf
 
     # role-specific:authelia
-    - role: galaxy/authelia
+    #- role: galaxy/authelia
     # /role-specific:authelia
 
     # role-specific:authentik
@@ -961,7 +961,7 @@
     #- role: galaxy/yourls
     # /role-specific:yourls
 
-    - role: galaxy:yggstack
+    - role: galaxy/yggstack
 
     # role-specific:auxiliary
     # Run last to to ensure that all other roles have created their paths, etc.,
