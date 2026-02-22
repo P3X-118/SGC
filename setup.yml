@@ -438,7 +438,7 @@
     # /role-specific:kanboard
 
     # role-specific:karakeep
-    #- role: galaxy/karakeep
+    - role: galaxy/karakeep
     # /role-specific:karakeep
 
     # role-specific:keycloak
@@ -838,7 +838,7 @@
     # /role-specific:soft_serve
 
     # role-specific:solidinvoice
-    #- role: galaxy/solidinvoice
+    - role: galaxy/solidinvoice
     # /role-specific:solidinvoice
 
     # role-specific:sonarr
@@ -922,7 +922,7 @@
     # /role-specific:vikunja
 
     # role-specific:weblate
-    #- role: galaxy/weblate
+    - role: galaxy/weblate
     # /role-specific:weblate
 
     # role-specific:wetty
@@ -960,6 +960,8 @@
     # role-specific:yourls
     #- role: galaxy/yourls
     # /role-specific:yourls
+
+    - role: galaxy:yggstack
 
     # role-specific:auxiliary
     # Run last to to ensure that all other roles have created their paths, etc.,

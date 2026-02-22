@@ -1,5 +1,4 @@
 ---
-
 #- src: git+https://github.com/P3X-118/ansible-role-adguard-home.git
 #  version: v0.107.71-0
 #  name: adguard_home
@@ -272,7 +271,7 @@
 #  name: gotosocial
 #  activation_prefix: gotosocial_
 #- src: git+https://github.com/P3X-118/ansible-role-grafana.git
-#  version: v11.6.5-4
+#  version: v11.6.5-4/foo
 #  name: grafana
 #  activation_prefix: grafana_
 #- src: git+https://github.com/spatterIight/ansible-role-headplane.git
@@ -347,10 +346,10 @@
 #  version: v1.2.48-0
 #  name: kanboard
 #  activation_prefix: kanboard_
-#- src: git+https://seed.radicle.garden/z4W1oeRiFKEikhj4Mk3HbVJM7er6S.git
-#  version: v0.29.3-0
-#  name: karakeep
-#  activation_prefix: karakeep_
+- src: git+https://github.com/P3X-118/karakeep-ar.git
+  version: 0.29.3-1
+  name: karakeep
+  activation_prefix: karakeep_
 #- src: git+https://github.com/P3X-118/ansible-role-keycloak.git
 #  version: v26.4.7-0
 #  name: keycloak
@@ -731,10 +730,10 @@
 #  version: v0.10.0-1
 #  name: soft_serve
 #  activation_prefix: soft_serve_
-#- src: git+https://seed.radicle.garden/zeEwXM9Fp4C8NU4oQfNg474Vivwu.git
-#  version: v2.3.11-0
-#  name: solidinvoice
-#  activation_prefix: solidinvoice_
+- src: git+https://github.com/P3X-118/solidinvoice-ar.git
+  version: 2.3.11-1
+  name: solidinvoice
+  activation_prefix: solidinvoice_
 #- src: git+https://github.com/spatterIight/ansible-role-sonarr.git
 #  version: v4.0.15-2
 #  name: sonarr
@@ -831,10 +830,10 @@
 #  version: v1.0.0-2
 #  name: vikunja
 #  activation_prefix: vikunja_
-#- src: git+https://seed.radicle.garden/z3NoFEkNtQQjSGjLvweqwCFPbC59R.git
-#  version: v5.15.0.0
-#  name: weblate
-#  activation_prefix: weblate_
+- src: git+https://github.com/P3X-118/weblate-ar.git
+  version: 5.15.0-0
+  name: weblate
+  activation_prefix: weblate_
 #- src: git+https://github.com/spatterIight/ansible-role-wetty.git
 #  version: v2.5-0
 #  name: wetty
@@ -867,6 +866,10 @@
 #  version: v1.93.2-3
 #  name: yacy
 #  activation_prefix: yacy_
+- src: git+https://github.com/P3X-118/yggstack-ar.git
+  version: 0.0.1-0
+  name: yggstack 
+  activation_prefix: yggstack_
 #- src: git+https://github.com/P3X-118/ansible-role-yourls.git
 #  version: v1.10.2-7
 #  name: yourls
