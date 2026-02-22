@@ -343,12 +343,12 @@ sgc_sysd_srvc_list_auto_itemized:
 
   # role-specific:excalidraw_room
   - |-
-    {{ ({'name': (excalidraw_room_identifier + '.service'), 'priority': 2000, 'groups': ['mash', 'excalidraw-room']} if excalidraw_room_enabled else omit) }}
+    {{ ({'name': (excalidraw_room_identifier + '.service'), 'priority': 2000, 'groups': ['sgc', 'excalidraw-room']} if excalidraw_room_enabled else omit) }}
   # /role-specific:excalidraw_room
 
   # role-specific:exim_relay
   - |-
-    {{ ({'name': (exim_relay_identifier + '.service'), 'priority': 2000, 'groups': ['mash', 'exim-relay']} if exim_relay_enabled else omit) }}
+    {{ ({'name': (exim_relay_identifier + '.service'), 'priority': 2000, 'groups': ['sgc', 'exim-relay']} if exim_relay_enabled else omit) }}
   # /role-specific:exim_relay
 
   # role-specific:farmos
@@ -368,7 +368,7 @@ sgc_sysd_srvc_list_auto_itemized:
 
   # role-specific:filebrowser_quantum
   - |-
-    {{ ({'name': (filebrowser_quantum_identifier + '.service'), 'priority': 2000, 'groups': ['mash', 'filebrowser-quantum']} if filebrowser_quantum_enabled else omit) }}
+    {{ ({'name': (filebrowser_quantum_identifier + '.service'), 'priority': 2000, 'groups': ['sgc', 'filebrowser-quantum']} if filebrowser_quantum_enabled else omit) }}
   # /role-specific:filebrowser_quantum
 
   # role-specific:firezone

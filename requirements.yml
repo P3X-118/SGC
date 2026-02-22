@@ -866,10 +866,10 @@
 #  version: v1.93.2-3
 #  name: yacy
 #  activation_prefix: yacy_
-- src: git+https://github.com/P3X-118/yggstack-ar.git
-  version: 0.0.1-0
-  name: yggstack 
-  activation_prefix: yggstack_
+#- src: git+https://github.com/P3X-118/yggstack-ar.git
+#  version: 0.0.1-0
+#  name: yggstack 
+#  activation_prefix: yggstack_
 #- src: git+https://github.com/P3X-118/ansible-role-yourls.git
 #  version: v1.10.2-7
 #  name: yourls
