@@ -195,7 +195,7 @@
   name: excalidraw_room
   activation_prefix: excalidraw_room_
 - src: git+https://github.com/P3X-118/exim-ar.git
-  version: v4.98.1-r0-2-2
+  version: 4.98.1-r0-2-3
   name: exim_relay
   activation_prefix: exim_relay_
 #- src: git+https://github.com/P3X-118/ansible-role-fail2ban.git

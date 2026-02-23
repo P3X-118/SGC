@@ -318,7 +318,7 @@ sgc_sysd_srvc_list_auto_itemized:
 
   # role-specific:endlessh
   - |-
-    {{ ({'name': (endlessh_identifier + '.service'), 'priority': 2000, 'groups': ['mash', 'endlessh']} if endlessh_enabled else omit) }}
+    {{ ({'name': (endlessh_identifier + '.service'), 'priority': 2000, 'groups': ['sgc', 'endlessh']} if endlessh_enabled else omit) }}
   # /role-specific:endlessh
 
   # role-specific:ergo
@@ -1126,7 +1126,7 @@ sgc_sysd_srvc_list_auto_itemized:
 
   # role-specific:tandoor
   - |-
-    {{ ({'name': (tandoor_identifier + '.service'), 'priority': 2000, 'groups': ['mash', 'tandoor']} if tandoor_enabled else omit) }}
+    {{ ({'name': (tandoor_identifier + '.service'), 'priority': 2000, 'groups': ['sgc', 'tandoor']} if tandoor_enabled else omit) }}
   # /role-specific:tandoor
 
   # role-specific:telegraf
@@ -1181,12 +1181,12 @@ sgc_sysd_srvc_list_auto_itemized:
 
   # role-specific:valkey
   - |-
-    {{ ({'name': (valkey_identifier + '.service'), 'priority': 750, 'groups': ['mash', 'valkey']} if valkey_enabled else omit) }}
+    {{ ({'name': (valkey_identifier + '.service'), 'priority': 750, 'groups': ['sgc', 'valkey']} if valkey_enabled else omit) }}
   # /role-specific:valkey
 
   # role-specific:vaultwarden
   - |-
-    {{ ({'name': (vaultwarden_identifier + '.service'), 'priority': 2000, 'groups': ['mash', 'vaultwarden']} if vaultwarden_enabled else omit) }}
+    {{ ({'name': (vaultwarden_identifier + '.service'), 'priority': 2000, 'groups': ['sgc', 'vaultwarden']} if vaultwarden_enabled else omit) }}
   # /role-specific:vaultwarden
 
   # role-specific:vikunja
