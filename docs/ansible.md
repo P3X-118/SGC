@@ -41,7 +41,7 @@ If using the `pip` method, do note that the `ansible-playbook` binary may not be
 
 ## Using Ansible via Docker
 
-Alternatively, you can run Ansible inside a Docker container (powered by the [ghcr.io/devture/ansible](https://github.com/devture/docker-ansible/pkgs/container/ansible) Docker image).
+Alternatively, you can run Ansible inside a Docker container (powered by the [ghcr.io/P3X-118/ansible](https://github.com/P3X-118/docker-ansible/pkgs/container/ansible) Docker image).
 
 This ensures that:
 
@@ -74,7 +74,7 @@ docker run \
 -w /work \
 --mount type=bind,src=`pwd`,dst=/work \
 --entrypoint=/bin/sh \
-ghcr.io/devture/ansible:11.6.0-r0-0
+ghcr.io/P3X-118/ansible:11.6.0-r0-0
 ```
 
 Once you execute the above command, you'll be dropped into a `/work` directory inside a Docker container. The `/work` directory contains the playbook's code.
@@ -95,7 +95,7 @@ docker run \
 --mount type=bind,src=`pwd`,dst=/work \
 --mount type=bind,src=$HOME/.ssh/id_ed25519,dst=/root/.ssh/id_ed25519,ro \
 --entrypoint=/bin/sh \
-ghcr.io/devture/ansible:11.6.0-r0-0
+ghcr.io/P3X-118/ansible:11.6.0-r0-0
 ```
 
 The above command tries to mount an SSH key (`$HOME/.ssh/id_ed25519`) into the container (at `/root/.ssh/id_ed25519`). If your SSH key is at a different path (not in `$HOME/.ssh/id_ed25519`), adjust that part.

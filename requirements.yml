@@ -86,10 +86,10 @@
   version: 9.20-2
   name: bind
   activation_prefix: bind_
-#- src: git+https://github.com/P3X-118/ansible-role-browserless.git
-#  version: v2.38.2-1
-#  name: browserless
-#  activation_prefix: browserless_
+- src: git+https://github.com/P3X-118/browserless-ar.git
+  version: 2.38.2-2
+  name: browserless
+  activation_prefix: browserless_
 #- src: git+https://github.com/P3X-118/ansible-role-calibre-web.git
 #  version: v0.6.25-3
 #  name: calibre_web

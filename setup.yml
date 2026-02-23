@@ -174,7 +174,7 @@
     # /role-specific:bitmagnet
 
     # role-specific:browserless
-    #- role: galaxy/browserless
+    - role: galaxy/browserless
     # /role-specific:browserless
 
     # role-specific:calibre_web

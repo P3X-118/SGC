@@ -194,7 +194,7 @@ sgc_sysd_srvc_list_auto_itemized:
 
   # role-specific:browserless
   - |-
-    {{ ({'name': (browserless_identifier + '.service'), 'priority': 2000, 'groups': ['mash', 'browserless']} if browserless_enabled else omit) }}
+    {{ ({'name': (browserless_identifier + '.service'), 'priority': 2000, 'groups': ['sgc', 'browserless']} if browserless_enabled else omit) }}
   # /role-specific:browserless
 
   # role-specific:calibre_web

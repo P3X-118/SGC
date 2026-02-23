@@ -198,7 +198,7 @@ YOUR-SERVICE_database_password: "{{ '%s' | format(sgc_pgsk) | password_hash('sha
 <details>
 <summary>Wire the role to exim-relay (mailer)</summary>
 
-This playbook implements [exim-relay](https://github.com/devture/exim-relay), a SMTP mailer service.
+This playbook implements [exim-relay](https://github.com/P3X-118/exim-relay), a SMTP mailer service.
 
 Various services need to send out email, and exim-relay gives you a centralized place for configuring email-sending.
 

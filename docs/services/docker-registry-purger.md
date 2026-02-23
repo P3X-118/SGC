@@ -7,7 +7,7 @@ SPDX-License-Identifier: AGPL-3.0-or-later
 
 # Docker Registry Purger
 
-[Docker Registry Purger](https://github.com/devture/docker-registry-purger) is a small tool used for purging a private Docker registry's old tags.
+[Docker Registry Purger](https://github.com/P3X-118/docker-registry-purger) is a small tool used for purging a private Docker registry's old tags.
 
 
 ## Dependencies
@@ -45,7 +45,7 @@ docker_registry_purger_container_network: "{{ docker_registry_container_network 
 ########################################################################
 ```
 
-You may wish to tweak some [default configuration]() variables, which ultimately control [environment variables](https://github.com/devture/docker-registry-purger#environment-variables) of the purger tool.
+You may wish to tweak some [default configuration]() variables, which ultimately control [environment variables](https://github.com/P3X-118/docker-registry-purger#environment-variables) of the purger tool.
 
 
 ## Usage

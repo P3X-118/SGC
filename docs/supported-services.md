@@ -66,7 +66,7 @@ Below is an exhaustive list of the free and open-source software for self-hostin
 | [Docker Registry](https://docs.docker.com/registry/) | A container image distribution registry | [Link](services/docker-registry.md) |
 | [Docker Registry Browser](https://github.com/klausmeyer/docker-registry-browser) | Web Interface for the Docker Registry HTTP API V2 written in Ruby on Rails | [Link](services/docker-registry-browser.md) |
 | [Docker Registry Proxy](https://github.com/etkecc/docker-registry-proxy) | Pass-through Docker registry (distribution) proxy with metadata caching, Docker-compatible errors, Prometheus metrics, etc. | [Link](services/docker-registry-proxy.md) |
-| [Docker Registry Purger](https://github.com/devture/docker-registry-purger) | A small tool used for purging a private Docker Registry's old tags | [Link](services/docker-registry-purger.md) |
+| [Docker Registry Purger](https://github.com/P3X-118/docker-registry-purger) | A small tool used for purging a private Docker Registry's old tags | [Link](services/docker-registry-purger.md) |
 | [Docmost](https://docmost.com/) | Collaborative wiki and documentation software | [Link](services/docmost.md) |
 | [DokuWiki](https://dokuwiki.org/) | A lightweight, file-based wiki engine with intuitive syntax and no database requirements | [Link](services/dokuwiki.md) |
 | [Duplicati](https://duplicati.com) | Backup software that securely stores encrypted, incremental, compressed backups on local storage, cloud storage services and remote file servers | [Link](services/duplicati.md) |
@@ -77,7 +77,7 @@ Below is an exhaustive list of the free and open-source software for self-hostin
 | [Etherpad](https://etherpad.org) | Collaborative text editor | [Link](services/etherpad.md) |
 | [Excalidraw](https://excalidraw.com/) | Virtual whiteboard for sketching hand-drawn like diagrams | [Link](services/excalidraw.md) |
 | [Excalidraw collaboration server](https://github.com/excalidraw/excalidraw-room) | Collaboration server for Excalidraw instance | [Link](services/excalidraw-room.md) |
-| [exim-relay](https://github.com/devture/exim-relay) | A lightweight [Exim](https://www.exim.org/) SMTP mail relay server | [Link](services/exim-relay.md) |
+| [exim-relay](https://github.com/P3X-118/exim-relay) | A lightweight [Exim](https://www.exim.org/) SMTP mail relay server | [Link](services/exim-relay.md) |
 | [farmOS](https://farmos.org/) | Farm management, planning, and record keeping | [Link](services/farmos.md) |
 | [Fider](https://github.com/getfider/fider) | Feedback portal for feature requests and suggestions | [Link](services/fider.md) |
 | [File Browser](https://filebrowser.org/) | File managing interface within a specified directory, which can be used to upload, delete, preview and edit your files | [Link](services/filebrowser.md) |
