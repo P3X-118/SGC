@@ -815,7 +815,7 @@
 #  name: uptime_kuma
 #  activation_prefix: uptime_kuma_
 - src: git+https://github.com/P3X-118/valkey-ar.git
-  version: v9.0.1-1
+  version: 9.0.1-1
   name: valkey
   activation_prefix: valkey_
 #- src: git+https://github.com/P3X-118/ansible-role-vaultwarden.git
