@@ -578,7 +578,7 @@ sgc_sysd_srvc_list_auto_itemized:
 
   # role-specific:kutt
   - |-
-    {{ ({'name': (kutt_identifier + '.service'), 'priority': 2000, 'groups': ['mash', 'kutt']} if kutt_enabled else omit) }}
+    {{ ({'name': (kutt_identifier + '.service'), 'priority': 2000, 'groups': ['sgc', 'kutt']} if kutt_enabled else omit) }}
   # /role-specific:kutt
 
   # role-specific:labelstudio

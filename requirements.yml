@@ -358,10 +358,10 @@
 #  version: v6.3.4-10
 #  name: keydb
 #  activation_prefix: keydb_
-#- src: git+https://seed.radicle.garden/z36dPzLyvPA52m845g1MMqHgoiaEz.git
-#  version: v3.2.3-3
-#  name: kutt
-#  activation_prefix: kutt_
+- src: git+https://github.com/P3X-118/kutt-ar.git
+  version: 3.2.3-4
+  name: kutt
+  activation_prefix: kutt_
 #- src: git+https://gitlab.com/horvathg.1988/ansible-role-labelstudio.git
 #  version: v1.0.5
 #  name: labelstudio

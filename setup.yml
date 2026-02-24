@@ -454,7 +454,7 @@
     # /role-specific:keyoxide
 
     # role-specific:kutt
-    #- role: galaxy/kutt
+    - role: galaxy/kutt
     # /role-specific:kutt
 
     # role-specific:labelstudio
