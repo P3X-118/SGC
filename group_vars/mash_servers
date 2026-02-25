@@ -711,7 +711,7 @@ sgc_sysd_srvc_list_auto_itemized:
 
   # role-specific:moodist
   - |-
-    {{ ({'name': (moodist_identifier + '.service'), 'priority': 2000, 'groups': ['mash', 'moodist']} if moodist_enabled else omit) }}
+    {{ ({'name': (moodist_identifier + '.service'), 'priority': 2000, 'groups': ['sgc', 'moodist']} if moodist_enabled else omit) }}
   # /role-specific:moodist
 
   # role-specific:mosquitto
