@@ -14,6 +14,7 @@
 * Authelia: 4.37.5
 * Authentik: 2025.12.1
 * Autobrr: v1.71.0
+* AWX: 24.6.1
 * Barassistant Saltrim: 4.13.0
 * Barassistant Server: 5.12.0
 * Bentopdf: v1.16.0
