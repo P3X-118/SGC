@@ -165,6 +165,15 @@ sgc_sysd_srvc_list_auto_itemized:
     {{ ({'name': (autobrr_identifier + '.service'), 'priority': 2000, 'groups': ['mash', 'autobrr']} if autobrr_enabled else omit) }}
   # /role-specific:autobrr
 
+  # role-specific:awx
+  - |-
+    {{ ({'name': (awx_identifier + '.service'), 'priority': 2000, 'groups': ['sgc', 'awx']} if awx_enabled else omit) }}
+  - |-
+    {{ ({'name': (awx_redis_identifier + '.service'), 'priority': 2000, 'groups': ['mash', 'awx']} if awx_enabled and awx_redis_enabled else omit) }}
+  - |-
+    {{ ({'name': (awx_receptor_identifier + '.service'), 'priority': 2000, 'groups': ['mash', 'awx']} if awx_enabled and awx_receptor_enabled else omit) }}
+  # /role-specific:awx
+
   # role-specific:backup_borg
   - |-
     {{ ({'name': (backup_borg_identifier + '.timer'), 'priority': 5000, 'groups': ['mash', 'backup', 'borg']} if backup_borg_enabled else omit) }}
@@ -3218,6 +3227,42 @@ autobrr_container_labels_traefik_tls_certResolver: "{{ traefik_certResolver_prim
 # /role-specific:autobrr
 
 
+# role-specific:awx
+########################################################################
+#                                                                      #
+# AWX                                                                   #
+#                                                                      #
+########################################################################
+
+awx_enabled: false
+
+awx_identifier: "{{ service_id_prefix }}awx"
+
+awx_base_path: "{{ sgc_playbook_base_path }}/{{ service_directory_prefix }}awx"
+
+awx_uid: "{{ sgc_playbook_uid }}"
+awx_gid: "{{ sgc_playbook_gid }}"
+
+awx_container_additional_networks_auto: |
+  {{
+    ([revproxy_service_networks] if revproxy_service_networks else [])
+  }}
+
+awx_container_labels_traefik_enabled: "{{ traefik_labels_enabled }}"
+awx_container_labels_traefik_docker_network: "{{ revproxy_service_networks }}"
+
+# role-specific:traefik
+awx_container_labels_traefik_entrypoints: "{{ traefik_entrypoint_primary }}"
+awx_container_labels_traefik_tls_certResolver: "{{ traefik_certResolver_primary }}"
+# /role-specific:traefik
+
+########################################################################
+#                                                                      #
+# /AWX                                                                  #
+#                                                                      #
+########################################################################
+# /role-specific:awx
+
 
 # role-specific:backup_borg
 ########################################################################
@@ -3618,6 +3663,7 @@ cap_container_labels_traefik_tls_certResolver: "{{ traefik_certResolver_primary 
 ########################################################################
 
 changedetection_enabled: false
+changedetection_playwright_driver_enabled: false
 
 changedetection_identifier: "{{ service_id_prefix }}changedetection"
 
