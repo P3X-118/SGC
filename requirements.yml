@@ -67,7 +67,7 @@
 #  name: autobrr
 #  activation_prefix: autobrr_
 - src: git+https://github.com/P3X-118/awx-ar.git
-  version: 24.6.1-5
+  version: 24.6.1-6
   name: awx
   activation_prefix: awx_
 - src: git+https://github.com/P3X-118/aux-ar.git
