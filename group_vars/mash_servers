@@ -1326,6 +1326,17 @@ postgres_autom_itemized:
     }}
   # /role-specific:atuin
 
+  # role-specific:awx
+  - |-
+    {{
+      ({
+        'name': awx_postgres_database,
+        'username': awx_postgres_username,
+        'password': awx_postgres_password,
+      } if awx_enabled and awx_postgres_host == postgres_connection_hostname else omit)
+    }}
+  # /role-specific:awx
+
   # role-specific:authelia
   - |-
     {{
@@ -3230,7 +3241,7 @@ autobrr_container_labels_traefik_tls_certResolver: "{{ traefik_certResolver_prim
 # role-specific:awx
 ########################################################################
 #                                                                      #
-# AWX                                                                   #
+# awx                                                                  #
 #                                                                      #
 ########################################################################
 
@@ -3240,16 +3251,40 @@ awx_identifier: "{{ service_id_prefix }}awx"
 
 awx_base_path: "{{ sgc_playbook_base_path }}/{{ service_directory_prefix }}awx"
 
-awx_uid: "{{ sgc_playbook_uid }}"
-awx_gid: "{{ sgc_playbook_gid }}"
+# AWX container image requires UID/GID 1000
+awx_uid: "1000"
+awx_gid: "1000"
+
+awx_admin_password: "{{ '%s' | format(sgc_pgsk) | password_hash('sha512', 'awx.admin', rounds=655555) | to_uuid }}"
+
+# Explicitly set secrets to avoid the role's auto-generation logic
+awx_secret_key: "{{ (sgc_pgsk + ':awx.sk') | hash('sha512') }}"
+awx_broadcast_websocket_secret: "{{ (sgc_pgsk + ':awx.bws') | hash('sha512') }}"
+
+awx_systemd_required_services_list_auto: |
+  {{
+    ([postgres_identifier ~ '.service'] if postgres_enabled else [])
+    +
+    ([awx_redis_identifier ~ '.service'] if awx_redis_enabled else [])
+  }}
 
 awx_container_additional_networks_auto: |
   {{
     ([revproxy_service_networks] if revproxy_service_networks else [])
+    +
+    ([postgres_container_network] if postgres_enabled and awx_container_network != postgres_container_network else [])
+    +
+    ([awx_redis_container_network] if awx_redis_enabled and awx_container_network != awx_redis_container_network else [])
   }}
 
 awx_container_labels_traefik_enabled: "{{ traefik_labels_enabled }}"
 awx_container_labels_traefik_docker_network: "{{ revproxy_service_networks }}"
+
+# role-specific:postgres
+awx_postgres_host: "{{ postgres_connection_hostname if postgres_enabled else '' }}"
+awx_postgres_port: "{{ postgres_connection_port if postgres_enabled else '5432' }}"
+awx_postgres_password: "{{ '%s' | format(sgc_pgsk) | password_hash('sha512', 'db.awx', rounds=655555) | to_uuid }}"
+# /role-specific:postgres
 
 # role-specific:traefik
 awx_container_labels_traefik_entrypoints: "{{ traefik_entrypoint_primary }}"
@@ -3258,7 +3293,7 @@ awx_container_labels_traefik_tls_certResolver: "{{ traefik_certResolver_primary 
 
 ########################################################################
 #                                                                      #
-# /AWX                                                                  #
+# /awx                                                                 #
 #                                                                      #
 ########################################################################
 # /role-specific:awx
