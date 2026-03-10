@@ -3249,6 +3249,8 @@ awx_enabled: false
 
 awx_identifier: "{{ service_id_prefix }}awx"
 
+awx_container_image: "legitservices/awx:24.6.1-0"
+
 awx_base_path: "{{ sgc_playbook_base_path }}/{{ service_directory_prefix }}awx"
 
 # AWX container image requires UID/GID 1000
