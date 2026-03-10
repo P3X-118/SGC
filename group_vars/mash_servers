@@ -169,14 +169,14 @@ sgc_sysd_srvc_list_auto_itemized:
   - |-
     {{ ({'name': (awx_identifier + '.service'), 'priority': 2000, 'groups': ['sgc', 'awx']} if awx_enabled else omit) }}
   - |-
-    {{ ({'name': (awx_redis_identifier + '.service'), 'priority': 2000, 'groups': ['mash', 'awx']} if awx_enabled and awx_redis_enabled else omit) }}
+    {{ ({'name': (awx_redis_identifier + '.service'), 'priority': 2000, 'groups': ['sgc', 'awx']} if awx_enabled and awx_redis_enabled else omit) }}
   - |-
-    {{ ({'name': (awx_receptor_identifier + '.service'), 'priority': 2000, 'groups': ['mash', 'awx']} if awx_enabled and awx_receptor_enabled else omit) }}
+    {{ ({'name': (awx_receptor_identifier + '.service'), 'priority': 2000, 'groups': ['sgc', 'awx']} if awx_enabled and awx_receptor_enabled else omit) }}
   # /role-specific:awx
 
   # role-specific:backup_borg
   - |-
-    {{ ({'name': (backup_borg_identifier + '.timer'), 'priority': 5000, 'groups': ['mash', 'backup', 'borg']} if backup_borg_enabled else omit) }}
+    {{ ({'name': (backup_borg_identifier + '.timer'), 'priority': 5000, 'groups': ['sgc', 'backup', 'borg']} if backup_borg_enabled else omit) }}
   # /role-specific:backup_borg
 
   # role-specific:barassistant
@@ -3249,7 +3249,8 @@ awx_enabled: false
 
 awx_identifier: "{{ service_id_prefix }}awx"
 
-awx_container_image: "legitservices/awx:24.6.1-0"
+awx_container_image: "legitservices/awx:24.6.1-1"
+awx_receptor_container_image: "legitservices/awx:24.6.1-1"
 
 awx_base_path: "{{ sgc_playbook_base_path }}/{{ service_directory_prefix }}awx"
 
