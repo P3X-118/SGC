@@ -3249,14 +3249,17 @@ awx_enabled: false
 
 awx_identifier: "{{ service_id_prefix }}awx"
 
+awx_hostname: "awx.sgc.ai"
+
 awx_container_image: "legitservices/awx:24.6.1-1"
 awx_receptor_container_image: "legitservices/awx:24.6.1-1"
 
 awx_base_path: "{{ sgc_playbook_base_path }}/{{ service_directory_prefix }}awx"
 
-# AWX container image requires UID/GID 1000
-awx_uid: "1000"
-awx_gid: "1000"
+# awx system user uid; gid 0 (root group) required for container image directory access
+awx_uid: "999"
+awx_gid: "0"
+awx_container_http_port: "80"
 
 awx_admin_password: "{{ '%s' | format(sgc_pgsk) | password_hash('sha512', 'awx.admin', rounds=655555) | to_uuid }}"
 
