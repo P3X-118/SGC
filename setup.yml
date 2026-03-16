@@ -882,7 +882,7 @@
     # /role-specific:termix
 
     # role-specific:thelounge
-    #- role: galaxy/thelounge
+    - role: galaxy/thelounge
     # /role-specific:thelounge
 
     # role-specific:tika

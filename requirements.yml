@@ -5,7 +5,7 @@
 #  activation_prefix: adguard_home_
 - src: git+https://github.com/P3X-118/golang-ar.git
   version: 1.1.1
-  name: golang 
+  name: golang
   activation_prefix: golang_
 #- src: git+https://github.com/P3X-118/ansible-role-adminer.git
 #  version: v2.0.20
@@ -782,10 +782,10 @@
 #  version: v1.37.0-0
 #  name: telegraf
 #  activation_prefix: telegraf_
-#- src: git+https://seed.radicle.garden/z3vaa8VAuz3pxqB3FyciNKQRSHqyt.git
-#  version: v4.4.3-3
-#  name: thelounge
-#  activation_prefix: thelounge_
+- src: git+https://github.com/P3X-118/irc-lounge-ar.git
+  version: v4.4.3-8
+  name: thelounge
+  activation_prefix: thelounge_
 #- src: git+https://seed.radicle.garden/zbk3MzAN6SX6d8pa9DT2kHDscyr6.git
 #  version: v3.2.3.0-0
 #  name: tika
@@ -872,7 +872,7 @@
 #  activation_prefix: yacy_
 #- src: git+https://github.com/P3X-118/yggstack-ar.git
 #  version: 0.0.1-0
-#  name: yggstack 
+#  name: yggstack
 #  activation_prefix: yggstack_
 #- src: git+https://github.com/P3X-118/ansible-role-yourls.git
 #  version: v1.10.2-7

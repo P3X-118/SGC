@@ -1150,7 +1150,7 @@ sgc_sysd_srvc_list_auto_itemized:
 
   # role-specific:thelounge
   - |-
-    {{ ({'name': (thelounge_identifier + '.service'), 'priority': 2000, 'groups': ['mash', 'thelounge']} if thelounge_enabled else omit) }}
+    {{ ({'name': (thelounge_identifier + '.service'), 'priority': 2000, 'groups': ['sgc', 'thelounge']} if thelounge_enabled else omit) }}
   # /role-specific:thelounge
 
   # role-specific:tika
@@ -13636,7 +13636,7 @@ termix_container_labels_traefik_tls_certResolver: "{{ traefik_certResolver_prima
 #                                                                      #
 ########################################################################
 
-thelounge_enabled: false
+thelounge_enabled: true
 
 thelounge_identifier: "{{ service_id_prefix }}thelounge"
 
