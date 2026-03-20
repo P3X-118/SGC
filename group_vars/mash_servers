@@ -13636,7 +13636,7 @@ termix_container_labels_traefik_tls_certResolver: "{{ traefik_certResolver_prima
 #                                                                      #
 ########################################################################
 
-thelounge_enabled: true
+thelounge_enabled: false
 
 thelounge_identifier: "{{ service_id_prefix }}thelounge"
 
