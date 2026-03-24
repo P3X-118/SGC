@@ -274,7 +274,7 @@
     # /role-specific:endlessh
 
     # role-specific:ergo
-    #- role: galaxy/ergo
+    - role: galaxy/ergo
     # /role-specific:ergo
 
     # role-specific:etcd

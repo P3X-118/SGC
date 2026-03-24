@@ -332,7 +332,7 @@ sgc_sysd_srvc_list_auto_itemized:
 
   # role-specific:ergo
   - |-
-    {{ ({'name': (ergo_identifier + '.service'), 'priority': 2000, 'groups': ['mash', 'ergo']} if ergo_enabled else omit) }}
+    {{ ({'name': (ergo_identifier + '.service'), 'priority': 2000, 'groups': ['sgc', 'ergo']} if ergo_enabled else omit) }}
   # /role-specific:ergo
 
   # role-specific:etcd
