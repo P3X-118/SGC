@@ -783,7 +783,7 @@
 #  name: telegraf
 #  activation_prefix: telegraf_
 - src: git+https://github.com/P3X-118/irc-lounge-ar.git
-  version: v4.4.3-9
+  version: v4.4.3-10
   name: thelounge
   activation_prefix: thelounge_
 #- src: git+https://seed.radicle.garden/zbk3MzAN6SX6d8pa9DT2kHDscyr6.git
