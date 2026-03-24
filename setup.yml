@@ -977,6 +977,16 @@
     # This role needs to run after setting up roles for individual services as it restarts them.
     - when: systemd_service_manager_enabled | bool
       role: galaxy/systemd_service_manager
+      tags:
+        - start
+        - start-all
+        - start-group
+        - restart
+        - restart-all
+        - restart-group
+        - stop
+        - stop-all
+        - stop-group
     # /role-specific:systemd_service_manager
 
     # role-specific:playbook_state_preserver
