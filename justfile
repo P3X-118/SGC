@@ -174,6 +174,14 @@ start-group group *extra_args:
 stop-group group *extra_args:
     @{{ JUST }} run-tags stop-group --extra-vars="group={{ group }}" {{ extra_args }}
 
+# Add a user to The Lounge IRC client (prompts for username and password)
+lounge-adduser *extra_args:
+    #!/usr/bin/env bash
+    read -rp "Username: " username
+    read -rsp "Password: " password
+    echo
+    {{ JUST }} run --tags=add-thelounge --extra-vars="username=${username} password=${password}" {{ extra_args }}
+
 # Shared helper for install/setup-service
 _run-service phase service *extra_args:
     {{ JUST }} run \
