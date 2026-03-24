@@ -2138,6 +2138,9 @@ playbook_state_commit_hash_dst: "{{ sgc_playbook_base_path }}/{{ service_directo
 ########################################################################
 
 docker_daemon_options: "{{ docker_daemon_options }}"
+docker_install_enabled: true
+# Include this or it will cause a failure if there are no options. 
+docker_daemon_options: {}
 
 ########################################################################
 #                                                                      #
