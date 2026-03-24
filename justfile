@@ -180,7 +180,11 @@ lounge-adduser *extra_args:
     read -rp "Username: " username
     read -rsp "Password: " password
     echo
-    {{ JUST }} run --tags=add-thelounge --extra-vars="username=${username} password=${password}" {{ extra_args }}
+    ansible-playbook -i inventory/hosts setup.yml \
+        --tags=add-thelounge \
+        -e "username=${username}" \
+        -e "password=${password}" \
+        {{ extra_args }}
 
 # Shared helper for install/setup-service
 _run-service phase service *extra_args:
