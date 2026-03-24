@@ -149,8 +149,8 @@ versions:
 # Playbook entrypoints
 # -----------------------------
 
-install-all *extra_args: (run-tags "install-all,start" extra_args)
-setup-all *extra_args: (run-tags "setup-all,start" extra_args)
+install-all *extra_args: (run-tags "install-all" extra_args)
+setup-all *extra_args: (run-tags "setup-all" extra_args)
 
 install-service service *extra_args:
     {{ JUST }} _run-service "install" {{ service }} {{ extra_args }}
