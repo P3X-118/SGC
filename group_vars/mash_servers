@@ -625,7 +625,7 @@ sgc_sysd_srvc_list_auto_itemized:
 
   # role-specific:linkwarden
   - |-
-    {{ ({'name': (linkwarden_identifier + '.service'), 'priority': 2000, 'groups': ['mash', 'linkwarden']} if linkwarden_enabled else omit) }}
+    {{ ({'name': (linkwarden_identifier + '.service'), 'priority': 2000, 'groups': ['sgc', 'linkwarden']} if linkwarden_enabled else omit) }}
   # /role-specific:linkwarden
 
   # role-specific:listmonk
