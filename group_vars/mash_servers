@@ -218,9 +218,9 @@ sgc_sysd_srvc_list_auto_itemized:
 
   # role-specific:changedetection
   - |-
-    {{ ({'name': (changedetection_identifier + '.service'), 'priority': 2100, 'groups': ['mash', 'changedetection']} if changedetection_enabled else omit) }}
+    {{ ({'name': (changedetection_identifier + '.service'), 'priority': 2100, 'groups': ['sgc', 'changedetection']} if changedetection_enabled else omit) }}
   - |-
-    {{ ({'name': (changedetection_playwright_driver_identifier + '.service'), 'priority': 2000, 'groups': ['mash', 'changedetection']} if changedetection_playwright_driver_enabled else omit) }}
+    {{ ({'name': (changedetection_playwright_driver_identifier + '.service'), 'priority': 2000, 'groups': ['sgc', 'changedetection']} if changedetection_playwright_driver_enabled else omit) }}
   # /role-specific:changedetection
 
   # role-specific:cinny
@@ -3254,8 +3254,10 @@ awx_identifier: "{{ service_id_prefix }}awx"
 
 awx_hostname: "awx.sgc.ai"
 
-awx_container_image: "legitservices/awx:24.6.1-1"
-awx_receptor_container_image: "legitservices/awx:24.6.1-1"
+awx_container_image: "legitservices/awx:24.6.1-0"
+awx_receptor_container_image: "legitservices/awx:24.6.1-0"
+
+awx_redis_enabled: true
 
 awx_base_path: "{{ sgc_playbook_base_path }}/{{ service_directory_prefix }}awx"
 

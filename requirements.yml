@@ -67,7 +67,7 @@
 #  name: autobrr
 #  activation_prefix: autobrr_
 - src: git+https://github.com/P3X-118/awx-ar.git
-  version: 24.6.1-22
+  version: 24.6.1-23
   name: awx
   activation_prefix: awx_
 - src: git+https://github.com/P3X-118/aux-ar.git
@@ -102,10 +102,10 @@
 #  version: v2.0.18-0
 #  name: cap
 #  activation_prefix: cap_
-#- src: git+https://github.com/P3X-118/ansible-role-changedetection.git
-#  version: v0.51.4-0
-#  name: changedetection
-#  activation_prefix: changedetection_
+- src: git+https://github.com/P3X-118/changedetection-ar.git
+  version: 0.53.3-1
+  name: changedetection
+  activation_prefix: changedetection_
 - src: git+https://github.com/P3X-118/cleanup-ar.git
   version: 0.0.1
   name: cleanup

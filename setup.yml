@@ -190,7 +190,7 @@
     # /role-specific:cap
 
     # role-specific:changedetection
-    #- role: galaxy/changedetection
+    - role: galaxy/changedetection
     # /role-specific:changedetection
 
     # role-specific:cinny
