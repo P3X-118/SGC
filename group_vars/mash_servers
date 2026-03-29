@@ -3725,7 +3725,7 @@ changedetection_container_additional_networks_auto: |
 changedetection_container_labels_traefik_enabled: "{{ traefik_labels_enabled }}"
 changedetection_container_labels_traefik_docker_network: "{{ revproxy_service_networks }}"
 
-changedetection_api_key: "{{ '%s' | format(sgc_pgsk) | password_hash('sha512', 'changedetection.api', rounds=655555) | to_uuid }}"
+changedetection_api_key: "{{ '%s' | format(sgc_pgsk) | password_hash('sha512', 'chgdetect.api', rounds=655555) | to_uuid }}"
 
 # role-specific:traefik
 changedetection_container_labels_traefik_entrypoints: "{{ traefik_entrypoint_primary }}"
