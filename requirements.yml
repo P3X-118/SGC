@@ -103,7 +103,7 @@
 #  name: cap
 #  activation_prefix: cap_
 - src: git+https://github.com/P3X-118/changedetection-ar.git
-  version: 0.53.3-2
+  version: 0.53.3-3
   name: changedetection
   activation_prefix: changedetection_
 - src: git+https://github.com/P3X-118/cleanup-ar.git
