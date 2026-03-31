@@ -4,6 +4,7 @@
 /roles/galaxy/*
 !/roles/galaxy/.gitkeep
 
+.claude
 # ignores vscode file
 .vscode
 
