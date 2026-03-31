@@ -218,9 +218,9 @@ sgc_sysd_srvc_list_auto_itemized:
 
   # role-specific:changedetection
   - |-
-    {{ ({'name': (changedetection_identifier + '.service'), 'priority': 2100, 'groups': ['mash', 'changedetection']} if changedetection_enabled else omit) }}
+    {{ ({'name': (changedetection_identifier + '.service'), 'priority': 2100, 'groups': ['sgc', 'changedetection']} if changedetection_enabled else omit) }}
   - |-
-    {{ ({'name': (changedetection_playwright_driver_identifier + '.service'), 'priority': 2000, 'groups': ['mash', 'changedetection']} if changedetection_playwright_driver_enabled else omit) }}
+    {{ ({'name': (changedetection_playwright_driver_identifier + '.service'), 'priority': 2000, 'groups': ['sgc', 'changedetection']} if changedetection_playwright_driver_enabled else omit) }}
   # /role-specific:changedetection
 
   # role-specific:cinny
@@ -230,7 +230,7 @@ sgc_sysd_srvc_list_auto_itemized:
 
   # role-specific:clickhouse
   - |-
-    {{ ({'name': (clickhouse_identifier + '.service'), 'priority': 2000, 'groups': ['mash', 'clickhouse']} if clickhouse_enabled else omit) }}
+    {{ ({'name': (clickhouse_identifier + '.service'), 'priority': 2000, 'groups': ['sgc', 'clickhouse']} if clickhouse_enabled else omit) }}
   # /role-specific:clickhouse
 
   # role-specific:codimd
