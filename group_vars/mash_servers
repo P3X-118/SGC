@@ -1165,12 +1165,12 @@ sgc_sysd_srvc_list_auto_itemized:
 
   # role-specific:traefik
   - |-
-    {{ ({'name': (traefik_identifier + '.service'), 'priority': 250, 'groups': ['mash', 'traefik', 'reverse-proxies']} if traefik_enabled else omit) }}
+    {{ ({'name': (traefik_identifier + '.service'), 'priority': 250, 'groups': ['sgc', 'traefik', 'reverse-proxies']} if traefik_enabled else omit) }}
   # /role-specific:traefik
 
   # role-specific:traefik_certs_dumper
   - |-
-    {{ ({'name': (traefik_certs_dumper_identifier + '.service'), 'priority': 300, 'groups': ['mash', 'traefik-certs-dumper']} if traefik_certs_dumper_enabled else omit) }}
+    {{ ({'name': (traefik_certs_dumper_identifier + '.service'), 'priority': 300, 'groups': ['sgc', 'traefik-certs-dumper']} if traefik_certs_dumper_enabled else omit) }}
   # /role-specific:traefik_certs_dumper
 
   # role-specific:tsdproxy
