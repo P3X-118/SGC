@@ -754,6 +754,10 @@
 #  version: v1.5.0-0
 #  name: stirling_pdf
 #  activation_prefix: stirling_pdf_
+- src: git+https://github.com/P3X-118/stoked-ar.git
+  version: 0.1.0-0
+  name: stoked
+  activation_prefix: stoked_
 - src: git+https://github.com/P3X-118/ansible-role-swap.git
   version: v1.0.0-0
   name: swap

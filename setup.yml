@@ -861,6 +861,11 @@
     #- role: galaxy/stirling_pdf
     # /role-specific:stirling_pdf
 
+    # role-specific:stoked
+    - when: stoked_enabled | bool
+      role: galaxy/stoked
+    # /role-specific:stoked
+
     # role-specific:syncstorage_rs_docker
     #- role: galaxy/syncstorage_rs_docker
     # /role-specific:syncstorage_rs_docker

@@ -1123,6 +1123,39 @@ sgc_sysd_srvc_list_auto_itemized:
     {{ ({'name': (stirling_pdf_identifier + '.service'), 'priority': 2000, 'groups': ['mash', 'stirling-pdf']} if stirling_pdf_enabled else omit) }}
   # /role-specific:stirling_pdf
 
+  # role-specific:stoked
+  - |-
+    {{ ({'name': (stoked_mongodb_identifier + '.service'), 'priority': 1000, 'groups': ['sgc', 'stoked']} if stoked_enabled and stoked_mongodb_enabled else omit) }}
+  - |-
+    {{ ({'name': (stoked_redis_identifier + '.service'), 'priority': 1000, 'groups': ['sgc', 'stoked']} if stoked_enabled and stoked_redis_enabled else omit) }}
+  - |-
+    {{ ({'name': (stoked_rabbitmq_identifier + '.service'), 'priority': 1000, 'groups': ['sgc', 'stoked']} if stoked_enabled and stoked_rabbitmq_enabled else omit) }}
+  - |-
+    {{ ({'name': (stoked_minio_identifier + '.service'), 'priority': 1000, 'groups': ['sgc', 'stoked']} if stoked_enabled and stoked_minio_enabled else omit) }}
+  - |-
+    {{ ({'name': (stoked_createbuckets_identifier + '.service'), 'priority': 1100, 'groups': ['sgc', 'stoked']} if stoked_enabled and stoked_minio_enabled else omit) }}
+  - |-
+    {{ ({'name': (stoked_api_identifier + '.service'), 'priority': 2000, 'groups': ['sgc', 'stoked']} if stoked_enabled and stoked_api_enabled else omit) }}
+  - |-
+    {{ ({'name': (stoked_events_identifier + '.service'), 'priority': 2000, 'groups': ['sgc', 'stoked']} if stoked_enabled and stoked_events_enabled else omit) }}
+  - |-
+    {{ ({'name': (stoked_autumn_identifier + '.service'), 'priority': 2000, 'groups': ['sgc', 'stoked']} if stoked_enabled and stoked_autumn_enabled else omit) }}
+  - |-
+    {{ ({'name': (stoked_january_identifier + '.service'), 'priority': 2000, 'groups': ['sgc', 'stoked']} if stoked_enabled and stoked_january_enabled else omit) }}
+  - |-
+    {{ ({'name': (stoked_gifbox_identifier + '.service'), 'priority': 2000, 'groups': ['sgc', 'stoked']} if stoked_enabled and stoked_gifbox_enabled else omit) }}
+  - |-
+    {{ ({'name': (stoked_web_identifier + '.service'), 'priority': 2000, 'groups': ['sgc', 'stoked']} if stoked_enabled and stoked_web_enabled else omit) }}
+  - |-
+    {{ ({'name': (stoked_livekit_identifier + '.service'), 'priority': 2000, 'groups': ['sgc', 'stoked']} if stoked_enabled and stoked_livekit_enabled else omit) }}
+  - |-
+    {{ ({'name': (stoked_crond_identifier + '.service'), 'priority': 2000, 'groups': ['sgc', 'stoked']} if stoked_enabled and stoked_crond_enabled else omit) }}
+  - |-
+    {{ ({'name': (stoked_pushd_identifier + '.service'), 'priority': 2000, 'groups': ['sgc', 'stoked']} if stoked_enabled and stoked_pushd_enabled else omit) }}
+  - |-
+    {{ ({'name': (stoked_voice_ingress_identifier + '.service'), 'priority': 2000, 'groups': ['sgc', 'stoked']} if stoked_enabled and stoked_voice_ingress_enabled else omit) }}
+  # /role-specific:stoked
+
   # role-specific:syncstorage_rs_docker
   - |-
     {{ ({'name': (syncstorage_rs_docker_identifier + '.service'), 'priority': 2000, 'groups': ['mash', 'syncstorage-rs-docker']} if syncstorage_rs_docker_enabled else omit) }}
@@ -13401,6 +13434,92 @@ stirling_pdf_container_labels_traefik_tls_certResolver: "{{ traefik_certResolver
 #                                                                      #
 ########################################################################
 # /role-specific:stirling_pdf
+
+
+
+# role-specific:stoked
+########################################################################
+#                                                                      #
+# stoked                                                               #
+#                                                                      #
+########################################################################
+
+stoked_enabled: false
+
+stoked_identifier: "{{ service_id_prefix }}stoked"
+
+stoked_hostname: ""
+
+stoked_base_path: "{{ sgc_playbook_base_path }}/{{ service_directory_prefix }}stoked"
+
+stoked_uid: "{{ sgc_playbook_uid }}"
+stoked_gid: "{{ sgc_playbook_gid }}"
+
+# Secrets derived from master secret
+stoked_rabbitmq_user: "stokedrabbit"
+stoked_rabbitmq_password: "{{ '%s' | format(sgc_pgsk) | password_hash('sha512', 'stoked.rmq', rounds=655555) | to_uuid }}"
+
+stoked_minio_root_user: "stokedminio"
+stoked_minio_root_password: "{{ '%s' | format(sgc_pgsk) | password_hash('sha512', 'stoked.minio', rounds=655555) | to_uuid }}"
+
+stoked_files_encryption_key: "{{ (sgc_pgsk + ':stoked.fek') | hash('sha256') | b64encode }}"
+stoked_livekit_key: "{{ (sgc_pgsk + ':stoked.lk.key') | hash('md5') | truncate(12, True, '') }}"
+stoked_livekit_secret: "{{ (sgc_pgsk + ':stoked.lk.secret') | hash('sha256') | truncate(48, True, '') }}"
+
+# Traefik integration for all exposed components
+stoked_api_container_additional_networks_auto: |
+  {{ ([revproxy_service_networks] if revproxy_service_networks else []) }}
+stoked_events_container_additional_networks_auto: |
+  {{ ([revproxy_service_networks] if revproxy_service_networks else []) }}
+stoked_autumn_container_additional_networks_auto: |
+  {{ ([revproxy_service_networks] if revproxy_service_networks else []) }}
+stoked_january_container_additional_networks_auto: |
+  {{ ([revproxy_service_networks] if revproxy_service_networks else []) }}
+stoked_gifbox_container_additional_networks_auto: |
+  {{ ([revproxy_service_networks] if revproxy_service_networks else []) }}
+stoked_web_container_additional_networks_auto: |
+  {{ ([revproxy_service_networks] if revproxy_service_networks else []) }}
+stoked_livekit_container_additional_networks_auto: |
+  {{ ([revproxy_service_networks] if revproxy_service_networks else []) }}
+
+stoked_api_container_labels_traefik_enabled: "{{ traefik_labels_enabled }}"
+stoked_api_container_labels_traefik_docker_network: "{{ revproxy_service_networks }}"
+stoked_events_container_labels_traefik_enabled: "{{ traefik_labels_enabled }}"
+stoked_events_container_labels_traefik_docker_network: "{{ revproxy_service_networks }}"
+stoked_autumn_container_labels_traefik_enabled: "{{ traefik_labels_enabled }}"
+stoked_autumn_container_labels_traefik_docker_network: "{{ revproxy_service_networks }}"
+stoked_january_container_labels_traefik_enabled: "{{ traefik_labels_enabled }}"
+stoked_january_container_labels_traefik_docker_network: "{{ revproxy_service_networks }}"
+stoked_gifbox_container_labels_traefik_enabled: "{{ traefik_labels_enabled }}"
+stoked_gifbox_container_labels_traefik_docker_network: "{{ revproxy_service_networks }}"
+stoked_web_container_labels_traefik_enabled: "{{ traefik_labels_enabled }}"
+stoked_web_container_labels_traefik_docker_network: "{{ revproxy_service_networks }}"
+stoked_livekit_container_labels_traefik_enabled: "{{ traefik_labels_enabled }}"
+stoked_livekit_container_labels_traefik_docker_network: "{{ revproxy_service_networks }}"
+
+# role-specific:traefik
+stoked_api_container_labels_traefik_entrypoints: "{{ traefik_entrypoint_primary }}"
+stoked_api_container_labels_traefik_tls_certResolver: "{{ traefik_certResolver_primary }}"
+stoked_events_container_labels_traefik_entrypoints: "{{ traefik_entrypoint_primary }}"
+stoked_events_container_labels_traefik_tls_certResolver: "{{ traefik_certResolver_primary }}"
+stoked_autumn_container_labels_traefik_entrypoints: "{{ traefik_entrypoint_primary }}"
+stoked_autumn_container_labels_traefik_tls_certResolver: "{{ traefik_certResolver_primary }}"
+stoked_january_container_labels_traefik_entrypoints: "{{ traefik_entrypoint_primary }}"
+stoked_january_container_labels_traefik_tls_certResolver: "{{ traefik_certResolver_primary }}"
+stoked_gifbox_container_labels_traefik_entrypoints: "{{ traefik_entrypoint_primary }}"
+stoked_gifbox_container_labels_traefik_tls_certResolver: "{{ traefik_certResolver_primary }}"
+stoked_web_container_labels_traefik_entrypoints: "{{ traefik_entrypoint_primary }}"
+stoked_web_container_labels_traefik_tls_certResolver: "{{ traefik_certResolver_primary }}"
+stoked_livekit_container_labels_traefik_entrypoints: "{{ traefik_entrypoint_primary }}"
+stoked_livekit_container_labels_traefik_tls_certResolver: "{{ traefik_certResolver_primary }}"
+# /role-specific:traefik
+
+########################################################################
+#                                                                      #
+# /stoked                                                              #
+#                                                                      #
+########################################################################
+# /role-specific:stoked
 
 
 
