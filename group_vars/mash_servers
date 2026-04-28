@@ -10410,6 +10410,10 @@ ntfy_base_path: "{{ sgc_playbook_base_path }}/{{ service_directory_prefix }}ntfy
 ntfy_uid: "{{ sgc_playbook_uid }}"
 ntfy_gid: "{{ sgc_playbook_gid }}"
 
+# Use the SGC-built image at docker.io/legitservices/ntfy instead of upstream
+# binwiederhier/ntfy. Tag tracks the ntfy-ar role release on the `sgc` branch.
+ntfy_container_image: "legitservices/ntfy:v2.22.0-0"
+
 ntfy_systemd_wanted_services_list_auto: |
   {{
     ([(exim_relay_identifier | default('sgc-exim-relay')) ~ '.service'] if (exim_relay_enabled | default(false) and ntfy_smtp_sender_addr_host == exim_relay_identifier | default('sgc-exim-relay')) else [])

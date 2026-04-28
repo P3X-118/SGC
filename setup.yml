@@ -614,7 +614,8 @@
     # /role-specific:notfellchen
 
     # role-specific:ntfy
-    #- role: galaxy/ntfy
+    - when: ntfy_enabled | bool
+      role: galaxy/ntfy
     # /role-specific:ntfy
 
     # role-specific:oauth2_proxy
