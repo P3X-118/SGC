@@ -10412,7 +10412,7 @@ ntfy_gid: "{{ sgc_playbook_gid }}"
 
 # Use the SGC-built image at docker.io/legitservices/ntfy instead of upstream
 # binwiederhier/ntfy. Tag tracks the ntfy-ar role release on the `sgc` branch.
-ntfy_container_image: "legitservices/ntfy:v2.22.0-0"
+ntfy_container_image: "legitservices/ntfy:v2.22.0-1"
 
 ntfy_systemd_wanted_services_list_auto: |
   {{
