@@ -682,6 +682,16 @@
     #- role: galaxy/pdfding
     # /role-specific:pdfding
 
+    # role-specific:pds
+    - when: pds_enabled | bool
+      role: galaxy/pds
+    # /role-specific:pds
+
+    # role-specific:pds_pro
+    - when: pds_pro_enabled | bool
+      role: galaxy/pds_pro
+    # /role-specific:pds_pro
+
     # role-specific:peertube
     - role: galaxy/peertube
     # /role-specific:peertube

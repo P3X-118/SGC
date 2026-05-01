@@ -562,6 +562,18 @@
 #  version: v1.4.1-0
 #  name: pdfding
 #  activation_prefix: pdfding_
+# role-specific:pds
+- src: git+https://github.com/P3X-118/pds-ar.git
+  version: master
+  name: pds
+  activation_prefix: pds_
+# /role-specific:pds
+# role-specific:pds_pro
+- src: git+https://github.com/P3X-118/pds-pro-ar.git
+  version: main
+  name: pds_pro
+  activation_prefix: pds_pro_
+# /role-specific:pds_pro
 - src: git+https://github.com/P3X-118/ansible-role-peertube.git
   version: v7.2.3-5
   name: peertube

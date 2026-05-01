@@ -889,6 +889,16 @@ sgc_sysd_srvc_list_auto_itemized:
     {{ ({'name': (pdfding_identifier + '.service'), 'priority': 2000, 'groups': ['mash', 'pdfding']} if pdfding_enabled else omit) }}
   # /role-specific:pdfding
 
+  # role-specific:pds
+  - |-
+    {{ ({'name': (pds_identifier + '.service'), 'priority': 2000, 'groups': ['sgc', 'pds']} if pds_enabled else omit) }}
+  # /role-specific:pds
+
+  # role-specific:pds_pro
+  - |-
+    {{ ({'name': (pds_pro_identifier + '.service'), 'priority': 2000, 'groups': ['sgc', 'pds_pro']} if pds_pro_enabled else omit) }}
+  # /role-specific:pds_pro
+
   # role-specific:peertube
   - |-
     {{ ({'name': (peertube_identifier + '.service'), 'priority': 2000, 'groups': ['sgc', 'peertube']} if peertube_enabled else omit) }}
@@ -11298,6 +11308,95 @@ pdfding_container_labels_traefik_tls_certResolver: "{{ traefik_certResolver_prim
 #                                                                      #
 ########################################################################
 # /role-specific:pdfding
+
+
+
+# role-specific:pds
+########################################################################
+#                                                                      #
+# pds                                                                  #
+#                                                                      #
+########################################################################
+
+pds_enabled: false
+
+pds_identifier: "{{ service_id_prefix }}pds"
+pds_base_path: "{{ sgc_playbook_base_path }}/{{ service_directory_prefix }}pds"
+pds_uid: "{{ sgc_playbook_uid }}"
+pds_gid: "{{ sgc_playbook_gid }}"
+
+pds_hostname: ""
+pds_admin_password: "{{ '%s' | format(sgc_pgsk) | password_hash('sha512', 'pds.admin', rounds=655555) | to_uuid }}"
+pds_jwt_secret: "{{ '%s' | format(sgc_pgsk) | password_hash('sha512', 'pds.jwt', rounds=655555) | to_uuid | replace('-', '') }}"
+
+pds_container_additional_networks_auto: |
+  {{
+    ([revproxy_service_networks] if revproxy_service_networks else [])
+  }}
+
+pds_container_labels_traefik_enabled: "{{ traefik_labels_enabled }}"
+pds_container_labels_traefik_docker_network: "{{ revproxy_service_networks }}"
+
+# role-specific:traefik
+pds_container_labels_traefik_entrypoints: "{{ traefik_entrypoint_primary }}"
+pds_container_labels_traefik_tls_certResolver: "{{ traefik_certResolver_primary }}"
+# /role-specific:traefik
+
+########################################################################
+#                                                                      #
+# /pds                                                                 #
+#                                                                      #
+########################################################################
+# /role-specific:pds
+
+
+
+# role-specific:pds_pro
+########################################################################
+#                                                                      #
+# pds_pro                                                              #
+#                                                                      #
+########################################################################
+
+pds_pro_enabled: false
+
+pds_pro_identifier: "{{ service_id_prefix }}pds-pro"
+pds_pro_base_path: "{{ sgc_playbook_base_path }}/{{ service_directory_prefix }}pds-pro"
+pds_pro_uid: "{{ sgc_playbook_uid }}"
+pds_pro_gid: "{{ sgc_playbook_gid }}"
+
+pds_pro_hostname: ""
+
+pds_pro_session_secret: "{{ '%s' | format(sgc_pgsk) | password_hash('sha512', 'pds-pro.session', rounds=655555) | to_uuid | replace('-', '') }}"
+
+# Operator allowlist — override per environment.
+pds_pro_allowlist: []
+
+# Managed PDS instances. admin_password salt convention is
+# `pds.admin.<instance>` so it stays in sync with the corresponding pds-ar
+# deployment's derivation.
+pds_pro_instances: []
+
+pds_pro_container_additional_networks_auto: |
+  {{
+    ([revproxy_service_networks] if revproxy_service_networks else [])
+  }}
+
+pds_pro_container_labels_traefik_enabled: "{{ traefik_labels_enabled }}"
+pds_pro_container_labels_traefik_docker_network: "{{ revproxy_service_networks }}"
+
+# role-specific:traefik
+pds_pro_container_labels_traefik_entrypoints: "{{ traefik_entrypoint_primary }}"
+pds_pro_container_labels_traefik_tls_certResolver: "{{ traefik_certResolver_primary }}"
+pds_pro_container_labels_traefik_rule: "Host(`{{ pds_pro_hostname }}`)"
+# /role-specific:traefik
+
+########################################################################
+#                                                                      #
+# /pds_pro                                                             #
+#                                                                      #
+########################################################################
+# /role-specific:pds_pro
 
 
 
