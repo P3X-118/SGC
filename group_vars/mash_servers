@@ -11326,7 +11326,18 @@ pds_uid: "{{ sgc_playbook_uid }}"
 pds_gid: "{{ sgc_playbook_gid }}"
 
 pds_hostname: ""
-pds_admin_password: "{{ '%s' | format(sgc_pgsk) | password_hash('sha512', 'pds.admin', rounds=655555) | to_uuid }}"
+
+# Admin password tier:
+#   - shared (default): all PDS deployments under this sgc_pgsk share one
+#     admin password. Salt = `pds.admin`. Lower cost; convenient for a
+#     single-tenant fleet.
+#   - non-shared (per-instance): each PDS gets its own admin password by
+#     suffixing the salt with the instance name. Higher-cost tier; the
+#     corresponding pds_pro_instances entry MUST use the same salt.
+# To opt in to non-shared, override pds_admin_password_salt in inventory:
+#   pds_admin_password_salt: "pds.admin.alpha"
+pds_admin_password_salt: "pds.admin"
+pds_admin_password: "{{ '%s' | format(sgc_pgsk) | password_hash('sha512', pds_admin_password_salt, rounds=655555) | to_uuid }}"
 pds_jwt_secret: "{{ '%s' | format(sgc_pgsk) | password_hash('sha512', 'pds.jwt', rounds=655555) | to_uuid | replace('-', '') }}"
 
 pds_container_additional_networks_auto: |
@@ -11372,9 +11383,21 @@ pds_pro_session_secret: "{{ '%s' | format(sgc_pgsk) | password_hash('sha512', 'p
 # Operator allowlist — override per environment.
 pds_pro_allowlist: []
 
-# Managed PDS instances. admin_password salt convention is
-# `pds.admin.<instance>` so it stays in sync with the corresponding pds-ar
-# deployment's derivation.
+# Managed PDS instances. The admin_password derivation salt MUST match
+# the pds_admin_password_salt configured for the corresponding pds-ar
+# deployment, or `goat pds admin` calls will fail with auth errors.
+#
+# Shared tier (default — single salt across the fleet):
+#   pds_pro_instances:
+#     - name: alpha
+#       pds_host: "https://pds-alpha.example.com"
+#       admin_password: "{{ '%s' | format(sgc_pgsk) | password_hash('sha512', 'pds.admin', rounds=655555) | to_uuid }}"
+#
+# Non-shared tier (each instance carries its own salt suffix):
+#   pds_pro_instances:
+#     - name: alpha
+#       pds_host: "https://pds-alpha.example.com"
+#       admin_password: "{{ '%s' | format(sgc_pgsk) | password_hash('sha512', 'pds.admin.alpha', rounds=655555) | to_uuid }}"
 pds_pro_instances: []
 
 pds_pro_container_additional_networks_auto: |

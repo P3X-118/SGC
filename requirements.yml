@@ -564,13 +564,13 @@
 #  activation_prefix: pdfding_
 # role-specific:pds
 - src: git+https://github.com/P3X-118/pds-ar.git
-  version: master
+  version: sgc
   name: pds
   activation_prefix: pds_
 # /role-specific:pds
 # role-specific:pds_pro
 - src: git+https://github.com/P3X-118/pds-pro-ar.git
-  version: main
+  version: sgc
   name: pds_pro
   activation_prefix: pds_pro_
 # /role-specific:pds_pro
