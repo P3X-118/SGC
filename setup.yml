@@ -217,6 +217,10 @@
     #- role: galaxy/convertx
     # /role-specific:convertx
 
+    # role-specific:coturn
+    - role: galaxy/coturn
+    # /role-specific:coturn
+
     # role-specific:couchdb
     #- role: galaxy/couchdb
     # /role-specific:couchdb
@@ -264,6 +268,16 @@
     # role-specific:duplicati
     #- role: galaxy/duplicati
     # /role-specific:duplicati
+
+    # role-specific:eagledrive
+    - when: eagledrive_enabled | bool
+      role: mash/eagledrive
+      tags:
+        - setup-eagledrive
+        - setup-all
+        - install-eagledrive
+        - install-all
+    # /role-specific:eagledrive
 
     # role-specific:echoip
     #- role: galaxy/echoip
@@ -540,6 +554,10 @@
     # role-specific:miniflux
     #- role: galaxy/miniflux
     # /role-specific:miniflux
+
+    # role-specific:mirotalk
+    - role: galaxy/mirotalk
+    # /role-specific:mirotalk
 
     # role-specific:misskey
     #- role: galaxy/misskey

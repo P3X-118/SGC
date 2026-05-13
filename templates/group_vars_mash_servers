@@ -244,6 +244,11 @@ sgc_sysd_srvc_list_auto_itemized:
     {{ ({'name': (convertx_identifier + '.service'), 'priority': 2000, 'groups': ['mash', 'convertx']} if convertx_enabled else omit) }}
   # /role-specific:convertx
 
+  # role-specific:coturn
+  - |-
+    {{ ({'name': (coturn_identifier + '.service'), 'priority': 1000, 'groups': ['sgc', 'coturn']} if coturn_enabled else omit) }}
+  # /role-specific:coturn
+
   # role-specific:couchdb
   - |-
     {{ ({'name': (couchdb_identifier + '.service'), 'priority': 2000, 'groups': ['mash', 'couchdb']} if couchdb_enabled else omit) }}
@@ -688,6 +693,11 @@ sgc_sysd_srvc_list_auto_itemized:
   - |-
     {{ ({'name': (miniflux_identifier + '.service'), 'priority': 2000, 'groups': ['mash', 'miniflux']} if miniflux_enabled else omit) }}
   # /role-specific:miniflux
+
+  # role-specific:mirotalk
+  - |-
+    {{ ({'name': (mirotalk_identifier + '.service'), 'priority': 2000, 'groups': ['sgc', 'mirotalk']} if mirotalk_enabled else omit) }}
+  # /role-specific:mirotalk
 
   # role-specific:misskey
   - |-
@@ -3924,6 +3934,37 @@ convertx_container_labels_traefik_tls_certResolver: "{{ traefik_certResolver_pri
 #                                                                      #
 ########################################################################
 # /role-specific:convertx
+
+
+
+# role-specific:coturn
+########################################################################
+#                                                                      #
+# coturn                                                               #
+#                                                                      #
+########################################################################
+
+coturn_enabled: false
+
+coturn_identifier: "{{ service_id_prefix }}coturn"
+
+coturn_base_path: "{{ sgc_playbook_base_path }}/{{ service_directory_prefix }}coturn"
+
+coturn_uid: "{{ sgc_playbook_uid }}"
+coturn_gid: "{{ sgc_playbook_gid }}"
+
+# Static long-term credential username (a string, not a secret).
+coturn_user_name: mirotalk
+
+# Password derived from the master sgc_pgsk secret.
+coturn_user_password: "{{ '%s' | format(sgc_pgsk) | password_hash('sha512', 'coturn.user', rounds=655555) | to_uuid }}"
+
+########################################################################
+#                                                                      #
+# /coturn                                                              #
+#                                                                      #
+########################################################################
+# /role-specific:coturn
 
 
 
@@ -9372,6 +9413,62 @@ miniflux_container_labels_traefik_tls_certResolver: "{{ traefik_certResolver_pri
 #                                                                      #
 ########################################################################
 # /role-specific:miniflux
+
+
+
+# role-specific:mirotalk
+########################################################################
+#                                                                      #
+# mirotalk                                                             #
+#                                                                      #
+########################################################################
+
+mirotalk_enabled: false
+
+mirotalk_identifier: "{{ service_id_prefix }}mirotalk"
+
+mirotalk_base_path: "{{ sgc_playbook_base_path }}/{{ service_directory_prefix }}mirotalk"
+
+mirotalk_uid: "{{ sgc_playbook_uid }}"
+mirotalk_gid: "{{ sgc_playbook_gid }}"
+
+# role-specific:exim_relay
+mirotalk_systemd_wanted_services_list_auto: |
+  {{
+    ([(exim_relay_identifier | default('sgc-exim-relay')) ~ '.service'] if (exim_relay_enabled | default(false) and mirotalk_environment_variables_email_alert | default(false) and mirotalk_environment_variables_email_host == (exim_relay_identifier | default('sgc-exim-relay'))) else [])
+  }}
+# /role-specific:exim_relay
+
+mirotalk_container_additional_networks_auto: |
+  {{
+    ([exim_relay_container_network | default('sgc-exim-relay')] if (exim_relay_enabled | default(false) and mirotalk_environment_variables_email_alert | default(false) and mirotalk_environment_variables_email_host == (exim_relay_identifier | default('sgc-exim-relay')) and mirotalk_container_network != exim_relay_container_network) else [])
+    +
+    ([revproxy_service_networks] if revproxy_service_networks else [])
+  }}
+
+mirotalk_container_labels_traefik_enabled: "{{ traefik_labels_enabled }}"
+mirotalk_container_labels_traefik_docker_network: "{{ revproxy_service_networks }}"
+
+# JWT secret used to sign short-lived room join tokens.
+mirotalk_environment_variables_jwt_key: "{{ '%s' | format(sgc_pgsk) | password_hash('sha512', 'mirotalk.jwt', rounds=655555) | to_uuid }}"
+
+# OIDC session secret. Used even when OIDC is disabled (express-session cookie signing).
+mirotalk_environment_variables_session_secret: "{{ '%s' | format(sgc_pgsk) | password_hash('sha512', 'mirotalk.session', rounds=655555) | to_uuid }}"
+
+# REST API token secret.
+mirotalk_environment_variables_api_key_secret: "{{ '%s' | format(sgc_pgsk) | password_hash('sha512', 'mirotalk.api', rounds=655555) | to_uuid }}"
+
+# role-specific:traefik
+mirotalk_container_labels_traefik_entrypoints: "{{ traefik_entrypoint_primary }}"
+mirotalk_container_labels_traefik_tls_certResolver: "{{ traefik_certResolver_primary }}"
+# /role-specific:traefik
+
+########################################################################
+#                                                                      #
+# /mirotalk                                                            #
+#                                                                      #
+########################################################################
+# /role-specific:mirotalk
 
 
 

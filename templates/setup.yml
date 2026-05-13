@@ -213,6 +213,10 @@
     #- role: galaxy/convertx
     # /role-specific:convertx
 
+    # role-specific:coturn
+    - role: galaxy/coturn
+    # /role-specific:coturn
+
     # role-specific:couchdb
     #- role: galaxy/couchdb
     # /role-specific:couchdb
@@ -536,6 +540,10 @@
     # role-specific:miniflux
     #- role: galaxy/miniflux
     # /role-specific:miniflux
+
+    # role-specific:mirotalk
+    - role: galaxy/mirotalk
+    # /role-specific:mirotalk
 
     # role-specific:misskey
     #- role: galaxy/misskey
