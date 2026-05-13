@@ -20,7 +20,7 @@
     # /role-specific:systemd_docker_base
 
     # role-specific:docker
-    - when: mash_playbook_docker_installation_enabled | bool
+    - when: docker_install_enabled | bool
       role: galaxy/docker
       vars:
         docker_install_compose: false
@@ -32,15 +32,15 @@
         - install-all
     # /role-specific:docker
 
-    # role-specific:docker_sdk_for_python
-    - when: devture_docker_sdk_for_python_installation_enabled | bool
-      role: galaxy/docker_sdk_for_python
+    # role-specific:docker_python_sdk
+    - when: docker_python_sdk_enabled | bool
+      role: galaxy/docker_python_sdk
       tags:
         - setup-docker
         - setup-all
         - install-docker
         - install-all
-    # /role-specific:docker_sdk_for_python
+    # /role-specific:docker_python_sdk
 
     # role-specific:timesync
     - when: devture_timesync_installation_enabled | bool
@@ -153,9 +153,9 @@
     #- role: galaxy/autobrr
     # /role-specific:autobrr
 
-    # role-specific:backup_borg
-    - role: galaxy/backup_borg
-    # /role-specific:backup_borg
+    # role-specific:backup
+    - role: galaxy/backup
+    # /role-specific:backup
 
     # role-specific:barassistant
     #- role: galaxy/barassistant
@@ -168,6 +168,10 @@
     # role-specific:bind
     - role: galaxy/bind
     # /role-specific:bind
+
+    # role-specific:bitmagnet
+    - role: galaxy/bitmagnet
+    # /role-specific:bitmagnet
 
     # role-specific:browserless
     - role: galaxy/browserless
@@ -185,25 +189,53 @@
     - role: galaxy/changedetection
     # /role-specific:changedetection
 
+    # role-specific:cinny
+    - role: galaxy/cinny
+    # /role-specific:cinny
+
     # role-specific:clickhouse
     #- role: galaxy/clickhouse
     # /role-specific:clickhouse
+
+    # role-specific:codimd
+    - role: galaxy/codimd
+    # /role-specific:codimd
 
     # role-specific:collabora_online
     #- role: galaxy/collabora_online
     # /role-specific:collabora_online
 
+    # role-specific:converse
+    - role: galaxy/converse
+    # /role-specific:converse
+
     # role-specific:convertx
     #- role: galaxy/convertx
     # /role-specific:convertx
+
+    # role-specific:coturn
+    - role: galaxy/coturn
+    # /role-specific:coturn
 
     # role-specific:couchdb
     #- role: galaxy/couchdb
     # /role-specific:couchdb
 
+    # role-specific:cryptpad
+    - role: galaxy/cryptpad
+    # /role-specific:cryptpad
+
     # role-specific:cyberchef
     #- role: galaxy/cyberchef
     # /role-specific:cyberchef
+
+    # role-specific:databasus
+    - role: galaxy/databasus
+    # /role-specific:databasus
+
+    # role-specific:ddclient
+    - role: galaxy/ddclient
+    # /role-specific:ddclient
 
     # role-specific:docker_registry
     - role: galaxy/docker_registry
@@ -264,6 +296,10 @@
     # role-specific:farmos
     #- role: galaxy/farmos
     # /role-specific:farmos
+
+    # role-specific:fider
+    - role: galaxy/fider
+    # /role-specific:fider
 
     # role-specific:filebrowser
     #- role: galaxy/filebrowser
@@ -417,6 +453,10 @@
     #- role: galaxy/keydb
     # /role-specific:keydb
 
+    # role-specific:keyoxide
+    - role: galaxy/keyoxide
+    # /role-specific:keyoxide
+
     # role-specific:kutt
     #- role: galaxy/kutt
     # /role-specific:kutt
@@ -465,6 +505,10 @@
     #- role: galaxy/mailcrab
     # /role-specific:mailcrab
 
+    # role-specific:mailpit
+    - role: galaxy/mailpit
+    # /role-specific:mailpit
+
     # role-specific:mariadb
     #- role: galaxy/mariadb
     # /role-specific:mariadb
@@ -497,6 +541,10 @@
     #- role: galaxy/miniflux
     # /role-specific:miniflux
 
+    # role-specific:mirotalk
+    - role: galaxy/mirotalk
+    # /role-specific:mirotalk
+
     # role-specific:misskey
     #- role: galaxy/misskey
     # /role-specific:misskey
@@ -504,6 +552,10 @@
     # role-specific:mobilizon
     #- role: galaxy/mobilizon
     # /role-specific:mobilizon
+
+    # role-specific:monerooo
+    - role: galaxy/monerooo
+    # /role-specific:monerooo
 
     # role-specific:mongodb
     #- role: galaxy/mongodb
@@ -524,6 +576,10 @@
     # role-specific:mrs
     #- role: galaxy/mrs
     # /role-specific:mrs
+
+    # role-specific:mumble
+    - role: galaxy/mumble
+    # /role-specific:mumble
 
     # role-specific:n8n
     #- role: galaxy/n8n
@@ -569,6 +625,10 @@
     - role: galaxy/oauth2_proxy
     # /role-specific:oauth2_proxy
 
+    # role-specific:onion_service_tor
+    - role: galaxy/onion_service_tor
+    # /role-specific:onion_service_tor
+
     # role-specific:onlyoffice_docs
     #- role: galaxy/onlyoffice_docs
     # /role-specific:onlyoffice_docs
@@ -588,6 +648,10 @@
     # role-specific:origamivault
     #- role: galaxy/origamivault
     # /role-specific:origamivault
+
+    # role-specific:ots
+    - role: galaxy/ots
+    # /role-specific:ots
 
     # role-specific:otterwiki
     #- role: galaxy/otterwiki
@@ -684,6 +748,10 @@
     # role-specific:promtail
     #- role: galaxy/promtail
     # /role-specific:promtail
+
+    # role-specific:prunemate
+    - role: galaxy/prunemate
+    # /role-specific:prunemate
 
     # role-specific:qbittorrent
     #- role: galaxy/qbittorrent
@@ -785,6 +853,10 @@
     #- role: galaxy/sonarr
     # /role-specific:sonarr
 
+    # role-specific:soundcloak
+    - role: galaxy/soundcloak
+    # /role-specific:soundcloak
+
     # role-specific:statusnook
     #- role: galaxy/statusnook
     # /role-specific:statusnook
@@ -808,6 +880,10 @@
     # role-specific:telegraf
     #- role: galaxy/telegraf
     # /role-specific:telegraf
+
+    # role-specific:termix
+    - role: galaxy/termix
+    # /role-specific:termix
 
     # role-specific:thelounge
     #- role: galaxy/thelounge
@@ -901,14 +977,14 @@
 
     # role-specific:systemd_service_manager
     # This role needs to run after setting up roles for individual services as it restarts them.
-    - when: devture_systemd_service_manager_enabled | bool
+    - when: systemd_service_manager_enabled | bool
       role: galaxy/systemd_service_manager
     # /role-specific:systemd_service_manager
 
     # role-specific:playbook_state_preserver
     # This is pretty much last, because we want it to better serve as a "last known good configuration".
     # See: https://github.com/spantaleev/matrix-docker-ansible-deploy/pull/2217#issuecomment-1301487601
-    #- when: devture_playbook_state_preserver_enabled | bool
+    #- when: playbook_state_preserve | bool
       role: galaxy/playbook_state_preserver
       tags:
         - setup-all

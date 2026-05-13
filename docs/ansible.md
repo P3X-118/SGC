@@ -25,7 +25,7 @@ We're not sure what's the minimum version of Ansible that can run this playbook 
 If your distro ships with an Ansible version older than this, you may run into issues. Consider [Upgrading Ansible](#upgrading-ansible) or [using Ansible via Docker](#using-ansible-via-docker).
 
 > [!WARNING]
-> One reason for the version requirement being as such is that the playbook by default installs Docker for you using [this Docker role](https://github.com/geerlingguy/ansible-role-docker) which [has a hard requirement on Ansible v2.15.1](https://github.com/geerlingguy/ansible-role-docker/commit/7f44a1d9ad8132819ea9852918bca5dab8757cd0). If you install Docker yourself another way, you can tell the playbook to skip running this role (by adding `mash_playbook_docker_installation_enabled: false` to your `vars.yml` configuration). It may then be possible to get the playbook running on an older version of Ansible. Still, this is a complication and your mileage may vary. We recommend [upgrading Ansible](#upgrading-ansible) instead of going into uncharted territory.
+> One reason for the version requirement being as such is that the playbook by default installs Docker for you using [this Docker role](https://github.com/geerlingguy/ansible-role-docker) which [has a hard requirement on Ansible v2.15.1](https://github.com/geerlingguy/ansible-role-docker/commit/7f44a1d9ad8132819ea9852918bca5dab8757cd0). If you install Docker yourself another way, you can tell the playbook to skip running this role (by adding `docker_install_enabled: false` to your `vars.yml` configuration). It may then be possible to get the playbook running on an older version of Ansible. Still, this is a complication and your mileage may vary. We recommend [upgrading Ansible](#upgrading-ansible) instead of going into uncharted territory.
 
 ## Upgrading Ansible
 
@@ -41,7 +41,7 @@ If using the `pip` method, do note that the `ansible-playbook` binary may not be
 
 ## Using Ansible via Docker
 
-Alternatively, you can run Ansible inside a Docker container (powered by the [ghcr.io/devture/ansible](https://github.com/devture/docker-ansible/pkgs/container/ansible) Docker image).
+Alternatively, you can run Ansible inside a Docker container (powered by the [ghcr.io/P3X-118/ansible](https://github.com/P3X-118/docker-ansible/pkgs/container/ansible) Docker image).
 
 This ensures that:
 
@@ -54,7 +54,7 @@ You can either [run Ansible in a container on the server itself](#running-ansibl
 
 To run Ansible in a (Docker) container on the server itself, you need to have a working Docker installation. Docker is normally installed by the playbook, so this may be a bit of a chicken and egg problem. To solve it:
 
-- you **either** need to install [Docker](services/ansible.md) manually first. Follow [the upstream instructions](https://docs.docker.com/engine/install/) for your distribution and consider setting `mash_playbook_docker_installation_enabled: false` in your `vars.yml` file, to prevent the playbook from installing Docker
+- you **either** need to install [Docker](services/ansible.md) manually first. Follow [the upstream instructions](https://docs.docker.com/engine/install/) for your distribution and consider setting `docker_install_enabled: false` in your `vars.yml` file, to prevent the playbook from installing Docker
 - **or** you need to run the playbook in another way (e.g. [Running Ansible in a container on another computer (not the server)](#running-ansible-in-a-container-on-another-computer-not-the-server)) at least the first time around
 
 Once you have a working Docker installation on the server, **clone the playbook** somewhere on the server and configure it as per usual (`inventory/hosts`, `inventory/host_vars/…`, etc.), as described in [configuring the playbook](configuring-playbook.md).
@@ -74,7 +74,7 @@ docker run \
 -w /work \
 --mount type=bind,src=`pwd`,dst=/work \
 --entrypoint=/bin/sh \
-ghcr.io/devture/ansible:11.6.0-r0-0
+ghcr.io/P3X-118/ansible:11.6.0-r0-0
 ```
 
 Once you execute the above command, you'll be dropped into a `/work` directory inside a Docker container. The `/work` directory contains the playbook's code.
@@ -95,7 +95,7 @@ docker run \
 --mount type=bind,src=`pwd`,dst=/work \
 --mount type=bind,src=$HOME/.ssh/id_ed25519,dst=/root/.ssh/id_ed25519,ro \
 --entrypoint=/bin/sh \
-ghcr.io/devture/ansible:11.6.0-r0-0
+ghcr.io/P3X-118/ansible:11.6.0-r0-0
 ```
 
 The above command tries to mount an SSH key (`$HOME/.ssh/id_ed25519`) into the container (at `/root/.ssh/id_ed25519`). If your SSH key is at a different path (not in `$HOME/.ssh/id_ed25519`), adjust that part.

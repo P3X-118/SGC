@@ -130,11 +130,11 @@ After creating the directory, add a new `vars.yml` file inside it with a content
 ########################################################################
 
 # Put a strong secret below, generated with `pwgen -s 64 1` or in another way
-mash_playbook_generic_secret_key: ''
+sgc_pgsk: ''
 
 # Override service names and directory path prefixes
-mash_playbook_service_identifier_prefix: 'mash-paperless-'
-mash_playbook_service_base_directory_name_prefix: 'paperless-'
+service_id_prefix: 'mash-paperless-'
+service_directory_prefix: 'paperless-'
 
 ########################################################################
 #                                                                      #
@@ -258,15 +258,9 @@ paperless_ocr_languages_custom:
 
 ### Configuring Apache Tika Server integration (optional)
 
-You can optionally have the Paperless-ngx instance connect to [Apache Tika Server](http://tika.apache.org/) for parsing and converting document files (such as ".doc", ".xlsx" and ".odt"). It is required for parsing emails (".eml") as well.
+You can optionally have the instance connect to [Apache Tika Server](http://tika.apache.org/) for parsing and converting document files (such as ".doc", ".xlsx" and ".odt"). It is required for parsing emails (".eml") as well.
 
-Apache Tika Server is available on the playbook. See [this page](https://app.radicle.xyz/nodes/seed.radicle.garden/rad%3Azbk3MzAN6SX6d8pa9DT2kHDscyr6/tree/docs/configuring-tika.md) for details about how to install it.
-
-To enable integration, add the following configuration to your `vars.yml` file:
-
-```yaml
-paperless_tika_enabled: true
-```
+Apache Tika Server is available on the playbook. Enabling it configures the instance to connect to it. See [this page](tika.md) for details about how to install it.
 
 ### Extending the configuration
 

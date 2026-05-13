@@ -84,7 +84,7 @@ See below for details about what to configure. Note that not all roles require t
 <details>
 <summary>Wire the role to systemd_service_manager</summary>
 
-You have to add the role to `mash_playbook_devture_systemd_service_manager_services_list_auto_itemized` so that it is wired to `systemd_service_manager`.
+You have to add the role to `sgc_sysd_srvc_list_auto_itemized` so that it is wired to `systemd_service_manager`.
 
 See below for an example:
 
@@ -96,7 +96,7 @@ See below for an example:
 #                                                                      #
 ########################################################################
 
-mash_playbook_devture_systemd_service_manager_services_list_auto_itemized:
+sgc_sysd_srvc_list_auto_itemized:
   [...]
   # role-specific:YOUR-SERVICE
   - |-
@@ -132,7 +132,7 @@ On this playbook Postgres is enabled by default (see [`examples/vars.yml`](../ex
 ########################################################################
 [...]
 
-mash_playbook_postgres_managed_databases_auto_itemized:
+postgres_autom_itemized:
   [...]
   # role-specific:YOUR-SERVICE
   - |-
@@ -180,7 +180,7 @@ YOUR-SERVICE_container_additional_networks_auto: |
 YOUR-SERVICE_database_hostname: "{{ postgres_connection_hostname if postgres_enabled else '' }}"
 YOUR-SERVICE_database_port: "{{ postgres_connection_port if postgres_enabled else '5432' }}"
 YOUR-SERVICE_database_username: "{{ YOUR-SERVICE_identifier }}"
-YOUR-SERVICE_database_password: "{{ '%s' | format(mash_playbook_generic_secret_key) | password_hash('sha512', 'db.yourservice', rounds=655555) | to_uuid }}"
+YOUR-SERVICE_database_password: "{{ '%s' | format(sgc_pgsk) | password_hash('sha512', 'db.yourservice', rounds=655555) | to_uuid }}"
 # /role-specific:postgres
 
 ########################################################################
@@ -191,14 +191,14 @@ YOUR-SERVICE_database_password: "{{ '%s' | format(mash_playbook_generic_secret_k
 # /role-specific:YOUR-SERVICE
 ```
 
-💡 If your role requires MySQL, you can instead wire it to MariaDB on this playbook via `mash_playbook_mariadb_managed_databases_auto_itemized` in a similar way. See the [service documentation](services/mariadb.md) for details about managing a MariaDB instance.
+💡 If your role requires MySQL, you can instead wire it to MariaDB on this playbook via `mariadb_auto_itemized` in a similar way. See the [service documentation](services/mariadb.md) for details about managing a MariaDB instance.
 
 </details>
 
 <details>
 <summary>Wire the role to exim-relay (mailer)</summary>
 
-This playbook implements [exim-relay](https://github.com/devture/exim-relay), a SMTP mailer service.
+This playbook implements [exim-relay](https://github.com/P3X-118/exim-relay), a SMTP mailer service.
 
 Various services need to send out email, and exim-relay gives you a centralized place for configuring email-sending.
 
@@ -218,7 +218,7 @@ To wire the role to exim-relay, add the configuration for it as below:
 
 YOUR-SERVICE_systemd_wanted_services_list_auto: |
   {{
-    ([(exim_relay_identifier | default('mash-exim-relay')) ~ '.service'] if (exim_relay_enabled | default(false) and YOUR-SERVICE_config_mailer_smtp_addr == exim_relay_identifier | default('mash-exim-relay')) else [])
+    ([(exim_relay_identifier | default('sgc-exim-relay')) ~ '.service'] if (exim_relay_enabled | default(false) and YOUR-SERVICE_config_mailer_smtp_addr == exim_relay_identifier | default('sgc-exim-relay')) else [])
   }}
 
 [...]
@@ -227,7 +227,7 @@ YOUR-SERVICE_container_additional_networks_auto: |
   {{
     [...]
     +
-    ([exim_relay_container_network | default('mash-exim-relay')] if (exim_relay_enabled | default(false) and YOUR-SERVICE_config_mailer_smtp_addr == exim_relay_identifier | default('mash-exim-relay') and YOUR-SERVICE_container_network != exim_relay_container_network) else [])
+    ([exim_relay_container_network | default('sgc-exim-relay')] if (exim_relay_enabled | default(false) and YOUR-SERVICE_config_mailer_smtp_addr == exim_relay_identifier | default('sgc-exim-relay') and YOUR-SERVICE_container_network != exim_relay_container_network) else [])
   }}
 
 # role-specific:exim_relay
@@ -281,7 +281,7 @@ hubsite_service_YOUR-SERVICE_priority: 1000
 # /role-specific:YOUR-SERVICE
 [...]
 
-mash_playbook_hubsite_service_list_auto_itemized:
+hubsite_service_auto_list:
   [...]
   # role-specific:YOUR-SERVICE
   - |-

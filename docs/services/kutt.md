@@ -131,11 +131,11 @@ After creating the directory, add a new `vars.yml` file inside it with a content
 ########################################################################
 
 # Put a strong secret below, generated with `pwgen -s 64 1` or in another way
-mash_playbook_generic_secret_key: ''
+sgc_pgsk: ''
 
 # Override service names and directory path prefixes
-mash_playbook_service_identifier_prefix: 'mash-kutt-'
-mash_playbook_service_base_directory_name_prefix: 'kutt-'
+service_id_prefix: 'mash-kutt-'
+service_directory_prefix: 'kutt-'
 
 ########################################################################
 #                                                                      #
@@ -252,7 +252,7 @@ Note that running the `just` commands for installation (`just install-all` or `j
 
 After running the command for installation, the Kutt instance becomes available at the URL specified with `kutt_hostname`. With the configuration above, the service is hosted at `https://kutt.example.com`.
 
-To get started, open the URL with a web browser, and register the administrator account. You can create additional users (admin-privileged or not) after that.
+To get started, open the URL with a web browser to create an administrator account. You can create additional users (admin-privileged or not) after that.
 
 ## Troubleshooting
 

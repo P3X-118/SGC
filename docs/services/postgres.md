@@ -87,6 +87,9 @@ Table of contents:
 
 ### Getting a database terminal
 
+> [!WARNING]
+> **Modifying the database directly (especially as services are running) is dangerous and may lead to irreversible database corruption.** When in doubt, consider [making a backup](#backing-up-postgresql). You might also want to use a web user interface software like [Adminer](adminer.md) and [pgAdmin](pgadmin.md).
+
 You can use the `/mash/postgres/bin/cli` tool to get interactive terminal access ([psql](https://www.postgresql.org/docs/current/app-psql.html)) to the PostgreSQL server.
 
 By default, this tool puts you in the `main` database, which contains nothing.
@@ -96,9 +99,6 @@ To see the available databases, run `\list` (or just `\l`).
 To change to another database (for example `miniflux`), run `\connect miniflux` (or just `\c miniflux`).
 
 You can then proceed to write queries. Example: `SELECT COUNT(*) FROM users;`
-
-> [!WARNING]
-> **Modifying the database directly (especially as services are running) is dangerous and may lead to irreversible database corruption.** When in doubt, consider [making a backup](#backing-up-postgresql).
 
 ### Vacuuming PostgreSQL
 
@@ -121,15 +121,15 @@ Example playbook invocations:
 
 ### Backing up PostgreSQL
 
-To automatically make Postgres database backups on a fixed schedule, consider enabling the [Postgres Backup](postgres-backup.md) service.
+To automatically make Postgres database backups on a fixed schedule, consider enabling dedicated services such as [Postgres Backup](postgres-backup.md) and [Databasus](databasus.md).
 
 To make a one-off back up of the current PostgreSQL database, make sure it's running and then execute a command like this on the server:
 
 ```sh
 /usr/bin/docker exec \
 --env-file=/mash/postgres/env-postgres-psql \
-mash-postgres \
-/usr/local/bin/pg_dumpall -h mash-postgres \
+sgc-postgres \
+/usr/local/bin/pg_dumpall -h sgc-postgres \
 | gzip -c \
 > /mash/postgres.sql.gz
 ```
@@ -148,13 +148,13 @@ The playbook can upgrade your existing Postgres setup with the following command
 just run-tags upgrade-postgres
 ```
 
-**The old Postgres data directory is backed up** automatically, by renaming it to `/mash/postgres/data-auto-upgrade-backup`. To rename to a different path, pass some extra flags to the command above, like this: `--extra-vars="postgres_auto_upgrade_backup_data_path=/another/disk/mash-postgres-before-upgrade"`
+**The old Postgres data directory is backed up** automatically, by renaming it to `/mash/postgres/data-auto-upgrade-backup`. To rename to a different path, pass some extra flags to the command above, like this: `--extra-vars="postgres_auto_upgrade_backup_data_path=/another/disk/sgc-postgres-before-upgrade"`
 
 The auto-upgrade-backup directory stays around forever, until you **manually decide to delete it**.
 
 As part of the upgrade, the database is dumped to `/tmp`, an upgraded and empty Postgres server is started, and then the dump is restored into the new server. To use a different directory for the dump, pass some extra flags to the command above, like this: `--extra-vars="postgres_dump_dir=/directory/to/dump/here"`
 
-To save disk space in `/tmp`, the dump file is gzipped on the fly at the expense of CPU usage. If you have plenty of space in `/tmp` and would rather avoid gzipping, you can explicitly pass a dump filename which doesn't end in `.gz`. Example: `--extra-vars="postgres_dump_name=mash-postgres-dump.sql"`
+To save disk space in `/tmp`, the dump file is gzipped on the fly at the expense of CPU usage. If you have plenty of space in `/tmp` and would rather avoid gzipping, you can explicitly pass a dump filename which doesn't end in `.gz`. Example: `--extra-vars="postgres_dump_name=sgc-postgres-dump.sql"`
 
 **All databases, roles, etc. on the Postgres server are migrated**.
 

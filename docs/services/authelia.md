@@ -144,8 +144,8 @@ If you're using [Traefik](traefik.md), you can easily protect services running o
 Here's an example configuration for [Hubsite](hubsite.md) (a service which does not support authentication at all):
 
 ```yaml
-hubsite_container_labels_additional_labels: |
-  traefik.http.routers.{{ hubsite_identifier }}.middlewares={{ authelia_identifier }}@docker
+hubsite_container_labels_additional_labels_custom:
+  - traefik.http.routers.{{ hubsite_identifier }}.middlewares={{ authelia_identifier }}@docker
 ```
 
 The Hubsite component does not use any Traefik middlewares, so defining a `.middlewares` configuration key and pointing it to the Authelia middleware works well.
@@ -197,7 +197,7 @@ If a dedicated variable is not available for you to use or if you wish to overri
 
 After running the command for installation, the Authelia instance becomes available at the URL specified with `authelia_hostname`. With the configuration above, the service is hosted at `https://authelia.example.com`.
 
-To get started, open the URL with a web browser, and log in to the portal website where you can and manage your user account.
+To get started, open the URL with a web browser to log in to the portal website where you can and manage your user account.
 
 ## Related services
 

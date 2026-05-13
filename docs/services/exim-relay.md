@@ -1,8 +1,8 @@
 <!--
-SPDX-FileCopyrightText: 2018 - 2024 Slavi Pantaleev
+SPDX-FileCopyrightText: 2018-2024 Slavi Pantaleev
 SPDX-FileCopyrightText: 2019 Eduardo Beltrame
-SPDX-FileCopyrightText: 2020 - 2025 MDAD project contributors
-SPDX-FileCopyrightText: 2024 - 2025 Suguru Hirahara
+SPDX-FileCopyrightText: 2020-2025 MDAD project contributors
+SPDX-FileCopyrightText: 2024-2026 Suguru Hirahara
 
 SPDX-License-Identifier: AGPL-3.0-or-later
 -->
@@ -11,11 +11,14 @@ SPDX-License-Identifier: AGPL-3.0-or-later
 
 Various services need to send out email.
 
-The default playbook configuration (`examples/vars.yml`) recommends that you enable the Exim relay SMTP mailer service (powered by [exim-relay](https://github.com/devture/exim-relay) and the [ansible-role-exim-relay](https://github.com/mother-of-all-self-hosting/ansible-role-exim-relay) Ansible role). Enabling this service **automatically wires various other services to send email through it**. Exim-relay then gives you a centralized place for configuring email-sending.
+The default playbook configuration (`examples/vars.yml`) recommends that you enable the Exim relay SMTP mailer service (powered by [exim-relay](https://github.com/P3X-118/exim-relay) and the [ansible-role-exim-relay](https://github.com/mother-of-all-self-hosting/ansible-role-exim-relay) Ansible role). Enabling this service **automatically wires various other services to send email through it**. Exim-relay then gives you a centralized place for configuring email-sending.
 
 The [Ansible role for exim-relay](https://github.com/mother-of-all-self-hosting/ansible-role-exim-relay) is developed and maintained by the MASH project. For details about configuring exim-relay, you can check them via:
 - 🌐 [the role's documentation](https://github.com/mother-of-all-self-hosting/ansible-role-exim-relay/blob/main/docs/configuring-exim-relay.md) online
 - 📁 `roles/galaxy/exim_relay/docs/configuring-exim-relay.md` locally, if you have [fetched the Ansible roles](../installing.md)
+
+>[!NOTE]
+> Sending mails via the internet can often fail due to numerous factors such as spam filters and other unknown ones. If you do not need to have the services send messages out of your server, you probably might want to consider setting up SMTP servers which work as "mail catchers" like [Mailpit](mailpit.md) instead.
 
 ## Configuration
 

@@ -99,11 +99,11 @@ We recommend the following `vars.yml` (e.g. `inventory/host_vars/example.com-imm
 ########################################################################
 
 # Put a strong secret below, generated with `pwgen -s 64 1` or in another way
-mash_playbook_generic_secret_key: ""
+sgc_pgsk: ""
 
 # Override service names and directory path prefixes
-mash_playbook_service_identifier_prefix: 'mash-immich-'
-mash_playbook_service_base_directory_name_prefix: 'immich-'
+service_id_prefix: 'mash-immich-'
+service_directory_prefix: 'immich-'
 
 ########################################################################
 #                                                                      #
@@ -119,7 +119,7 @@ mash_playbook_service_base_directory_name_prefix: 'immich-'
 ########################################################################
 
 # See: docs/configuring-ipv6.md
-devture_systemd_docker_base_ipv6_enabled: true
+sysd_docker_ipv6_enabled: true
 
 ########################################################################
 #                                                                      #
@@ -410,6 +410,20 @@ In the example configuration above, we configure the service to be hosted at `ht
 
 Immich [does not currently support being hosted at a subpath](https://github.com/immich-app/immich/issues/14530) (e.g. `/immich`).
 
+##### Preventing the setup page from appearing
+
+When you first access Immich, a welcome/setup page is shown which allows anyone to sign up and register as an admin.
+
+For **first-time installations**, you should leave this enabled (which is the default), so that you can create your admin user.
+
+However, **after you've completed the initial setup**, you may wish to prevent the setup page from ever appearing again. This is useful as a security measure — if for whatever reason your database is reset, anyone who accesses your Immich instance would be able to register as an admin.
+
+To prevent the setup page from appearing, add the following **additional** configuration to your `vars.yml` file:
+
+```yml
+immich_server_environment_variable_immich_allow_setup: false
+```
+
 ##### Other configuration
 
 Unfortunately, most of Immich's configuration cannot be managed via Ansible and needs to be done from the UI, after it's installed. After installation, check the [Usage](#usage) section below for some recommendations for things you may wish to change.
@@ -435,6 +449,8 @@ When accessing your Immich instance for the first time, you will be greeted by a
 You can **create your first (admin) user** and **configure some settings via this wizard**.
 
 We recommend enabling the [Storage Templating](https://immich.app/docs/administration/storage-template/) feature from this wizard, and choosing (from the dropdown) a storage layout that suits you.
+
+💡 After completing the setup wizard, consider [Preventing the setup page from appearing](#preventing-the-setup-page-from-appearing) by adjusting your configuration and re-running the installation (e.g. `just install-service immich`). This prevents the setup page from being shown again if your database is ever reset.
 
 ### Administration settings
 
@@ -541,7 +557,7 @@ You need to go to **Administration** settings / **Settings** (a URL of `/admin/s
 
 - **Enable email notifications** = enabled
 
-- **Host**: point to your SMTP host or to `exim-relay`'s container name (e.g. `mash-exim-relay`) if using [exim-relay](exim-relay.md)
+- **Host**: point to your SMTP host or to `exim-relay`'s container name (e.g. `sgc-exim-relay`) if using [exim-relay](exim-relay.md)
 
 - **Port**: point to your SMTP port or to `exim-relay`'s container port (e.g. `8025`) if using [exim-relay](exim-relay.md)
 

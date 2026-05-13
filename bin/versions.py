@@ -20,7 +20,7 @@ prefixes = [
     'mautrix_',
     'devture_',
     'beeper_',
-    'backup_borg_',
+    'backup_',
 ]
 suffixes = [
     '_version',

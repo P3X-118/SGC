@@ -147,11 +147,11 @@ After creating the directory, add a new `vars.yml` file inside it with a content
 ########################################################################
 
 # Put a strong secret below, generated with `pwgen -s 64 1` or in another way
-mash_playbook_generic_secret_key: ''
+sgc_pgsk: ''
 
 # Override service names and directory path prefixes
-mash_playbook_service_identifier_prefix: 'mash-barassistant-'
-mash_playbook_service_base_directory_name_prefix: 'barassistant-'
+service_id_prefix: 'mash-barassistant-'
+service_directory_prefix: 'barassistant-'
 
 ########################################################################
 #                                                                      #
@@ -268,7 +268,7 @@ Note that running the `just` commands for installation (`just install-all` or `j
 
 After running the command for installation, the Bar Assistant's API server becomes available at the URL specified with `barassistant_hostname` and `barassistant_server_path_prefix`, and the Salt Rim instance becomes available at the URL specified with `barassistant_hostname`, respectively. With the configuration above, the Salt Rim instance is hosted at `https://barassistant.example.com`.
 
-To get started, open the URL with a web browser, and register the account to use the web UI. **Note that the first registered user becomes an administrator automatically.**
+To get started, open the URL with a web browser to create an account to use the web UI. **Note that the first registered user becomes an administrator automatically.**
 
 Since account registration is disabled by default, you need to enable it first by setting `barassistant_server_environment_variables_allow_registration` to `true` temporarily in order to create your own account.
 

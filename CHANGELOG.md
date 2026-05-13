@@ -1,3 +1,24 @@
+# 2026-02-08
+
+## Switched to faster secret derivation for service passwords
+
+We've switched the method used for deriving service passwords (database passwords,
+appservice tokens, etc.) from the `mash_playbook_generic_secret_key` variable.
+
+The old method used `password_hash('sha512', rounds=655555)` (655,555 rounds of
+SHA-512 hashing), which was designed for protecting low-entropy human passwords
+against brute-force attacks. For deriving secrets from an already high-entropy
+secret key, this many rounds provide no additional security.
+
+The new method uses a single-round `hash('sha512')` with a unique salt per service.
+This is equally secure for this use case while being dramatically faster.
+
+**What this means for users**: all derived service passwords will change on the
+next playbook run. The main/superuser database password (`postgres_connection_password`)
+is not affected. All services will receive their new passwords as part of the same
+run, so this should be a seamless, non-user-impacting change.
+
+
 # 2025-10-29
 
 ## Miniflux upgrade to v2.2.14 may require manual work
@@ -83,7 +104,7 @@ Our new [Configuring IPv6](./docs/configuring-ipv6.md) documentation page has mo
 **Existing playbook users** will **need to do some manual work** to enable IPv6 support. This consists of:
 
 - enabling IPv6 support for the Docker container networks:
-	- add `devture_systemd_docker_base_ipv6_enabled: true` to their `vars.yml` configuration file
+	- add `sysd_docker_ipv6_enabled: true` to their `vars.yml` configuration file
 	- stop all services (`just stop-all`)
 	- delete all container networks on the server: `docker network rm $(docker network ls -q)`
 	- re-run the playbook fully: `just install-all`
@@ -91,15 +112,15 @@ Our new [Configuring IPv6](./docs/configuring-ipv6.md) documentation page has mo
 - [configuring IPv6 (`AAAA`) DNS records](./docs/configuring-ipv6.md#configuring-dns-records-for-ipv6)
 
 > [!WARNING]
-> Not all mash-playbook Ansible roles respect the `devture_systemd_docker_base_ipv6_enabled` setting yet.
+> Not all mash-playbook Ansible roles respect the `sysd_docker_ipv6_enabled` setting yet.
 > Even if you enable this setting, you may still see that some container networks and services aren't IPv6-enabled.
-> **Consider sending pull requests** for the playbook roles that do not respect the `devture_systemd_docker_base_ipv6_enabled` setting yet.
+> **Consider sending pull requests** for the playbook roles that do not respect the `sysd_docker_ipv6_enabled` setting yet.
 
 # 2025-02-21
 
 ## Docker daemon options are no longer adjusted when IPv6 is enabled
 
-We landed initial IPv6 support in the past via a `devture_systemd_docker_base_ipv6_enabled` variable that one had to toggle to `true`.
+We landed initial IPv6 support in the past via a `sysd_docker_ipv6_enabled` variable that one had to toggle to `true`.
 
 This variable did **2 different things at once**:
 
@@ -110,23 +131,23 @@ Since Docker 27.0.1's [changes to how it handles IPv6](https://docs.docker.com/e
 - `ip6tables` defaults to `true` for everyone
 - `ip6tables` is out of the experimental phase, so `experimental` is no longer necessary
 
-In light of this, we're introducing a new variable (`devture_systemd_docker_base_ipv6_daemon_options_changing_enabled`) for controlling if IPv6 should be force-enabled in the Docker daemon's configuration options.
+In light of this, we're introducing a new variable (`sysd_docker_ipv6_daemon_options_changing_enabled`) for controlling if IPv6 should be force-enabled in the Docker daemon's configuration options.
 Since most people should be on a modern enough Docker daemon version which doesn't require such changes, this variable defaults to `false`.
 
 This change affects you like this:
 
-- ✅ if you're **not explicitly enabling IPv6** (via `devture_systemd_docker_base_ipv6_enabled` in your configuration): you're unaffected
-- ❓ if you're **explicitly enabling IPv6** (via `devture_systemd_docker_base_ipv6_enabled` in your configuration):
+- ✅ if you're **not explicitly enabling IPv6** (via `sysd_docker_ipv6_enabled` in your configuration): you're unaffected
+- ❓ if you're **explicitly enabling IPv6** (via `sysd_docker_ipv6_enabled` in your configuration):
   - ✅ .. and you're on a modern enough Docker version (which you most likely are): the playbook will no longer mess with your Docker daemon options. You're unaffected.
   - 🔧 .. and you're on an old Docker version, you **are affected** and need to use the following configuration to restore the old behavior:
 
     ```yml
     # Force-enable IPv6 by changing the Docker daemon's options.
     # This is necessary for Docker < 27.0.1, but not for newer versions.
-    devture_systemd_docker_base_ipv6_daemon_options_changing_enabled: true
+    sysd_docker_ipv6_daemon_options_changing_enabled: true
 
     # Request that individual container networks are created with IPv6 enabled.
-    devture_systemd_docker_base_ipv6_enabled: true
+    sysd_docker_ipv6_enabled: true
     ```
 
 # 2024-09-27
@@ -193,7 +214,7 @@ traefik_config_entrypoint_web_secure_http3_enabled: false
 
 The playbook has provided some hints about [Tuning PostgreSQL](docs/maintenance-postgres.md#tuning-postgresql) for quite a while now.
 
-From now on, the [Postgres Ansible role](https://github.com/devture/com.devture.ansible.role.postgres) automatically tunes your Postgres configuration with the same [calculation logic](https://github.com/le0pard/pgtune/blob/master/src/features/configuration/configurationSlice.js) that powers https://pgtune.leopard.in.ua/.
+From now on, the [Postgres Ansible role](https://github.com/P3X-118/postgres) automatically tunes your Postgres configuration with the same [calculation logic](https://github.com/le0pard/pgtune/blob/master/src/features/configuration/configurationSlice.js) that powers https://pgtune.leopard.in.ua/.
 
 Our [Tuning PostgreSQL](docs/maintenance-postgres.md#tuning-postgresql) documentation page has details about how you can turn auto-tuning off or adjust the automatically-determined Postgres configuration parameters manually.
 
@@ -235,7 +256,7 @@ If you're only running PeerTube on a dedicated server (no other services that ma
 
 ## (Backward Compatibility Break) Docker no longer installed by default
 
-The playbook used to install Docker and the Docker SDK for Python by default, unless you turned these off by setting `mash_playbook_docker_installation_enabled` and `devture_docker_sdk_for_python_installation_enabled` (respectively) to `false`.
+The playbook used to install Docker and the Docker SDK for Python by default, unless you turned these off by setting `docker_install_enabled` and `docker_python_sdk_enabled` (respectively) to `false`.
 
 From now on, both of these variables default to `false`. An empty inventory file will not install these components.
 
@@ -250,9 +271,9 @@ To enable these components, you need to explicitly add something like this to yo
 #                                                                      #
 ########################################################################
 
-mash_playbook_docker_installation_enabled: true
+docker_install_enabled: true
 
-devture_docker_sdk_for_python_installation_enabled: true
+docker_python_sdk_enabled: true
 
 ########################################################################
 #                                                                      #

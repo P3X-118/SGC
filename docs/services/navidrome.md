@@ -65,8 +65,8 @@ We recommend that you make use of the [aux](auxiliary.md) role to create some sh
 ########################################################################
 
 aux_directory_definitions:
-  - dest: "{{ mash_playbook_base_path }}/storage"
-  - dest: "{{ mash_playbook_base_path }}/storage/music"
+  - dest: "{{ sgc_playbook_base_path }}/storage"
+  - dest: "{{ sgc_playbook_base_path }}/storage/music"
 
 ########################################################################
 #                                                                      #
@@ -75,7 +75,7 @@ aux_directory_definitions:
 ########################################################################
 ```
 
-You can then mount this `{{ mash_playbook_base_path }}/storage/music` directory into the Syncthing container and synchronize it with some other computer:
+You can then mount this `{{ sgc_playbook_base_path }}/storage/music` directory into the Syncthing container and synchronize it with some other computer:
 
 ```yaml
 ########################################################################
@@ -88,7 +88,7 @@ You can then mount this `{{ mash_playbook_base_path }}/storage/music` directory 
 
 syncthing_container_additional_volumes:
   - type: bind
-    src: "{{ mash_playbook_base_path }}/storage/music"
+    src: "{{ sgc_playbook_base_path }}/storage/music"
     dst: /music
 
 ########################################################################
@@ -98,7 +98,7 @@ syncthing_container_additional_volumes:
 ########################################################################
 ```
 
-Finally, mount the `{{ mash_playbook_base_path }}/storage/music` directory into the Navidrome container as read-only:
+Finally, mount the `{{ sgc_playbook_base_path }}/storage/music` directory into the Navidrome container as read-only:
 
 ```yaml
 ########################################################################
@@ -111,7 +111,7 @@ Finally, mount the `{{ mash_playbook_base_path }}/storage/music` directory into 
 
 navidrome_container_additional_volumes:
   - type: bind
-    src: "{{ mash_playbook_base_path }}/storage/music"
+    src: "{{ sgc_playbook_base_path }}/storage/music"
     dst: /music
     options: readonly
 
@@ -126,7 +126,7 @@ navidrome_container_additional_volumes:
 
 After running the command for installation, the Navidrome instance becomes available at the URL specified with `navidrome_hostname` and `navidrome_path_prefix`. With the configuration above, the service is hosted at `https://mash.example.com/navidrome`.
 
-To get started, open the URL with a web browser, and register the administrator account. You can create additional users (admin-privileged or not) after that.
+To get started, open the URL with a web browser to create an administrator account. You can create additional users (admin-privileged or not) after that.
 
 You can also connect various Subsonic-API-compatible [apps](https://www.navidrome.org/docs/overview/#apps) (desktop, web, mobile) to your Navidrome instance.
 

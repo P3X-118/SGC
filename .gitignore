@@ -4,18 +4,22 @@
 /roles/galaxy/*
 !/roles/galaxy/.gitkeep
 
+.claude
 # ignores vscode file
 .vscode
 
 # ignores macos files
 .DS_Store
 
-#/requirements.yml
-#/setup.yml
+/requirements.yml
+/setup.yml
 #/group_vars/mash_servers
+/group_vars/mash_servers
 
 /run/*
 !/run/.gitkeep
 
-/group_vars/*
 !/group_vars/.gitkeep
+
+# Ignore bad git practice objects
+*.og

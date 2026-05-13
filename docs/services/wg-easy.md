@@ -14,7 +14,7 @@ This service requires the following other services:
 
 - a [Traefik](traefik.md) reverse-proxy server
 - a modern Linux kernel which supports WireGuard
-- `devture_systemd_docker_base_ipv6_enabled: true` if you'd like IPv6 support
+- `sysd_docker_ipv6_enabled: true` if you'd like IPv6 support
 
 
 ## Configuration
@@ -50,7 +50,7 @@ wg_easy_environment_variables_additional_variable_init_password: ''
 ```
 
 > [!WARNING]
-> There are a few other **variables that you may wish to adjust before doing the initial [unattended setup](https://github.com/wg-easy/wg-easy/blob/c133446f9ced12942d8a6d5b06388301a46b55e7/docs/content/advanced/config/unattended-setup.md)**. See the sections below for details.
+> There are a few other **variables that you may wish to adjust before doing the initial [unattended setup](https://github.com/wg-easy/wg-easy/blob/v15.2.0/docs/content/advanced/config/unattended-setup.md)**. See the sections below for details.
 > The reason it's important to do this early on, is because certain variables (`wg_easy_environment_variables_additional_variable_init_*`)
 > only take effect during the initial setup phase.
 
@@ -119,6 +119,17 @@ wg_easy_environment_variables_additional_variable_init_ipv6_cidr: "2001:db8::/32
 
 > [!WARNING]
 > If you need to change the IPv4/IPv6 CIDRs after the initial setup, you need to do so from the Admin Panel -> Interface page of the web UI, via the Change CIDR button. After changing the CIDR in wg-easy's settings, you must restart the wg-easy service for the changes to take effect.
+
+### Adjusting the default Allowed IPs
+
+If you'd like to set global [Allowed IPs](https://techoverflow.net/2021/07/09/what-does-wireguard-allowedips-actually-do/) for all WireGuard clients during the initial setup, you can do so with the following **initial unattended setup** variable:
+
+```yml
+wg_easy_environment_variables_additional_variable_init_allowed_ips: "10.8.0.0/24,2001:0DB8::/32"
+```
+
+> [!WARNING]
+> Changing this variable after the initial setup will not have any effect. If you need to adjust Allowed IPs after the initial setup, you need to do so on a per-client basis from the web UI.
 
 ### Adjusting your firewall
 
@@ -250,7 +261,7 @@ The steps for creating a new user are like this:
 ## Note about the IPv6 CIDR and IPv6 connectivity
 
 > [!WARNING]
-> For IPv6 to work, you need your container networks to have been created with IPv6 support (`devture_systemd_docker_base_ipv6_enabled: true`) as mentioned in the [Prerequisites](#prerequisites). If your wg-easy container network (`mash-wg-easy`) was created before you flipped this setting to `true`, you may need to stop the wg-easy service, delete the container network manually (`docker network rm mash-wg-easy`) and re-run the playbook to have it create the container network anew.
+> For IPv6 to work, you need your container networks to have been created with IPv6 support (`sysd_docker_ipv6_enabled: true`) as mentioned in the [Prerequisites](#prerequisites). If your wg-easy container network (`mash-wg-easy`) was created before you flipped this setting to `true`, you may need to stop the wg-easy service, delete the container network manually (`docker network rm mash-wg-easy`) and re-run the playbook to have it create the container network anew.
 
 💡 The Ansible wg-easy role goes against the upstream default and uses a [Global Unicast Address (GUA)](https://www.oreilly.com/library/view/ipv6-fundamentals-a/9780134670584/ch05.html)-like CIDR value (a documentation-reserved CIDR (`2001:db8::/32`) as per [RFC 3849](https://datatracker.ietf.org/doc/html/rfc3849)) instead of a [Unique Local Address (ULA)](https://en.wikipedia.org/wiki/Unique_local_address) one, as described below.
 Due to this, you should have outgoing IPv6 connectivity and it should be preferred over IPv4, as expected. **Most users can rely on our defaults and leave things as they are**, without having to do anything.

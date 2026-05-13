@@ -7,7 +7,7 @@ SPDX-License-Identifier: AGPL-3.0-or-later
 
 # Sonarr
 
-[Sonarr](https://sonarr.tv/) is a smart PVR for newsgroup and bittorrent users.
+[Sonarr](https://sonarr.tv/) is a smart PVR for newsgroup and BitTorrent users.
 
 ## Dependencies
 
@@ -56,7 +56,7 @@ After running the command for installation, the Sonarr instance becomes availabl
 >[!NOTE]
 > The `sonarr_path_prefix` variable can be adjusted to host under a subpath (e.g. `sonarr_path_prefix: /sonarr`), but this hasn't been tested yet.
 
-To get started, open the URL with a web browser, and configure a username and password. The recommended authentication method is `Forms (Login Page)`.
+To get started, open the URL with a web browser to create an account. The recommended authentication method is `Forms (Login Page)`.
 
 For additional configuration options, refer to [ansible-role-sonarr](https://github.com/spatterIight/ansible-role-sonarr)'s `defaults/main.yml` file.
 

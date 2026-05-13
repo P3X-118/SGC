@@ -145,11 +145,11 @@ After creating the directory, add a new `vars.yml` file inside it with a content
 ########################################################################
 
 # Put a strong secret below, generated with `pwgen -s 64 1` or in another way
-mash_playbook_generic_secret_key: ''
+sgc_pgsk: ''
 
 # Override service names and directory path prefixes
-mash_playbook_service_identifier_prefix: 'mash-openarchiver-'
-mash_playbook_service_base_directory_name_prefix: 'openarchiver-'
+service_id_prefix: 'mash-openarchiver-'
+service_directory_prefix: 'openarchiver-'
 
 ########################################################################
 #                                                                      #
@@ -258,11 +258,9 @@ Running the installation command will create the shared Valkey instance named `m
 
 ### Configuring Apache Tika server integration (optional)
 
-You can optionally enable an [Apache Tika Server](http://tika.apache.org/) for extracting and indexing text data on attachment files. If not enabled, the application falls back to built-in parsers for PDF, Word, and Excel files.
+You can optionally have the instance connect to [Apache Tika Server](http://tika.apache.org/) for extracting and indexing text data on attachment files. If not enabled, the application falls back to built-in parsers for PDF, Word, and Excel files.
 
-Apache Tika Server is available on the playbook. Enabling it configures the Open Archiver instance to connect to it.
-
-See [this page](tika.md) for details about how to install it.
+Apache Tika Server is available on the playbook. Enabling it configures the instance to connect to it. See [this page](tika.md) for details about how to install it.
 
 ## Installation
 
@@ -274,7 +272,7 @@ Note that running the `just` commands for installation (`just install-all` or `j
 
 After running the command for installation, the Open Archiver becomes available at the URL specified with `openarchiver_hostname`. With the configuration above, the service is hosted at `https://openarchiver.example.com`.
 
-To get started, open the URL with a web browser to log in to the instance. **Note that the first registered user becomes an administrator automatically.**
+To get started, open the URL with a web browser to create an account. **Note that the first registered user becomes an administrator automatically.**
 
 ## Troubleshooting
 
