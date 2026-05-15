@@ -444,7 +444,7 @@
 #  name: miniflux
 #  activation_prefix: miniflux_
 - src: git+https://github.com/P3X-118/mirotalk-ar.git
-  version: v1.8.31-0
+  version: v1.8.31-1
   name: mirotalk
   activation_prefix: mirotalk_
 #- src: git+https://github.com/P3X-118/ansible-role-misskey.git

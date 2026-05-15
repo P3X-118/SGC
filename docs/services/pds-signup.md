@@ -8,7 +8,7 @@ Sibling services in this playbook:
 
 ## Production deploy: `bskypds.pro` on `169.254.0.127`
 
-The host `169.254.0.127` (ssh user `ronon`, key `~/.ssh/rononfps`) currently runs `awx`, `links.legit.services`, `couch.yeet.fm`, `irc.yeet.fm`, `draw.sgc.ai`, `hi.sgc.ai`, `ntfy.sgc.ai`, `work.sgc.ai`, and `noise.padge.pics`. We co-tenant `bskypds.pro` on the same host.
+The host `169.254.0.127` (ssh user `ronon`, key `~/.ssh/rononfps`) currently runs `awx`, `links.legit.services`, `couch.yeet.fm`, `irc.yeet.fm`, `draw.sgc.ai`, `meet.sgc.ai`, `ntfy.sgc.ai`, `work.sgc.ai`, and `noise.padge.pics`. We co-tenant `bskypds.pro` on the same host.
 
 ### 1. Add inventory entry
 
