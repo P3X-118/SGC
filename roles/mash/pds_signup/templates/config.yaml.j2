@@ -1,0 +1,122 @@
+{# SPDX-FileCopyrightText: 2026 P3X-118
+   SPDX-License-Identifier: AGPL-3.0-or-later
+#}
+http:
+  addr: "{{ pds_signup_listen_addr }}"
+  base_url: "{{ pds_signup_base_url }}"
+
+session:
+  secret_file: "/etc/pds-signup/state/session-secret"
+  secure: {{ pds_signup_session_secure | bool | string | lower }}
+  max_age_sec: {{ pds_signup_session_max_age_sec }}
+
+database:
+  url_file: "/etc/pds-signup/secrets/database-url"
+
+defaults:
+  handle_root_domain: "{{ pds_signup_handle_root_domain }}"
+  pds_host_a_record: "{{ pds_signup_pds_host_a_record }}"
+  trial_days: {{ pds_signup_trial_days }}
+
+reserved_slugs: {{ pds_signup_reserved_slugs | to_json }}
+
+plans:
+  starter:
+    price_cents: {{ pds_signup_plans.starter.price_cents }}
+    max_accounts: {{ pds_signup_plans.starter.max_accounts }}
+    max_storage_gb: {{ pds_signup_plans.starter.max_storage_gb }}
+  pro:
+    price_cents: {{ pds_signup_plans.pro.price_cents }}
+    max_accounts: {{ pds_signup_plans.pro.max_accounts }}
+    max_storage_gb: {{ pds_signup_plans.pro.max_storage_gb }}
+  enterprise:
+    price_cents: {{ pds_signup_plans.enterprise.price_cents | default('null') }}
+    max_accounts: {{ pds_signup_plans.enterprise.max_accounts | default('null') }}
+    max_storage_gb: {{ pds_signup_plans.enterprise.max_storage_gb | default('null') }}
+
+oauth:
+{% if pds_signup_oauth_google_enabled | bool %}
+  google:
+    client_id: "{{ pds_signup_oauth_google_client_id }}"
+    client_secret_file: "/etc/pds-signup/secrets/google-client-secret"
+    callback_url: "{{ pds_signup_base_url }}/auth/google/callback"
+    scopes: {{ pds_signup_oauth_google_scopes | to_json }}
+{% endif %}
+{% if pds_signup_oauth_apple_enabled | bool %}
+  apple:
+    client_id: "{{ pds_signup_oauth_apple_client_id }}"
+    team_id: "{{ pds_signup_oauth_apple_team_id }}"
+    key_id: "{{ pds_signup_oauth_apple_key_id }}"
+    private_key_file: "/etc/pds-signup/secrets/apple-private-key"
+    callback_url: "{{ pds_signup_base_url }}/auth/apple/callback"
+{% endif %}
+{% if pds_signup_oauth_microsoft_enabled | bool %}
+  microsoft:
+    client_id: "{{ pds_signup_oauth_microsoft_client_id }}"
+    client_secret_file: "/etc/pds-signup/secrets/microsoft-client-secret"
+    callback_url: "{{ pds_signup_base_url }}/auth/microsoftonline/callback"
+{% endif %}
+{% if pds_signup_oauth_meta_enabled | bool %}
+  meta:
+    client_id: "{{ pds_signup_oauth_meta_client_id }}"
+    client_secret_file: "/etc/pds-signup/secrets/meta-client-secret"
+    callback_url: "{{ pds_signup_base_url }}/auth/facebook/callback"
+    scopes: {{ pds_signup_oauth_meta_scopes | to_json }}
+{% endif %}
+{% if pds_signup_oauth_x_enabled | bool %}
+  x:
+    client_id: "{{ pds_signup_oauth_x_client_id }}"
+    client_secret_file: "/etc/pds-signup/secrets/x-client-secret"
+    callback_url: "{{ pds_signup_base_url }}/auth/twitterv2/callback"
+{% endif %}
+{% if pds_signup_oauth_tiktok_enabled | bool %}
+  tiktok:
+    client_id: "{{ pds_signup_oauth_tiktok_client_id }}"
+    client_secret_file: "/etc/pds-signup/secrets/tiktok-client-secret"
+    callback_url: "{{ pds_signup_base_url }}/auth/tiktok/callback"
+{% endif %}
+
+billing:
+  provider: "{{ pds_signup_billing_provider }}"
+{% if pds_signup_billing_provider == 'stripe' %}
+  stripe:
+    publishable_key: "{{ pds_signup_billing_stripe_publishable_key }}"
+    secret_key_file: "/etc/pds-signup/secrets/stripe-secret-key"
+    webhook_secret_file: "/etc/pds-signup/secrets/stripe-webhook-secret"
+{% endif %}
+{% if pds_signup_billing_provider == 'paddle' %}
+  paddle:
+    vendor_id: "{{ pds_signup_billing_paddle_vendor_id }}"
+    api_key_file: "/etc/pds-signup/secrets/paddle-api-key"
+    webhook_secret_file: "/etc/pds-signup/secrets/paddle-webhook-secret"
+{% endif %}
+
+provisioning:
+  runner_url: "{{ pds_signup_provisioning_runner_url }}"
+  hmac_secret_file: "/etc/pds-signup/secrets/provisioning-hmac-secret"
+  callback_path: "{{ pds_signup_provisioning_callback_path }}"
+
+cloudflare:
+{% if pds_signup_cloudflare_api_token | length > 0 %}
+  api_token_file: "/etc/pds-signup/secrets/cloudflare-api-token"
+{% endif %}
+  zone_id: "{{ pds_signup_cloudflare_zone_id }}"
+
+{% if pds_signup_affiliate_porkbun_enabled | bool %}
+affiliate:
+  porkbun:
+    api_key_file: "/etc/pds-signup/secrets/porkbun-api-key"
+    secret_api_key_file: "/etc/pds-signup/secrets/porkbun-secret-api-key"
+    referral_id: "{{ pds_signup_affiliate_porkbun_referral_id }}"
+{% endif %}
+
+operator_allowlist:
+{% for entry in pds_signup_operator_allowlist %}
+  - subject: "{{ entry.subject }}"
+{%   if entry.email is defined %}
+    email: "{{ entry.email }}"
+{%   endif %}
+{%   if entry.roles is defined %}
+    roles: {{ entry.roles | to_json }}
+{%   endif %}
+{% endfor %}

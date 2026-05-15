@@ -721,8 +721,9 @@
     # /role-specific:pds_pro
 
     # role-specific:pds_signup
+    # Local-only role (no GitHub fetch). Lives at roles/mash/pds_signup/.
     - when: pds_signup_enabled | bool
-      role: galaxy/pds_signup
+      role: mash/pds_signup
     # /role-specific:pds_signup
 
     # role-specific:peertube

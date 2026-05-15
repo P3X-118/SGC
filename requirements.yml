@@ -583,13 +583,9 @@
   activation_prefix: pds_pro_
 # /role-specific:pds_pro
 # role-specific:pds_signup
-# Uncomment after publishing pds-signup-ar to P3X-118/pds-signup-ar (the role
-# exists locally at ~/sgc/ansible/roles/pds-signup-ar/ but hasn't been pushed
-# yet). Until then, `just roles` would fail to fetch this.
-#- src: git+https://github.com/P3X-118/pds-signup-ar.git
-#  version: sgc
-#  name: pds_signup
-#  activation_prefix: pds_signup_
+# pds_signup is a LOCAL role at roles/mash/pds_signup/ — not fetched from
+# GitHub. No requirements.yml entry needed; setup.yml references it as
+# `mash/pds_signup` directly.
 # /role-specific:pds_signup
 - src: git+https://github.com/P3X-118/ansible-role-peertube.git
   version: v7.2.3-5

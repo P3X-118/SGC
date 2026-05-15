@@ -1,0 +1,5 @@
+---
+- name: restart pds-signup
+  ansible.builtin.service:
+    name: "{{ pds_signup_identifier }}"
+    state: restarted
