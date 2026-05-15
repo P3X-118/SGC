@@ -443,6 +443,11 @@ sgc_sysd_srvc_list_auto_itemized:
     {{ ({'name': (ghostfolio_identifier + '.service'), 'priority': 2000, 'groups': ['mash', 'ghostfolio']} if ghostfolio_enabled else omit) }}
   # /role-specific:ghostfolio
 
+  # role-specific:ghosttrak
+  - |-
+    {{ ({'name': (ghosttrak_identifier + '.service'), 'priority': 2000, 'groups': ['sgc', 'ghosttrak']} if ghosttrak_enabled else omit) }}
+  # /role-specific:ghosttrak
+
   # role-specific:gitea
   - |-
     {{ ({'name': (gitea_identifier + '.service'), 'priority': 2000, 'groups': ['mash', 'gitea']} if gitea_enabled else omit) }}
@@ -908,6 +913,11 @@ sgc_sysd_srvc_list_auto_itemized:
   - |-
     {{ ({'name': (pds_pro_identifier + '.service'), 'priority': 2000, 'groups': ['sgc', 'pds_pro']} if pds_pro_enabled else omit) }}
   # /role-specific:pds_pro
+
+  # role-specific:pds_signup
+  - |-
+    {{ ({'name': (pds_signup_identifier + '.service'), 'priority': 2000, 'groups': ['sgc', 'pds_signup']} if pds_signup_enabled else omit) }}
+  # /role-specific:pds_signup
 
   # role-specific:peertube
   - |-
@@ -1919,6 +1929,17 @@ postgres_autom_itemized:
       } if pdfding_enabled and pdfding_database_hostname == postgres_connection_hostname and pdfding_database_type == 'postgres' else omit)
     }}
   # /role-specific:pdfding
+
+  # role-specific:pds_signup
+  - |-
+    {{
+      ({
+        'name': pds_signup_database_name,
+        'username': pds_signup_database_username,
+        'password': pds_signup_database_password,
+      } if pds_signup_enabled and pds_signup_database_hostname == postgres_connection_hostname else omit)
+    }}
+  # /role-specific:pds_signup
 
   # role-specific:peertube
   - |-
@@ -5715,6 +5736,44 @@ ghostfolio_container_labels_traefik_tls_certResolver: "{{ traefik_certResolver_p
 #                                                                      #
 ########################################################################
 # /role-specific:ghostfolio
+
+
+
+# role-specific:ghosttrak
+########################################################################
+#                                                                      #
+# ghosttrak                                                            #
+#                                                                      #
+########################################################################
+
+ghosttrak_enabled: false
+
+ghosttrak_identifier: "{{ service_id_prefix }}ghosttrak"
+
+ghosttrak_base_path: "{{ sgc_playbook_base_path }}/{{ service_directory_prefix }}ghosttrak"
+
+ghosttrak_uid: "{{ sgc_playbook_uid }}"
+ghosttrak_gid: "{{ sgc_playbook_gid }}"
+
+ghosttrak_container_additional_networks_auto: |
+  {{
+    ([revproxy_service_networks] if revproxy_service_networks else [])
+  }}
+
+ghosttrak_container_labels_traefik_enabled: "{{ traefik_labels_enabled }}"
+ghosttrak_container_labels_traefik_docker_network: "{{ revproxy_service_networks }}"
+
+# role-specific:traefik
+ghosttrak_container_labels_traefik_entrypoints: "{{ traefik_entrypoint_primary }}"
+ghosttrak_container_labels_traefik_tls_certResolver: "{{ traefik_certResolver_primary }}"
+# /role-specific:traefik
+
+########################################################################
+#                                                                      #
+# /ghosttrak                                                           #
+#                                                                      #
+########################################################################
+# /role-specific:ghosttrak
 
 
 
@@ -11539,6 +11598,83 @@ pds_pro_container_labels_traefik_rule: "Host(`{{ pds_pro_hostname }}`)"
 #                                                                      #
 ########################################################################
 # /role-specific:pds_pro
+
+
+
+# role-specific:pds_signup
+########################################################################
+#                                                                      #
+# pds_signup                                                           #
+#                                                                      #
+########################################################################
+
+pds_signup_enabled: false
+
+pds_signup_identifier: "{{ service_id_prefix }}pds-signup"
+pds_signup_base_path: "{{ sgc_playbook_base_path }}/{{ service_directory_prefix }}pds-signup"
+pds_signup_uid: "{{ sgc_playbook_uid }}"
+pds_signup_gid: "{{ sgc_playbook_gid }}"
+
+pds_signup_hostname: ""
+
+# Session secret — derived per-host so reinstalls don't invalidate sessions.
+pds_signup_session_secret: "{{ '%s' | format(sgc_pgsk) | password_hash('sha512', 'pds-signup.session', rounds=655555) | to_uuid | replace('-', '') }}"
+
+# Postgres wiring — auto-pulls hostname/port from the postgres role when
+# both are enabled on the same host.
+# role-specific:postgres
+pds_signup_database_hostname: "{{ postgres_connection_hostname if postgres_enabled | default(false) else '' }}"
+pds_signup_database_port: "{{ postgres_connection_port if postgres_enabled | default(false) else '5432' }}"
+pds_signup_database_name: "{{ pds_signup_identifier | replace('-', '_') }}"
+pds_signup_database_username: "{{ pds_signup_identifier | replace('-', '_') }}"
+pds_signup_database_password: "{{ '%s' | format(sgc_pgsk) | password_hash('sha512', 'db.pds-signup', rounds=655555) | to_uuid }}"
+# /role-specific:postgres
+
+# Provisioning HMAC — signs the {request_id, payload} webhook to the
+# ansible runner. Derived from sgc_pgsk; stable across reinstalls so
+# in-flight requests don't get rejected on signature mismatch.
+pds_signup_provisioning_hmac_secret: "{{ '%s' | format(sgc_pgsk) | password_hash('sha512', 'pds-signup.provisioning-hmac', rounds=655555) | to_uuid }}"
+
+# Default handle domain for tenants without a custom domain.
+pds_signup_handle_root_domain: "{{ pds_signup_hostname }}"
+
+# OAuth/Stripe/Cloudflare/Porkbun externals stay empty here — they MUST be
+# overridden in ansible-vault per-environment (host_vars/<host>/vault.yml).
+# Listed for visibility / template stability.
+pds_signup_oauth_google_enabled: false
+pds_signup_oauth_google_client_id: ""
+pds_signup_oauth_google_client_secret: ""
+
+pds_signup_oauth_apple_enabled: false
+pds_signup_oauth_microsoft_enabled: false
+pds_signup_oauth_meta_enabled: false
+pds_signup_oauth_x_enabled: false
+pds_signup_oauth_tiktok_enabled: false
+
+pds_signup_billing_provider: "stripe"
+pds_signup_billing_stripe_publishable_key: ""
+pds_signup_billing_stripe_secret_key: ""
+pds_signup_billing_stripe_webhook_secret: ""
+
+pds_signup_cloudflare_api_token: ""
+pds_signup_cloudflare_zone_id: ""
+pds_signup_pds_host_a_record: ""
+
+pds_signup_affiliate_porkbun_enabled: false
+pds_signup_affiliate_porkbun_api_key: ""
+pds_signup_affiliate_porkbun_secret_api_key: ""
+pds_signup_affiliate_porkbun_referral_id: ""
+
+# AWX / ansible runner that consumes the provisioning handoff. Typically
+# https://awx.i.sgc.ai/api/v2/job_templates/<id>/launch/ once an AWX template
+# is wired up. Leave empty until a runner exists.
+pds_signup_provisioning_runner_url: ""
+
+#                                                                      #
+# /pds_signup                                                          #
+#                                                                      #
+########################################################################
+# /role-specific:pds_signup
 
 
 
