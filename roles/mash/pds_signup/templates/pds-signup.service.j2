@@ -1,0 +1,66 @@
+{# SPDX-FileCopyrightText: 2026 P3X-118
+   SPDX-License-Identifier: AGPL-3.0-or-later
+#}
+
+[Unit]
+Description=pds-signup ({{ pds_signup_identifier }})
+{% for service in (pds_signup_systemd_required_services_list + (pds_signup_systemd_required_services_list_auto | from_yaml if pds_signup_systemd_required_services_list_auto is string else pds_signup_systemd_required_services_list_auto)) %}
+Requires={{ service }}
+After={{ service }}
+{% endfor %}
+{% for service in (pds_signup_systemd_wanted_services_list + (pds_signup_systemd_wanted_services_list_auto | from_yaml if pds_signup_systemd_wanted_services_list_auto is string else pds_signup_systemd_wanted_services_list_auto)) %}
+Wants={{ service }}
+{% endfor %}
+
+[Service]
+Type=simple
+Environment="HOME={{ sysd_docker_unit_home_path }}"
+ExecStartPre=-{{ sysd_docker_host_sh }} -c '{{ sysd_docker_host_command }} stop -t {{ pds_signup_container_stop_grace_time_seconds }} {{ pds_signup_identifier }} 2>/dev/null || true'
+ExecStartPre=-{{ sysd_docker_host_sh }} -c '{{ sysd_docker_host_command }} rm {{ pds_signup_identifier }} 2>/dev/null || true'
+
+ExecStartPre={{ sysd_docker_host_command }} create \
+      --rm \
+      --name={{ pds_signup_identifier }} \
+      --log-driver=none \
+      --user={{ pds_signup_uid }}:{{ pds_signup_gid }} \
+      --cap-drop=ALL \
+      --read-only \
+      --tmpfs=/tmp:rw,noexec,nosuid,size=50m \
+      --network={{ pds_signup_container_network }} \
+      {% set additional_networks = (pds_signup_container_additional_networks_auto | from_yaml if pds_signup_container_additional_networks_auto is string else pds_signup_container_additional_networks_auto) %}
+      {% for network in (pds_signup_container_additional_networks + additional_networks) %}
+      --network-alias={{ pds_signup_identifier }} \
+      {% endfor %}
+      {% if pds_signup_container_labels_traefik_enabled | bool %}
+      --label "traefik.enable=true" \
+      --label "traefik.docker.network={{ pds_signup_container_labels_traefik_docker_network }}" \
+      --label "traefik.http.routers.{{ pds_signup_identifier }}.rule={{ pds_signup_container_labels_traefik_rule }}" \
+      --label "traefik.http.routers.{{ pds_signup_identifier }}.entrypoints={{ pds_signup_container_labels_traefik_entrypoints }}" \
+      --label "traefik.http.routers.{{ pds_signup_identifier }}.tls.certResolver={{ pds_signup_container_labels_traefik_tls_certResolver }}" \
+      --label "traefik.http.services.{{ pds_signup_identifier }}.loadbalancer.server.port=8080" \
+      {% for label in pds_signup_container_labels_traefik_additional_labels %}
+      --label "{{ label }}" \
+      {% endfor %}
+      {% endif %}
+      --mount type=bind,src={{ pds_signup_etc_path }}/config.yaml,dst=/etc/pds-signup/config.yaml,ro \
+      --mount type=bind,src={{ pds_signup_secrets_path }},dst=/etc/pds-signup/secrets,ro \
+      --mount type=bind,src={{ pds_signup_state_path }},dst=/etc/pds-signup/state \
+      {{ pds_signup_container_image }} \
+      --config /etc/pds-signup/config.yaml
+
+{% set additional_networks = (pds_signup_container_additional_networks_auto | from_yaml if pds_signup_container_additional_networks_auto is string else pds_signup_container_additional_networks_auto) %}
+{% for network in (pds_signup_container_additional_networks + additional_networks) %}
+ExecStartPre={{ sysd_docker_host_command }} network connect {{ network }} {{ pds_signup_identifier }}
+{% endfor %}
+
+ExecStart={{ sysd_docker_host_command }} start --attach {{ pds_signup_identifier }}
+
+ExecStop=-{{ sysd_docker_host_sh }} -c '{{ sysd_docker_host_command }} stop -t {{ pds_signup_container_stop_grace_time_seconds }} {{ pds_signup_identifier }} 2>/dev/null || true'
+ExecStop=-{{ sysd_docker_host_sh }} -c '{{ sysd_docker_host_command }} rm {{ pds_signup_identifier }} 2>/dev/null || true'
+
+Restart=always
+RestartSec=30
+SyslogIdentifier={{ pds_signup_identifier }}
+
+[Install]
+WantedBy=multi-user.target

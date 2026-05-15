@@ -43,7 +43,7 @@ postgres_connection_password: "{{ vault_postgres_connection_password }}"
 # pds-signup (apex bskypds.pro)
 pds_signup_enabled: true
 pds_signup_hostname: "bskypds.pro"
-pds_signup_pds_host_a_record: "<PUBLIC-IP-OR-CHISEL-EGRESS-FOR-169.254.0.127>"
+pds_signup_pds_host_a_record: "128.254.161.222"
 
 # OAuth — wire one provider for day-one (Google is fastest to set up).
 pds_signup_oauth_google_enabled: true
@@ -95,46 +95,39 @@ Create at Cloudflare dashboard for the `bskypds.pro` zone. **Proxy mode matters*
 
 | Type | Name | Content | Proxy |
 |---|---|---|---|
-| A | `bskypds.pro` (apex) | `<host public IP>` | **Proxied** (orange) |
-| A | `admin.bskypds.pro` | `<host public IP>` | **Proxied** (orange) |
-| A | `*.bskypds.pro` (wildcard) | `<host public IP>` | **DNS-only** (grey) |
+| A | `bskypds.pro` (apex) | `128.254.161.222` | **Proxied** (orange) |
+| A | `admin.bskypds.pro` | `128.254.161.222` | **Proxied** (orange) |
+| A | `*.bskypds.pro` (wildcard) | `128.254.161.222` | **DNS-only** (grey) |
 | TXT | `_acme-challenge.bskypds.pro` | (auto-managed by ACME-DNS-01 client) | DNS-only |
 | MX | `bskypds.pro` | (Cloudflare Email Routing — set up in CF dashboard) | n/a |
 
 Notes:
-- The "host public IP" is what `169.254.0.127` egresses through. If you use `docker-chisel` or a similar tunnel, point at the chisel exit's public IP; if there's a public IP directly attached, use that.
+- `128.254.161.222` is the public IP that `169.254.0.127` egresses through.
 - API token scope: `Zone:Zone:Read` + `Zone:DNS:Edit` for the `bskypds.pro` zone only — never a global account API key.
 
-### 5. Build and push the container image
+### 5. Build the container image (local only)
 
-Per the SGC convention (build locally, push to Docker Hub):
+The image is built locally and kept on the build host for now (no Docker Hub push). When deploy time comes, the image needs to be made available to `169.254.0.127` — options:
 
 ```bash
+# Build only (local image, no push)
 cd ~/sgc/apps/pds-signup
-just image v0.1.0
-# → docker.io/legitservices/pds-signup:v0.1.0
+docker build -t docker.io/legitservices/pds-signup:0.1.0 .
+
+# To eventually get it on the deploy host, pick one:
+#  a) docker push docker.io/legitservices/pds-signup:0.1.0           # (when ready to publish)
+#  b) docker save legitservices/pds-signup:0.1.0 | \
+#     ssh ronon@169.254.0.127 sudo docker load                        # (transfer over ssh)
+#  c) Set `pds_signup_container_image_self_build: true` in vars.yml   # (build on the host)
 ```
 
-Then update `pds_signup_container_image` in vars.yml to that tag.
+The role's `pds_signup_container_image` defaults to `docker.io/legitservices/pds-signup:0.1.0` — update to your tag.
 
-### 6. Publish the ansible role
+### 6. Ansible role location
 
-The role lives locally at `~/sgc/ansible/roles/pds-signup-ar/` but isn't on GitHub yet. The `requirements.yml` entry is **commented out** for that reason. To activate:
+The role is **local-only** at `~/sgc/SGC/roles/mash/pds_signup/` — no GitHub repo, no `just roles` fetch step. `setup.yml` references it as `mash/pds_signup` (vs. `galaxy/pds_signup` which would be a fetched role). The `requirements.yml` carries a note marker but no entry.
 
-```bash
-# 1. Create + push the role repo (gated to user — DO NOT auto-push)
-cd ~/sgc/ansible/roles/pds-signup-ar
-git init -b main
-git add . && git commit -m "Initial pds-signup-ar role"
-gh repo create P3X-118/pds-signup-ar --private --source=. --push
-git checkout -b sgc && git push -u origin sgc
-
-# 2. Uncomment the entry in ~/sgc/SGC/requirements.yml (the # role-specific:pds_signup block)
-
-# 3. Fetch into the playbook
-cd ~/sgc/SGC
-just roles
-```
+To edit the role: just modify files in `roles/mash/pds_signup/` and re-run `just install-service pds_signup`.
 
 ### 7. Apply the playbook
 

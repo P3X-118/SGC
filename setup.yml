@@ -359,6 +359,16 @@
     #- role: galaxy/funkwhale
     # /role-specific:funkwhale
 
+    # role-specific:geome
+    - when: geome_enabled | bool
+      role: galaxy/geome
+      tags:
+        - setup-all
+        - setup-geome
+        - install-all
+        - install-geome
+    # /role-specific:geome
+
     # role-specific:ghostfolio
     #- role: galaxy/ghostfolio
     # /role-specific:ghostfolio
@@ -721,8 +731,9 @@
     # /role-specific:pds_pro
 
     # role-specific:pds_signup
+    # Local-only role (no GitHub fetch). Lives at roles/mash/pds_signup/.
     - when: pds_signup_enabled | bool
-      role: galaxy/pds_signup
+      role: mash/pds_signup
     # /role-specific:pds_signup
 
     # role-specific:peertube

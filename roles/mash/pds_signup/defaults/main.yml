@@ -1,0 +1,206 @@
+---
+# pds-signup Ansible Role Defaults
+#
+# pds-signup is the marketing-facing signup funnel for bskypds.pro. It mints
+# customer workspaces, takes payment, optionally verifies a custom domain,
+# and hands off a provisioning payload to the ansible runner that spins up
+# the customer's per-tenant PDS instance.
+#
+# Sibling roles:
+#   - pds-pro      : operator admin panel
+#   - pds          : per-tenant PDS instance
+#   - (planned) sgc-secret-resolver : per-tenant secret derivation service
+
+pds_signup_enabled: false
+
+pds_signup_identifier: "{{ service_id_prefix }}pds-signup"
+
+pds_signup_base_path: "{{ sgc_playbook_base_path }}/{{ service_directory_prefix }}pds-signup"
+pds_signup_etc_path: "{{ pds_signup_base_path }}/etc"
+pds_signup_secrets_path: "{{ pds_signup_etc_path }}/secrets"
+pds_signup_state_path: "{{ pds_signup_base_path }}/state"
+
+pds_signup_uid: "{{ sgc_playbook_uid }}"
+pds_signup_gid: "{{ sgc_playbook_gid }}"
+
+# Container image — built locally and pushed to docker.io/legitservices per
+# the SGC convention. Never use GHCR.
+pds_signup_container_image: "docker.io/legitservices/pds-signup:0.1.0"
+pds_signup_container_image_self_build: false
+pds_signup_container_stop_grace_time_seconds: 30
+
+# Network
+pds_signup_container_network: "{{ pds_signup_identifier }}"
+pds_signup_container_additional_networks: []
+
+pds_signup_container_additional_networks_auto: |
+  {{
+    ([postgres_container_network] if postgres_enabled | default(false) and pds_signup_database_hostname == postgres_connection_hostname else [])
+    +
+    ([(exim_relay_container_network | default('sgc-exim-relay'))] if exim_relay_enabled | default(false) else [])
+    +
+    ([revproxy_service_networks] if revproxy_service_networks else [])
+  }}
+
+# Listen / public-facing URL
+pds_signup_listen_addr: ":8080"
+pds_signup_hostname: ""
+pds_signup_base_url: "https://{{ pds_signup_hostname }}"
+
+# Traefik
+pds_signup_container_labels_traefik_enabled: "{{ traefik_labels_enabled | default(true) }}"
+pds_signup_container_labels_traefik_docker_network: "{{ revproxy_service_networks }}"
+# role-specific:traefik
+pds_signup_container_labels_traefik_entrypoints: "{{ traefik_entrypoint_primary }}"
+pds_signup_container_labels_traefik_tls_certResolver: "{{ traefik_certResolver_primary }}"
+pds_signup_container_labels_traefik_rule: "Host(`{{ pds_signup_hostname }}`)"
+# /role-specific:traefik
+
+pds_signup_container_labels_traefik_additional_labels: []
+
+# Session secret — derived from sgc_pgsk; stable across restarts/reinstalls.
+pds_signup_session_secret: "{{ '%s' | format(sgc_pgsk) | password_hash('sha512', 'pds-signup.session', rounds=655555) | to_uuid | replace('-', '') }}"
+pds_signup_session_secure: true
+pds_signup_session_max_age_sec: 3600
+
+# Database (Postgres) — typically wired to the postgres role on the same host.
+# role-specific:postgres
+pds_signup_database_hostname: "{{ postgres_connection_hostname if postgres_enabled | default(false) else '' }}"
+pds_signup_database_port: "{{ postgres_connection_port if postgres_enabled | default(false) else '5432' }}"
+pds_signup_database_name: "{{ pds_signup_identifier | replace('-', '_') }}"
+pds_signup_database_username: "{{ pds_signup_identifier | replace('-', '_') }}"
+pds_signup_database_password: "{{ '%s' | format(sgc_pgsk) | password_hash('sha512', 'db.pds-signup', rounds=655555) | to_uuid }}"
+pds_signup_database_url: "postgres://{{ pds_signup_database_username }}:{{ pds_signup_database_password }}@{{ pds_signup_database_hostname }}:{{ pds_signup_database_port }}/{{ pds_signup_database_name }}?sslmode=disable"
+# /role-specific:postgres
+
+# Default handle domain — customers who skip the custom-domain step get
+# subdomains under this root: <client_slug>.bskypds.pro
+pds_signup_handle_root_domain: "{{ pds_signup_hostname }}"
+
+# Reserved slugs (workspace names users can't pick — used by infrastructure
+# subdomains, system routes, or generally unsafe names).
+pds_signup_reserved_slugs:
+  - admin
+  - api
+  - www
+  - mail
+  - email
+  - support
+  - help
+  - billing
+  - signup
+  - login
+  - logout
+  - account
+  - pds
+  - pds-pro
+  - secrets
+  - status
+  - dashboard
+  - auth
+  - oauth
+  - app
+  - static
+  - assets
+  - cdn
+  - blog
+  - docs
+
+# Plan tiers — prices in cents (USD), caps as integer counts.
+pds_signup_plans:
+  starter:
+    price_cents: 999
+    max_accounts: 50
+    max_storage_gb: 10
+  pro:
+    price_cents: 2999
+    max_accounts: 500
+    max_storage_gb: 50
+  enterprise:
+    price_cents: null
+    max_accounts: null
+    max_storage_gb: null
+
+# Trial — applied at signup, charged at trial_end unless cancelled.
+pds_signup_trial_days: 14
+
+# OAuth providers. Each provider's client_secret is written to a file with
+# mode 0600. Client_id is public per the OAuth spec, so it's templated
+# directly into config. Set <provider>_enabled: false (the default) to
+# omit the provider from the signup picker.
+pds_signup_oauth_google_enabled: false
+pds_signup_oauth_google_client_id: ""
+pds_signup_oauth_google_client_secret: ""
+pds_signup_oauth_google_scopes: ["email", "profile"]
+
+pds_signup_oauth_apple_enabled: false
+pds_signup_oauth_apple_client_id: ""
+pds_signup_oauth_apple_team_id: ""
+pds_signup_oauth_apple_key_id: ""
+pds_signup_oauth_apple_private_key: ""
+
+pds_signup_oauth_microsoft_enabled: false
+pds_signup_oauth_microsoft_client_id: ""
+pds_signup_oauth_microsoft_client_secret: ""
+
+pds_signup_oauth_meta_enabled: false
+pds_signup_oauth_meta_client_id: ""
+pds_signup_oauth_meta_client_secret: ""
+pds_signup_oauth_meta_scopes: ["email"]
+
+pds_signup_oauth_x_enabled: false
+pds_signup_oauth_x_client_id: ""
+pds_signup_oauth_x_client_secret: ""
+
+pds_signup_oauth_tiktok_enabled: false
+pds_signup_oauth_tiktok_client_id: ""
+pds_signup_oauth_tiktok_client_secret: ""
+
+# Billing — pick one (stripe is the default). Per-environment keys are
+# external; they must be supplied via host_vars / ansible-vault.
+pds_signup_billing_provider: "stripe"
+
+pds_signup_billing_stripe_publishable_key: ""
+pds_signup_billing_stripe_secret_key: ""
+pds_signup_billing_stripe_webhook_secret: ""
+
+pds_signup_billing_paddle_vendor_id: ""
+pds_signup_billing_paddle_api_key: ""
+pds_signup_billing_paddle_webhook_secret: ""
+
+# Provisioning handoff — where to POST the {request_id, payload} to kick off
+# a new tenant's PDS deployment. URL points at AWX, an ansible runner, or
+# (for the hybrid model) a queue that an operator approves.
+pds_signup_provisioning_runner_url: ""
+pds_signup_provisioning_hmac_secret: "{{ '%s' | format(sgc_pgsk) | password_hash('sha512', 'pds-signup.provisioning-hmac', rounds=655555) | to_uuid }}"
+pds_signup_provisioning_callback_path: "/api/v1/provisioning/callback"
+
+# Cloudflare — used for DNS-01 ACME (wildcard certs) and creating per-tenant
+# DNS records (<client_slug>.bskypds.pro) on signup. Token is external,
+# scoped Zone:DNS:Edit + Zone:Zone:Read for the bskypds.pro zone only.
+pds_signup_cloudflare_api_token: ""
+pds_signup_cloudflare_zone_id: ""
+pds_signup_pds_host_a_record: ""   # IPv4 customers' A records should point at
+
+# Affiliate registrar (for the "I need a domain" signup path). Initially
+# Porkbun; Namecheap is a planned alternative.
+pds_signup_affiliate_porkbun_enabled: false
+pds_signup_affiliate_porkbun_api_key: ""
+pds_signup_affiliate_porkbun_secret_api_key: ""
+pds_signup_affiliate_porkbun_referral_id: ""
+
+# Operator (SGC staff) allowlist for the provisioning queue UI. OAuth subject
+# format: "<provider>|<subject_id>".
+pds_signup_operator_allowlist: []
+
+# Systemd
+pds_signup_systemd_required_services_list: "{{ [sysd_docker_service] if sysd_docker_service else [] }}"
+pds_signup_systemd_wanted_services_list: []
+pds_signup_systemd_required_services_list_auto: |
+  {{
+    ([postgres_identifier ~ '.service'] if postgres_enabled | default(false) and pds_signup_database_hostname == postgres_connection_hostname else [])
+  }}
+pds_signup_systemd_wanted_services_list_auto: |
+  {{
+    ([(exim_relay_identifier | default('sgc-exim-relay')) ~ '.service'] if exim_relay_enabled | default(false) else [])
+  }}

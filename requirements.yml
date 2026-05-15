@@ -206,6 +206,10 @@
   version: 4.98.1-r0-2-3
   name: exim_relay
   activation_prefix: exim_relay_
+- src: git+https://github.com/P3X-118/geome-ar.git
+  version: v4.0.4-1
+  name: geome
+  activation_prefix: geome_
 #- src: git+https://github.com/P3X-118/ansible-role-fail2ban.git
 #  version: e25d0d9b5282dbb5a1ec4cd23d26c16998e4334f
 #  name: fail2ban
@@ -583,13 +587,9 @@
   activation_prefix: pds_pro_
 # /role-specific:pds_pro
 # role-specific:pds_signup
-# Uncomment after publishing pds-signup-ar to P3X-118/pds-signup-ar (the role
-# exists locally at ~/sgc/ansible/roles/pds-signup-ar/ but hasn't been pushed
-# yet). Until then, `just roles` would fail to fetch this.
-#- src: git+https://github.com/P3X-118/pds-signup-ar.git
-#  version: sgc
-#  name: pds_signup
-#  activation_prefix: pds_signup_
+# pds_signup is a LOCAL role at roles/mash/pds_signup/ — not fetched from
+# GitHub. No requirements.yml entry needed; setup.yml references it as
+# `mash/pds_signup` directly.
 # /role-specific:pds_signup
 - src: git+https://github.com/P3X-118/ansible-role-peertube.git
   version: v7.2.3-5

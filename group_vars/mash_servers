@@ -438,6 +438,13 @@ sgc_sysd_srvc_list_auto_itemized:
     {{ ({'name': (funkwhale_watch_imports_identifier + '.service'), 'priority': 2000, 'groups': ['mash', 'funkwhale']} if funkwhale_enabled and funkwhale_watch_imports_enabled else omit) }}
   # /role-specific:funkwhale
 
+  # role-specific:geome
+  - |-
+    {{ ({'name': (geome_identifier + '.service'), 'priority': 2000, 'groups': ['sgc', 'geome']} if geome_enabled else omit) }}
+  - |-
+    {{ ({'name': (geome_tilecache_identifier + '.service'), 'priority': 2000, 'groups': ['sgc', 'geome']} if geome_enabled else omit) }}
+  # /role-specific:geome
+
   # role-specific:ghostfolio
   - |-
     {{ ({'name': (ghostfolio_identifier + '.service'), 'priority': 2000, 'groups': ['mash', 'ghostfolio']} if ghostfolio_enabled else omit) }}
@@ -1553,6 +1560,18 @@ postgres_autom_itemized:
       } if funkwhale_enabled and funkwhale_database_hostname == postgres_connection_hostname else omit)
     }}
   # /role-specific:funkwhale
+
+  # role-specific:geome
+  - |-
+    {{
+      ({
+        'name': geome_database_name,
+        'username': geome_database_username,
+        'password': geome_database_password,
+        'extensions': ['postgis'],
+      } if geome_enabled and geome_database_hostname == postgres_connection_hostname else omit)
+    }}
+  # /role-specific:geome
 
   # role-specific:ghostfolio
   - |-
@@ -5677,6 +5696,101 @@ funkwhale_frontend_container_labels_traefik_tls_certResolver: "{{ traefik_certRe
 #                                                                      #
 ########################################################################
 # /role-specific:funkwhale
+
+
+
+# role-specific:geome
+########################################################################
+#                                                                      #
+# geome                                                                #
+#                                                                      #
+# eagledrive.live geographic / location-tracking service. Fork of      #
+# upstream Reitti, published as legitservices/geome on Docker Hub.     #
+# Map view is bound to 77523 (Mont Belvieu + Cove + Beach City TX) —   #
+# the eagledrive.live coverage footprint.                              #
+#                                                                      #
+########################################################################
+
+geome_enabled: false
+
+geome_identifier: "{{ service_id_prefix }}geome"
+geome_tilecache_identifier: "{{ geome_identifier }}-tilecache"
+
+geome_base_path: "{{ sgc_playbook_base_path }}/{{ service_directory_prefix }}geome"
+
+geome_uid: "{{ sgc_playbook_uid }}"
+geome_gid: "{{ sgc_playbook_gid }}"
+
+# legitservices/geome is the SGC build of the Reitti fork. Pin to the
+# tagged release that matches what's in apps/geome/pom.xml + the role's
+# requirements.yml `version`.
+geome_container_image: "docker.io/legitservices/geome:v4.0.4-0"
+geome_tilecache_container_image: "docker.io/dedicatedcode/reitti-tile-cache:latest"
+
+# Hostname Traefik exposes the app at. Set per-host in inventory if you
+# want a different subdomain (or leave blank to disable Traefik labels).
+geome_hostname: ""
+
+# Map bounds default to the 77523 footprint. Inventory can override per-
+# environment if the same SGC role gets reused on a different host with
+# a different coverage area.
+geome_map_bounds_sw_lat: 29.685
+geome_map_bounds_sw_lng: -94.960
+geome_map_bounds_ne_lat: 29.890
+geome_map_bounds_ne_lng: -94.825
+geome_map_center_lat: 29.844
+geome_map_center_lng: -94.890
+geome_map_min_zoom: 10
+geome_map_max_zoom: 18
+geome_map_default_zoom: 13
+geome_map_bounds_strict: true
+
+geome_systemd_required_services_list_auto: |
+  {{
+    ([postgres_identifier ~ '.service'] if postgres_enabled and geome_database_hostname == postgres_connection_hostname else [])
+    +
+    ([redis_identifier ~ '.service'] if redis_enabled and geome_redis_hostname == redis_connection_hostname else [])
+  }}
+
+geome_container_additional_networks_auto: |
+  {{
+    ([revproxy_service_networks] if revproxy_service_networks else [])
+    +
+    ([postgres_container_network] if postgres_enabled and geome_database_hostname == postgres_connection_hostname and geome_container_network != postgres_container_network else [])
+    +
+    ([redis_container_network] if redis_enabled and geome_redis_hostname == redis_connection_hostname else [])
+  }}
+
+geome_container_labels_traefik_enabled: "{{ traefik_labels_enabled }}"
+geome_container_labels_traefik_docker_network: "{{ revproxy_service_networks }}"
+
+# role-specific:traefik
+geome_container_labels_traefik_entrypoints: "{{ traefik_entrypoint_primary }}"
+geome_container_labels_traefik_tls_certResolver: "{{ traefik_certResolver_primary }}"
+# /role-specific:traefik
+
+# role-specific:postgres
+geome_database_hostname: "{{ postgres_connection_hostname if postgres_enabled else '' }}"
+geome_database_port: "{{ postgres_connection_port if postgres_enabled else '5432' }}"
+geome_database_name: "{{ geome_identifier }}"
+geome_database_username: "{{ geome_identifier }}"
+geome_database_password: "{{ '%s' | format(sgc_pgsk) | password_hash('sha512', 'db.geome', rounds=655555) | to_uuid }}"
+# /role-specific:postgres
+
+# role-specific:redis
+geome_redis_hostname: "{{ redis_connection_hostname if redis_enabled else '' }}"
+geome_redis_port: "{{ redis_connection_port if redis_enabled else '6379' }}"
+geome_redis_username: ""
+geome_redis_password: ""
+geome_redis_database: "0"
+# /role-specific:redis
+
+########################################################################
+#                                                                      #
+# /geome                                                               #
+#                                                                      #
+########################################################################
+# /role-specific:geome
 
 
 
