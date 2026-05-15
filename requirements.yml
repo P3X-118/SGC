@@ -206,6 +206,10 @@
   version: 4.98.1-r0-2-3
   name: exim_relay
   activation_prefix: exim_relay_
+- src: git+https://github.com/P3X-118/geome-ar.git
+  version: v4.0.4-1
+  name: geome
+  activation_prefix: geome_
 #- src: git+https://github.com/P3X-118/ansible-role-fail2ban.git
 #  version: e25d0d9b5282dbb5a1ec4cd23d26c16998e4334f
 #  name: fail2ban

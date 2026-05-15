@@ -359,6 +359,16 @@
     #- role: galaxy/funkwhale
     # /role-specific:funkwhale
 
+    # role-specific:geome
+    - when: geome_enabled | bool
+      role: galaxy/geome
+      tags:
+        - setup-all
+        - setup-geome
+        - install-all
+        - install-geome
+    # /role-specific:geome
+
     # role-specific:ghostfolio
     #- role: galaxy/ghostfolio
     # /role-specific:ghostfolio
