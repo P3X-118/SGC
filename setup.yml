@@ -363,6 +363,16 @@
     #- role: galaxy/ghostfolio
     # /role-specific:ghostfolio
 
+    # role-specific:ghosttrak
+    - when: ghosttrak_enabled | bool
+      role: mash/ghosttrak
+      tags:
+        - setup-all
+        - setup-ghosttrak
+        - install-all
+        - install-ghosttrak
+    # /role-specific:ghosttrak
+
     # role-specific:gitea
     #- role: galaxy/gitea
     # /role-specific:gitea
@@ -709,6 +719,11 @@
     - when: pds_pro_enabled | bool
       role: galaxy/pds_pro
     # /role-specific:pds_pro
+
+    # role-specific:pds_signup
+    - when: pds_signup_enabled | bool
+      role: galaxy/pds_signup
+    # /role-specific:pds_signup
 
     # role-specific:peertube
     - role: galaxy/peertube

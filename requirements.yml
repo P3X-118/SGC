@@ -447,7 +447,7 @@
 #  name: miniflux
 #  activation_prefix: miniflux_
 - src: git+https://github.com/P3X-118/mirotalk-ar.git
-  version: v1.8.31-0
+  version: v1.8.31-1
   name: mirotalk
   activation_prefix: mirotalk_
 #- src: git+https://github.com/P3X-118/ansible-role-misskey.git
@@ -582,6 +582,15 @@
   name: pds_pro
   activation_prefix: pds_pro_
 # /role-specific:pds_pro
+# role-specific:pds_signup
+# Uncomment after publishing pds-signup-ar to P3X-118/pds-signup-ar (the role
+# exists locally at ~/sgc/ansible/roles/pds-signup-ar/ but hasn't been pushed
+# yet). Until then, `just roles` would fail to fetch this.
+#- src: git+https://github.com/P3X-118/pds-signup-ar.git
+#  version: sgc
+#  name: pds_signup
+#  activation_prefix: pds_signup_
+# /role-specific:pds_signup
 - src: git+https://github.com/P3X-118/ansible-role-peertube.git
   version: v7.2.3-5
   name: peertube
