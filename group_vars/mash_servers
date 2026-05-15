@@ -5724,7 +5724,7 @@ geome_gid: "{{ sgc_playbook_gid }}"
 # legitservices/geome is the SGC build of the Reitti fork. Pin to the
 # tagged release that matches what's in apps/geome/pom.xml + the role's
 # requirements.yml `version`.
-geome_container_image: "docker.io/legitservices/geome:v4.0.4-0"
+geome_container_image: "docker.io/legitservices/geome:v4.0.4-1"
 geome_tilecache_container_image: "docker.io/dedicatedcode/reitti-tile-cache:latest"
 
 # Hostname Traefik exposes the app at. Set per-host in inventory if you
