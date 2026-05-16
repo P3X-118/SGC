@@ -10,6 +10,35 @@ Sibling services in this playbook:
 
 The host `169.254.0.127` (ssh user `ronon`, key `~/.ssh/rononfps`) currently runs `awx`, `links.legit.services`, `couch.yeet.fm`, `irc.yeet.fm`, `draw.sgc.ai`, `meet.sgc.ai`, `ntfy.sgc.ai`, `work.sgc.ai`, and `noise.padge.pics`. We co-tenant `bskypds.pro` on the same host.
 
+## Reverse-proxy integration
+
+`bskypds.pro` uses `rev_proxy_type: other-traefik-container`. **The playbook does not run its own Traefik on this host.** A shared Traefik is already running on `169.254.0.127`; the service containers join the shared `traefik` docker network (`revproxy_service_networks: traefik`) and that Traefik discovers them via the `traefik.*` labels the role emits, terminating TLS through its own cert resolver.
+
+This is the same model every other `169.254.0.127` co-tenant uses — see `inventory/host_vars/couch.yeet.fm/vars.yml` and `inventory/host_vars/meet.sgc.ai/vars.yml` (both `rev_proxy_type: other-traefik-container`, `revproxy_service_networks: traefik`). It is established precedent, not a new pattern.
+
+Concretely, the `pds_signup` / `pds_pro` containers will:
+- attach to the `traefik` network at start (via the role's `*_container_additional_networks_auto` logic);
+- emit `traefik.enable=true`, `traefik.docker.network=traefik`, a `Host(...)` router rule, the primary entrypoint, and the primary cert resolver.
+
+No bundled Traefik, no host port mapping, no ACME config in this role — the shared Traefik owns all of that. (The local docker-compose harness runs its *own* Traefik via a file provider; that is a dev smoke-test convenience and **not** how production routes — see `~/sgc/apps/pds-signup/deploy/local/README.md`.)
+
+## Role / host_vars review status
+
+`roles/mash/pds_signup/` and `inventory/host_vars/bskypds.pro/vars.yml` were reviewed against the established `roles/galaxy/pds_pro` reference and the `other-traefik-container` co-tenant precedent. **They are correct and require no changes.** `pds-signup.service.j2` is a structural mirror of the production-deployed `pds-pro.service.j2` (including the `--network-alias` loop — that is intentional parity with the working sibling, not a defect; do not "fix" it to match other roles' styles).
+
+## Deploy sequence (gated on the vault)
+
+The install cannot run until the vault is populated and encrypted. Execute strictly in this order:
+
+1. **Vault precondition** — `inventory/host_vars/bskypds.pro/vault.yml` populated from `vault.yml.example` and encrypted. Verify: `head -1 inventory/host_vars/bskypds.pro/vault.yml` shows `$ANSIBLE_VAULT;1.1;AES256`.
+2. **Image on the host** — `docker.io/legitservices/pds-signup:0.1.0` and `pds-pro:0.1.0` reachable from `169.254.0.127` (push to Docker Hub, or `docker save | ssh ronon@169.254.0.127 docker load`).
+3. **Cloudflare DNS** — apex + admin proxied, `*.bskypds.pro` grey-cloud, A records → `128.254.161.222` (see DNS table below).
+4. **Inventory sanity** — `ansible-inventory -i inventory --host bskypds.pro --vault-password-file <pw>` expands `{{ vault_* }}` without printing secrets.
+5. **Deploy** — `just install-service pds_signup` then `just install-service pds_pro`.
+6. **Verify** — see the Verify section below.
+
+The numbered subsections that follow are the detailed reference for each step.
+
 ### 1. Add inventory entry
 
 Add to `inventory/hosts` under `[mash_servers]`:
