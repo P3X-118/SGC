@@ -5724,25 +5724,25 @@ geome_gid: "{{ sgc_playbook_gid }}"
 # legitservices/geome is the SGC build of the Reitti fork. Pin to the
 # tagged release that matches what's in apps/geome/pom.xml + the role's
 # requirements.yml `version`.
-geome_container_image: "docker.io/legitservices/geome:v4.0.4-1"
+geome_container_image: "docker.io/legitservices/geome:v4.0.4-2"
 geome_tilecache_container_image: "docker.io/dedicatedcode/reitti-tile-cache:latest"
 
 # Hostname Traefik exposes the app at. Set per-host in inventory if you
 # want a different subdomain (or leave blank to disable Traefik labels).
 geome_hostname: ""
 
-# Map bounds default to the 77523 footprint. Inventory can override per-
-# environment if the same SGC role gets reused on a different host with
-# a different coverage area.
-geome_map_bounds_sw_lat: 29.685
-geome_map_bounds_sw_lng: -94.960
-geome_map_bounds_ne_lat: 29.890
-geome_map_bounds_ne_lng: -94.825
+# Map centered on Mont Belvieu / 77523 but the hard pan limit is the
+# wider Houston ↔ Beaumont box — must not pan beyond the greater
+# Houston/Beaumont metro span. Inventory can override per-environment.
+geome_map_bounds_sw_lat: 29.45
+geome_map_bounds_sw_lng: -95.65
+geome_map_bounds_ne_lat: 30.35
+geome_map_bounds_ne_lng: -93.95
 geome_map_center_lat: 29.844
 geome_map_center_lng: -94.890
-geome_map_min_zoom: 10
+geome_map_min_zoom: 9
 geome_map_max_zoom: 18
-geome_map_default_zoom: 13
+geome_map_default_zoom: 11
 geome_map_bounds_strict: true
 
 geome_systemd_required_services_list_auto: |
@@ -13851,6 +13851,45 @@ soundcloak_container_labels_traefik_tls_certResolver: "{{ traefik_certResolver_p
 #                                                                      #
 ########################################################################
 # /role-specific:soundcloak
+
+
+
+# role-specific:stargate
+########################################################################
+#                                                                      #
+# stargate                                                             #
+#                                                                      #
+########################################################################
+
+# Stargate is a host-level Nebula overlay-VPN role (not a containerized
+# MASH service). It manages its own stargate.service systemd unit and
+# gates internally on inventory group membership (stargate_dhd = the
+# lighthouse/CA host; everything else = a node). It is therefore NOT
+# registered in sgc_sysd_srvc_list_auto_itemized.
+
+stargate_enabled: false
+
+stargate_network_name: "Default"
+
+# Lighthouse/DHD network identity. Override per deployment.
+stargate_internal_ip_addr: 169.254.1.1
+dhd_internal_ip_addr: 169.254.1.1
+stargate_dhd_public_hostname: dhd.sgc.ai
+stargate_dhd_public_port: 4242
+
+# Cert distribution is opt-in for safety. A run with all of these false
+# installs the binary and writes config but does not distribute certs
+# or start the service.
+stargate_install_ca_certs: false
+stargate_install_client_certs: false
+stargate_auto_generate_certs: false
+
+########################################################################
+#                                                                      #
+# /stargate                                                            #
+#                                                                      #
+########################################################################
+# /role-specific:stargate
 
 
 
