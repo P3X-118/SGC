@@ -146,7 +146,8 @@
     # /role-specific:authelia
 
     # role-specific:authentik
-    #- role: galaxy/authentik
+    - when: authentik_enabled | bool
+      role: galaxy/authentik
     # /role-specific:authentik
 
     # role-specific:autobrr
@@ -723,11 +724,21 @@
     # role-specific:pds
     - when: pds_enabled | bool
       role: galaxy/pds
+      tags:
+        - setup-all
+        - setup-pds
+        - install-all
+        - install-pds
     # /role-specific:pds
 
     # role-specific:pds_pro
     - when: pds_pro_enabled | bool
       role: galaxy/pds_pro
+      tags:
+        - setup-all
+        - setup-pds_pro
+        - install-all
+        - install-pds_pro
     # /role-specific:pds_pro
 
     # role-specific:pds_signup
@@ -907,6 +918,16 @@
     # role-specific:soundcloak
     #- role: galaxy/soundcloak
     # /role-specific:soundcloak
+
+    # role-specific:stargate
+    - when: stargate_enabled | bool
+      role: galaxy/stargate
+      tags:
+        - setup-all
+        - setup-stargate
+        - install-all
+        - install-stargate
+    # /role-specific:stargate
 
     # role-specific:statusnook
     #- role: galaxy/statusnook

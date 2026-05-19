@@ -11781,7 +11781,7 @@ pds_signup_gid: "{{ sgc_playbook_gid }}"
 pds_signup_hostname: ""
 
 # Session secret — derived per-host so reinstalls don't invalidate sessions.
-pds_signup_session_secret: "{{ '%s' | format(sgc_pgsk) | password_hash('sha512', 'pds-signup.session', rounds=655555) | to_uuid | replace('-', '') }}"
+pds_signup_session_secret: "{{ '%s' | format(sgc_pgsk) | password_hash('sha512', 'pdssignup.sess', rounds=655555) | to_uuid | replace('-', '') }}"
 
 # Postgres wiring — auto-pulls hostname/port from the postgres role when
 # both are enabled on the same host.
@@ -11790,13 +11790,13 @@ pds_signup_database_hostname: "{{ postgres_connection_hostname if postgres_enabl
 pds_signup_database_port: "{{ postgres_connection_port if postgres_enabled | default(false) else '5432' }}"
 pds_signup_database_name: "{{ pds_signup_identifier | replace('-', '_') }}"
 pds_signup_database_username: "{{ pds_signup_identifier | replace('-', '_') }}"
-pds_signup_database_password: "{{ '%s' | format(sgc_pgsk) | password_hash('sha512', 'db.pds-signup', rounds=655555) | to_uuid }}"
+pds_signup_database_password: "{{ '%s' | format(sgc_pgsk) | password_hash('sha512', 'db.pdssignup', rounds=655555) | to_uuid }}"
 # /role-specific:postgres
 
 # Provisioning HMAC — signs the {request_id, payload} webhook to the
 # ansible runner. Derived from sgc_pgsk; stable across reinstalls so
 # in-flight requests don't get rejected on signature mismatch.
-pds_signup_provisioning_hmac_secret: "{{ '%s' | format(sgc_pgsk) | password_hash('sha512', 'pds-signup.provisioning-hmac', rounds=655555) | to_uuid }}"
+pds_signup_provisioning_hmac_secret: "{{ '%s' | format(sgc_pgsk) | password_hash('sha512', 'pdssignup.phmac', rounds=655555) | to_uuid }}"
 
 # Default handle domain for tenants without a custom domain.
 pds_signup_handle_root_domain: "{{ pds_signup_hostname }}"
