@@ -23,15 +23,22 @@ pds_signup_state_path: "{{ pds_signup_base_path }}/state"
 pds_signup_uid: "{{ sgc_playbook_uid }}"
 pds_signup_gid: "{{ sgc_playbook_gid }}"
 
-# Container image — built locally and pushed to docker.io/legitservices per
-# the SGC convention. Never use GHCR.
+# Container image — built locally on the host; NEVER pushed to Docker Hub
+# (or GHCR) for this project. self_build is true so the role does not try to
+# pull from a registry; the image must be present locally on the host.
 pds_signup_container_image: "docker.io/legitservices/pds-signup:0.1.0"
-pds_signup_container_image_self_build: false
+pds_signup_container_image_self_build: true
 pds_signup_container_stop_grace_time_seconds: 30
 
 # Network
 pds_signup_container_network: "{{ pds_signup_identifier }}"
 pds_signup_container_additional_networks: []
+
+# Raw extra `docker create` arguments. Used on bskypds.pro to add a
+# host-gateway mapping for the public Authentik hostname so server-side OIDC
+# discovery hairpins back through the host's published 443 instead of failing
+# on the box's own public IP (NAT hairpin).
+pds_signup_container_extra_arguments: []
 
 pds_signup_container_additional_networks_auto: |
   {{
@@ -59,7 +66,7 @@ pds_signup_container_labels_traefik_rule: "Host(`{{ pds_signup_hostname }}`)"
 pds_signup_container_labels_traefik_additional_labels: []
 
 # Session secret — derived from sgc_pgsk; stable across restarts/reinstalls.
-pds_signup_session_secret: "{{ '%s' | format(sgc_pgsk) | password_hash('sha512', 'pds-signup.session', rounds=655555) | to_uuid | replace('-', '') }}"
+pds_signup_session_secret: "{{ '%s' | format(sgc_pgsk) | password_hash('sha512', 'pdssignup.sess', rounds=655555) | to_uuid | replace('-', '') }}"
 pds_signup_session_secure: true
 pds_signup_session_max_age_sec: 3600
 
@@ -69,7 +76,7 @@ pds_signup_database_hostname: "{{ postgres_connection_hostname if postgres_enabl
 pds_signup_database_port: "{{ postgres_connection_port if postgres_enabled | default(false) else '5432' }}"
 pds_signup_database_name: "{{ pds_signup_identifier | replace('-', '_') }}"
 pds_signup_database_username: "{{ pds_signup_identifier | replace('-', '_') }}"
-pds_signup_database_password: "{{ '%s' | format(sgc_pgsk) | password_hash('sha512', 'db.pds-signup', rounds=655555) | to_uuid }}"
+pds_signup_database_password: "{{ '%s' | format(sgc_pgsk) | password_hash('sha512', 'db.pdssignup', rounds=655555) | to_uuid }}"
 pds_signup_database_url: "postgres://{{ pds_signup_database_username }}:{{ pds_signup_database_password }}@{{ pds_signup_database_hostname }}:{{ pds_signup_database_port }}/{{ pds_signup_database_name }}?sslmode=disable"
 # /role-specific:postgres
 
@@ -108,14 +115,14 @@ pds_signup_reserved_slugs:
 
 # Plan tiers — prices in cents (USD), caps as integer counts.
 pds_signup_plans:
-  starter:
-    price_cents: 999
-    max_accounts: 50
-    max_storage_gb: 10
+  community:
+    price_cents: 300
+    max_accounts: 5
+    max_storage_gb: 5
   pro:
     price_cents: 2999
-    max_accounts: 500
-    max_storage_gb: 50
+    max_accounts: 30
+    max_storage_gb: 20
   enterprise:
     price_cents: null
     max_accounts: null
@@ -128,6 +135,15 @@ pds_signup_trial_days: 14
 # mode 0600. Client_id is public per the OAuth spec, so it's templated
 # directly into config. Set <provider>_enabled: false (the default) to
 # omit the provider from the signup picker.
+# Primary customer sign-in path: generic OIDC into the bskypds.pro Authentik
+# IdP. Authentik itself fans out to the social/enterprise sources, so this is
+# the only provider the funnel needs enabled in production.
+pds_signup_oauth_oidc_enabled: false
+pds_signup_oauth_oidc_issuer_url: ""
+pds_signup_oauth_oidc_client_id: ""
+pds_signup_oauth_oidc_client_secret: ""
+pds_signup_oauth_oidc_scopes: ["openid", "profile", "email"]
+
 pds_signup_oauth_google_enabled: false
 pds_signup_oauth_google_client_id: ""
 pds_signup_oauth_google_client_secret: ""
@@ -172,7 +188,7 @@ pds_signup_billing_paddle_webhook_secret: ""
 # a new tenant's PDS deployment. URL points at AWX, an ansible runner, or
 # (for the hybrid model) a queue that an operator approves.
 pds_signup_provisioning_runner_url: ""
-pds_signup_provisioning_hmac_secret: "{{ '%s' | format(sgc_pgsk) | password_hash('sha512', 'pds-signup.provisioning-hmac', rounds=655555) | to_uuid }}"
+pds_signup_provisioning_hmac_secret: "{{ '%s' | format(sgc_pgsk) | password_hash('sha512', 'pdssignup.phmac', rounds=655555) | to_uuid }}"
 pds_signup_provisioning_callback_path: "/api/v1/provisioning/callback"
 
 # Cloudflare — used for DNS-01 ACME (wildcard certs) and creating per-tenant

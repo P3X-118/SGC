@@ -45,6 +45,9 @@ ExecStartPre={{ sysd_docker_host_command }} create \
       --mount type=bind,src={{ pds_signup_etc_path }}/config.yaml,dst=/etc/pds-signup/config.yaml,ro \
       --mount type=bind,src={{ pds_signup_secrets_path }},dst=/etc/pds-signup/secrets,ro \
       --mount type=bind,src={{ pds_signup_state_path }},dst=/etc/pds-signup/state \
+      {% for arg in pds_signup_container_extra_arguments %}
+      {{ arg }} \
+      {% endfor %}
       {{ pds_signup_container_image }} \
       --config /etc/pds-signup/config.yaml
 
