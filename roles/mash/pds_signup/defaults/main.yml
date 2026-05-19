@@ -66,7 +66,10 @@ pds_signup_container_labels_traefik_rule: "Host(`{{ pds_signup_hostname }}`)"
 pds_signup_container_labels_traefik_additional_labels: []
 
 # Session secret — derived from sgc_pgsk; stable across restarts/reinstalls.
-pds_signup_session_secret: "{{ '%s' | format(sgc_pgsk) | password_hash('sha512', 'pdssignup.sess', rounds=655555) | to_uuid | replace('-', '') }}"
+# The Go side hex-decodes this and requires >=32 decoded bytes (>=64 hex
+# chars), so concatenate two independent salted derivations (each to_uuid is
+# only 32 hex chars). Salts are <=16 chars, no hyphen (sha512_crypt limit).
+pds_signup_session_secret: "{{ ('%s' | format(sgc_pgsk) | password_hash('sha512', 'pdssignup.ss1', rounds=655555) | to_uuid | replace('-', '')) ~ ('%s' | format(sgc_pgsk) | password_hash('sha512', 'pdssignup.ss2', rounds=655555) | to_uuid | replace('-', '')) }}"
 pds_signup_session_secure: true
 pds_signup_session_max_age_sec: 3600
 

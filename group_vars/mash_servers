@@ -11781,7 +11781,10 @@ pds_signup_gid: "{{ sgc_playbook_gid }}"
 pds_signup_hostname: ""
 
 # Session secret — derived per-host so reinstalls don't invalidate sessions.
-pds_signup_session_secret: "{{ '%s' | format(sgc_pgsk) | password_hash('sha512', 'pdssignup.sess', rounds=655555) | to_uuid | replace('-', '') }}"
+# The Go side hex-decodes this and needs >=32 decoded bytes (>=64 hex chars);
+# a single to_uuid is only 32 hex, so concatenate two independent salted
+# derivations. Salts are <=16 chars, no hyphen (sha512_crypt limit).
+pds_signup_session_secret: "{{ ('%s' | format(sgc_pgsk) | password_hash('sha512', 'pdssignup.ss1', rounds=655555) | to_uuid | replace('-', '')) ~ ('%s' | format(sgc_pgsk) | password_hash('sha512', 'pdssignup.ss2', rounds=655555) | to_uuid | replace('-', '')) }}"
 
 # Postgres wiring — auto-pulls hostname/port from the postgres role when
 # both are enabled on the same host.
