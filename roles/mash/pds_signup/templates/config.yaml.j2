@@ -84,6 +84,14 @@ oauth:
     callback_url: "{{ pds_signup_base_url }}/auth/tiktok/callback"
 {% endif %}
 
+mail:
+  enabled: {{ pds_signup_mail_enabled | bool | string | lower }}
+  smtp_host: "{{ pds_signup_mail_smtp_host }}"
+  smtp_port: {{ pds_signup_mail_smtp_port }}
+  from_address: "{{ pds_signup_mail_from_address }}"
+  from_name: "{{ pds_signup_mail_from_name }}"
+  token_ttl_hours: {{ pds_signup_mail_token_ttl_hours }}
+
 billing:
   provider: "{{ pds_signup_billing_provider }}"
 {% if pds_signup_billing_provider == 'stripe' %}

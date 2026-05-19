@@ -175,6 +175,19 @@ pds_signup_oauth_tiktok_enabled: false
 pds_signup_oauth_tiktok_client_id: ""
 pds_signup_oauth_tiktok_client_secret: ""
 
+# Mail — transactional email (email verification) via the SGC exim relay.
+# When exim_relay is enabled on the host the in-container submission port is
+# 8025 (no auth, no TLS, relay-from-network); otherwise fall back to :25.
+# Sender defaults to the relay's configured sender address. The Go side
+# treats enabled=false as "skip verification" (accounts proceed unverified),
+# so this only auto-enables when the relay is actually present.
+pds_signup_mail_enabled: "{{ exim_relay_enabled | default(false) }}"
+pds_signup_mail_smtp_host: "{{ exim_relay_identifier | default('sgc-exim-relay') }}"
+pds_signup_mail_smtp_port: "{{ 8025 if exim_relay_enabled | default(false) else 25 }}"
+pds_signup_mail_from_address: "{{ exim_relay_sender_address | default('no-reply@' + pds_signup_hostname) }}"
+pds_signup_mail_from_name: "bskypds.pro"
+pds_signup_mail_token_ttl_hours: 24
+
 # Billing — pick one (stripe is the default). Per-environment keys are
 # external; they must be supplied via host_vars / ansible-vault.
 pds_signup_billing_provider: "stripe"
