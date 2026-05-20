@@ -81,6 +81,20 @@ pds_signup_database_name: "{{ pds_signup_identifier | replace('-', '_') }}"
 pds_signup_database_username: "{{ pds_signup_identifier | replace('-', '_') }}"
 pds_signup_database_password: "{{ '%s' | format(sgc_pgsk) | password_hash('sha512', 'db.pdssignup', rounds=655555) | to_uuid }}"
 pds_signup_database_url: "postgres://{{ pds_signup_database_username }}:{{ pds_signup_database_password }}@{{ pds_signup_database_hostname }}:{{ pds_signup_database_port }}/{{ pds_signup_database_name }}?sslmode=disable"
+
+# When true (default), every start of pds-pds-signup.service runs an
+# ephemeral `pds-signup migrate` first via ExecStartPre. The migrator
+# connects as the service user (per pds_signup_database_url) so every
+# schema object is owned by that user — never the postgres superuser.
+# Idempotent: re-runs print "at head (0 applied)" and exit 0.
+pds_signup_database_auto_migrate: true
+
+# One-shot operator switch: when set, the role drops + recreates the
+# public schema of the pds-signup database before doing anything else.
+# Used exactly once on hosts where migrations were previously bootstrapped
+# manually as the postgres superuser (leaving root-owned tables that the
+# service user can't touch). NEVER on by default.
+pds_signup_database_reset: false
 # /role-specific:postgres
 
 # Default handle domain — customers who skip the custom-domain step get

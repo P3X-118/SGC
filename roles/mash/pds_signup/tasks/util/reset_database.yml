@@ -1,0 +1,49 @@
+---
+# Drop + recreate the public schema of the pds-signup database, leaving the
+# DB itself (created by the postgres role) and its ownership intact. After
+# this runs, the next start of pds-pds-signup.service applies all migrations
+# from zero — as the service user — so every schema object is owned by that
+# user.
+#
+# This is a one-shot operator action, gated by pds_signup_database_reset.
+# Mirrors roles/galaxy/postgres/tasks/util/prepare_managed_database.yml.
+
+- name: Render reset SQL for {{ pds_signup_database_name }}
+  ansible.builtin.copy:
+    dest: "/tmp/{{ pds_signup_identifier }}-reset-database.sql"
+    mode: "0600"
+    owner: "{{ postgres_uid }}"
+    group: "{{ postgres_gid }}"
+    content: |
+      \connect {{ pds_signup_database_name }}
+      DROP SCHEMA IF EXISTS public CASCADE;
+      CREATE SCHEMA public AUTHORIZATION "{{ pds_signup_database_username }}";
+      GRANT ALL ON SCHEMA public TO "{{ pds_signup_database_username }}";
+      GRANT ALL ON SCHEMA public TO PUBLIC;
+
+- name: Stop pds-signup before reset so migrate doesn't race the drop
+  ansible.builtin.systemd:
+    name: "{{ pds_signup_identifier }}.service"
+    state: stopped
+  failed_when: false
+
+- name: Execute pds-signup database reset SQL
+  ansible.builtin.command:
+    cmd: >-
+      {{ sysd_docker_host_command }} run
+      --rm
+      --user={{ postgres_container_uid }}:{{ postgres_container_gid }}
+      --cap-drop=ALL
+      --env-file={{ postgres_base_path }}/env-postgres-psql
+      --network={{ postgres_container_network }}
+      --mount type=bind,src=/tmp/{{ pds_signup_identifier }}-reset-database.sql,dst=/{{ pds_signup_identifier }}-reset-database.sql,ro
+      --entrypoint={{ postgres_container_shell_path }}
+      {{ postgres_container_image_to_use }}
+      -c
+      'psql -h {{ postgres_connection_hostname }} -v ON_ERROR_STOP=1 --file=/{{ pds_signup_identifier }}-reset-database.sql'
+  changed_when: true
+
+- name: Delete pds-signup reset SQL file
+  ansible.builtin.file:
+    path: "/tmp/{{ pds_signup_identifier }}-reset-database.sql"
+    state: absent

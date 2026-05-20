@@ -11,5 +11,12 @@
     - install-all
     - install-pds_signup
   block:
+    # One-shot, gated by -e pds_signup_database_reset=1. Wipes the public
+    # schema so the subsequent ExecStartPre migrate rebuilds everything as
+    # the service user. Never on by default.
+    - name: Reset pds-signup database (gated)
+      ansible.builtin.include_tasks: "{{ role_path }}/tasks/util/reset_database.yml"
+      when: pds_signup_database_reset | default(false) | bool
+
     - name: Install pds-signup
       ansible.builtin.include_tasks: "{{ role_path }}/tasks/install.yml"
