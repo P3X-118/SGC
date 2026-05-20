@@ -1,0 +1,85 @@
+{#
+  Managed by the SGC ansible `ghosttrak` role. Do NOT edit on the host.
+  Image is built locally on this host from synced source and is NEVER
+  pushed to / pulled from Docker Hub or any registry (pull_policy: never).
+#}
+{% set ns = namespace(lbls=[], mw=[]) %}
+{% if ghosttrak_container_labels_traefik_enabled %}
+{%   set ns.lbls = ns.lbls + ['traefik.enable=true'] %}
+{%   if ghosttrak_container_labels_traefik_docker_network %}
+{%     set ns.lbls = ns.lbls + ['traefik.docker.network=' ~ ghosttrak_container_labels_traefik_docker_network] %}
+{%   endif %}
+{%   if ghosttrak_container_labels_traefik_path_prefix != '/' %}
+{%     set ns.lbls = ns.lbls + ['traefik.http.middlewares.' ~ ghosttrak_identifier ~ '-slashless-redirect.redirectregex.regex=^(' ~ (ghosttrak_container_labels_traefik_path_prefix | quote) ~ ')$'] %}
+{%     set ns.lbls = ns.lbls + ['traefik.http.middlewares.' ~ ghosttrak_identifier ~ '-slashless-redirect.redirectregex.replacement=${1}/'] %}
+{%     set ns.mw = ns.mw + [ghosttrak_identifier ~ '-slashless-redirect'] %}
+{%     set ns.lbls = ns.lbls + ['traefik.http.middlewares.' ~ ghosttrak_identifier ~ '-strip-prefix.stripprefix.prefixes=' ~ ghosttrak_container_labels_traefik_path_prefix] %}
+{%     set ns.mw = ns.mw + [ghosttrak_identifier ~ '-strip-prefix'] %}
+{%   endif %}
+{%   set ns.lbls = ns.lbls + ['traefik.http.routers.' ~ ghosttrak_identifier ~ '.rule=' ~ ghosttrak_container_labels_traefik_rule] %}
+{%   if ghosttrak_container_labels_traefik_priority | int > 0 %}
+{%     set ns.lbls = ns.lbls + ['traefik.http.routers.' ~ ghosttrak_identifier ~ '.priority=' ~ ghosttrak_container_labels_traefik_priority] %}
+{%   endif %}
+{%   set ns.lbls = ns.lbls + ['traefik.http.routers.' ~ ghosttrak_identifier ~ '.service=' ~ ghosttrak_identifier] %}
+{%   if ns.mw | length > 0 %}
+{%     set ns.lbls = ns.lbls + ['traefik.http.routers.' ~ ghosttrak_identifier ~ '.middlewares=' ~ (ns.mw | join(','))] %}
+{%   endif %}
+{%   set ns.lbls = ns.lbls + ['traefik.http.routers.' ~ ghosttrak_identifier ~ '.entrypoints=' ~ ghosttrak_container_labels_traefik_entrypoints] %}
+{%   set ns.lbls = ns.lbls + ['traefik.http.routers.' ~ ghosttrak_identifier ~ '.tls=' ~ (ghosttrak_container_labels_traefik_tls | to_json)] %}
+{%   if ghosttrak_container_labels_traefik_tls %}
+{%     set ns.lbls = ns.lbls + ['traefik.http.routers.' ~ ghosttrak_identifier ~ '.tls.certResolver=' ~ ghosttrak_container_labels_traefik_tls_certResolver] %}
+{%   endif %}
+{%   set ns.lbls = ns.lbls + ['traefik.http.services.' ~ ghosttrak_identifier ~ '.loadbalancer.server.port=' ~ ghosttrak_container_http_port] %}
+{% endif %}
+{% for arg in ghosttrak_container_labels_additional_labels %}
+{%   set ns.lbls = ns.lbls + [arg] %}
+{% endfor %}
+services:
+  {{ ghosttrak_identifier }}:
+    image: {{ ghosttrak_container_image | to_json }}
+    # Local-only image: built on this host from synced source, never from a
+    # registry. `never` makes compose fail loudly rather than attempt a pull.
+    pull_policy: never
+    container_name: {{ ghosttrak_identifier }}
+    read_only: true
+    cap_drop:
+      - ALL
+    cap_add:
+      - CHOWN
+      - SETUID
+      - SETGID
+      - NET_BIND_SERVICE
+    tmpfs:
+      - /var/cache/nginx
+      - /var/run
+      - /tmp
+    restart: always
+    logging:
+      driver: "none"
+{% if ghosttrak_container_http_host_bind_port %}
+    ports:
+      - "{{ ghosttrak_container_http_host_bind_port }}:{{ ghosttrak_container_http_port }}"
+{% endif %}
+    networks:
+      - default
+{% for net in ghosttrak_container_additional_networks %}
+      - extra{{ loop.index }}
+{% endfor %}
+{% if ns.lbls | length > 0 %}
+    labels:
+{% for l in ns.lbls %}
+      - {{ l | to_json }}
+{% endfor %}
+{% endif %}
+
+networks:
+  # Pre-created out of band (the role's docker_network task + the
+  # playbook-managed Traefik); compose must not create or delete them.
+  default:
+    external: true
+    name: {{ ghosttrak_container_network | to_json }}
+{% for net in ghosttrak_container_additional_networks %}
+  extra{{ loop.index }}:
+    external: true
+    name: {{ net | to_json }}
+{% endfor %}

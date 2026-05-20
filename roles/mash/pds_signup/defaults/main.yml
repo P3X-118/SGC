@@ -23,21 +23,30 @@ pds_signup_state_path: "{{ pds_signup_base_path }}/state"
 pds_signup_uid: "{{ sgc_playbook_uid }}"
 pds_signup_gid: "{{ sgc_playbook_gid }}"
 
-# Container image — built locally and pushed to docker.io/legitservices per
-# the SGC convention. Never use GHCR.
+# Container image — built locally on the host; NEVER pushed to Docker Hub
+# (or GHCR) for this project. self_build is true so the role does not try to
+# pull from a registry; the image must be present locally on the host.
 pds_signup_container_image: "docker.io/legitservices/pds-signup:0.1.0"
-pds_signup_container_image_self_build: false
+pds_signup_container_image_self_build: true
 pds_signup_container_stop_grace_time_seconds: 30
 
 # Network
 pds_signup_container_network: "{{ pds_signup_identifier }}"
 pds_signup_container_additional_networks: []
 
+# Raw extra `docker create` arguments. Used on bskypds.pro to add a
+# host-gateway mapping for the public Authentik hostname so server-side OIDC
+# discovery hairpins back through the host's published 443 instead of failing
+# on the box's own public IP (NAT hairpin).
+pds_signup_container_extra_arguments: []
+
 pds_signup_container_additional_networks_auto: |
   {{
     ([postgres_container_network] if postgres_enabled | default(false) and pds_signup_database_hostname == postgres_connection_hostname else [])
     +
     ([(exim_relay_container_network | default('sgc-exim-relay'))] if exim_relay_enabled | default(false) else [])
+    +
+    ([pds_provisioning_runner_container_network | default('sgc-pds-provisioning-runner')] if pds_provisioning_runner_enabled | default(false) else [])
     +
     ([revproxy_service_networks] if revproxy_service_networks else [])
   }}
@@ -59,7 +68,10 @@ pds_signup_container_labels_traefik_rule: "Host(`{{ pds_signup_hostname }}`)"
 pds_signup_container_labels_traefik_additional_labels: []
 
 # Session secret — derived from sgc_pgsk; stable across restarts/reinstalls.
-pds_signup_session_secret: "{{ '%s' | format(sgc_pgsk) | password_hash('sha512', 'pds-signup.session', rounds=655555) | to_uuid | replace('-', '') }}"
+# The Go side hex-decodes this and requires >=32 decoded bytes (>=64 hex
+# chars), so concatenate two independent salted derivations (each to_uuid is
+# only 32 hex chars). Salts are <=16 chars, no hyphen (sha512_crypt limit).
+pds_signup_session_secret: "{{ ('%s' | format(sgc_pgsk) | password_hash('sha512', 'pdssignup.ss1', rounds=655555) | to_uuid | replace('-', '')) ~ ('%s' | format(sgc_pgsk) | password_hash('sha512', 'pdssignup.ss2', rounds=655555) | to_uuid | replace('-', '')) }}"
 pds_signup_session_secure: true
 pds_signup_session_max_age_sec: 3600
 
@@ -69,8 +81,22 @@ pds_signup_database_hostname: "{{ postgres_connection_hostname if postgres_enabl
 pds_signup_database_port: "{{ postgres_connection_port if postgres_enabled | default(false) else '5432' }}"
 pds_signup_database_name: "{{ pds_signup_identifier | replace('-', '_') }}"
 pds_signup_database_username: "{{ pds_signup_identifier | replace('-', '_') }}"
-pds_signup_database_password: "{{ '%s' | format(sgc_pgsk) | password_hash('sha512', 'db.pds-signup', rounds=655555) | to_uuid }}"
+pds_signup_database_password: "{{ '%s' | format(sgc_pgsk) | password_hash('sha512', 'db.pdssignup', rounds=655555) | to_uuid }}"
 pds_signup_database_url: "postgres://{{ pds_signup_database_username }}:{{ pds_signup_database_password }}@{{ pds_signup_database_hostname }}:{{ pds_signup_database_port }}/{{ pds_signup_database_name }}?sslmode=disable"
+
+# When true (default), every start of pds-pds-signup.service runs an
+# ephemeral `pds-signup migrate` first via ExecStartPre. The migrator
+# connects as the service user (per pds_signup_database_url) so every
+# schema object is owned by that user — never the postgres superuser.
+# Idempotent: re-runs print "at head (0 applied)" and exit 0.
+pds_signup_database_auto_migrate: true
+
+# One-shot operator switch: when set, the role drops + recreates the
+# public schema of the pds-signup database before doing anything else.
+# Used exactly once on hosts where migrations were previously bootstrapped
+# manually as the postgres superuser (leaving root-owned tables that the
+# service user can't touch). NEVER on by default.
+pds_signup_database_reset: false
 # /role-specific:postgres
 
 # Default handle domain — customers who skip the custom-domain step get
@@ -108,14 +134,14 @@ pds_signup_reserved_slugs:
 
 # Plan tiers — prices in cents (USD), caps as integer counts.
 pds_signup_plans:
-  starter:
-    price_cents: 999
-    max_accounts: 50
-    max_storage_gb: 10
+  community:
+    price_cents: 300
+    max_accounts: 5
+    max_storage_gb: 5
   pro:
     price_cents: 2999
-    max_accounts: 500
-    max_storage_gb: 50
+    max_accounts: 30
+    max_storage_gb: 20
   enterprise:
     price_cents: null
     max_accounts: null
@@ -128,6 +154,15 @@ pds_signup_trial_days: 14
 # mode 0600. Client_id is public per the OAuth spec, so it's templated
 # directly into config. Set <provider>_enabled: false (the default) to
 # omit the provider from the signup picker.
+# Primary customer sign-in path: generic OIDC into the bskypds.pro Authentik
+# IdP. Authentik itself fans out to the social/enterprise sources, so this is
+# the only provider the funnel needs enabled in production.
+pds_signup_oauth_oidc_enabled: false
+pds_signup_oauth_oidc_issuer_url: ""
+pds_signup_oauth_oidc_client_id: ""
+pds_signup_oauth_oidc_client_secret: ""
+pds_signup_oauth_oidc_scopes: ["openid", "profile", "email"]
+
 pds_signup_oauth_google_enabled: false
 pds_signup_oauth_google_client_id: ""
 pds_signup_oauth_google_client_secret: ""
@@ -156,6 +191,19 @@ pds_signup_oauth_tiktok_enabled: false
 pds_signup_oauth_tiktok_client_id: ""
 pds_signup_oauth_tiktok_client_secret: ""
 
+# Mail — transactional email (email verification) via the SGC exim relay.
+# When exim_relay is enabled on the host the in-container submission port is
+# 8025 (no auth, no TLS, relay-from-network); otherwise fall back to :25.
+# Sender defaults to the relay's configured sender address. The Go side
+# treats enabled=false as "skip verification" (accounts proceed unverified),
+# so this only auto-enables when the relay is actually present.
+pds_signup_mail_enabled: "{{ exim_relay_enabled | default(false) }}"
+pds_signup_mail_smtp_host: "{{ exim_relay_identifier | default('sgc-exim-relay') }}"
+pds_signup_mail_smtp_port: "{{ 8025 if exim_relay_enabled | default(false) else 25 }}"
+pds_signup_mail_from_address: "{{ exim_relay_sender_address | default('no-reply@' + pds_signup_hostname) }}"
+pds_signup_mail_from_name: "bskypds.pro"
+pds_signup_mail_token_ttl_hours: 24
+
 # Billing — pick one (stripe is the default). Per-environment keys are
 # external; they must be supplied via host_vars / ansible-vault.
 pds_signup_billing_provider: "stripe"
@@ -172,7 +220,11 @@ pds_signup_billing_paddle_webhook_secret: ""
 # a new tenant's PDS deployment. URL points at AWX, an ansible runner, or
 # (for the hybrid model) a queue that an operator approves.
 pds_signup_provisioning_runner_url: ""
-pds_signup_provisioning_hmac_secret: "{{ '%s' | format(sgc_pgsk) | password_hash('sha512', 'pds-signup.provisioning-hmac', rounds=655555) | to_uuid }}"
+# SAME derivation as pds_provisioning_runner_hmac_secret (group_vars,
+# salts pdsprov.hm1 + pdsprov.hm2). Two concatenated derivations → 64 hex
+# (32 bytes), the runner's required minimum. The two services derive the
+# secret independently from sgc_pgsk so it never crosses a wire.
+pds_signup_provisioning_hmac_secret: "{{ ('%s' | format(sgc_pgsk) | password_hash('sha512', 'pdsprov.hm1', rounds=655555) | to_uuid | replace('-', '')) ~ ('%s' | format(sgc_pgsk) | password_hash('sha512', 'pdsprov.hm2', rounds=655555) | to_uuid | replace('-', '')) }}"
 pds_signup_provisioning_callback_path: "/api/v1/provisioning/callback"
 
 # Cloudflare — used for DNS-01 ACME (wildcard certs) and creating per-tenant

@@ -1,0 +1,25 @@
+{# SPDX-FileCopyrightText: 2026 P3X-118
+   SPDX-License-Identifier: AGPL-3.0-or-later #}
+http:
+  addr: "{{ pds_provisioning_runner_listen_addr }}"
+
+hmac:
+  secret_file: "/etc/pds-provisioning-runner/secrets/hmac"
+
+ansible:
+  playbook_dir: "{{ pds_provisioning_runner_playbook_container_path }}"
+  inventory: "inventory/hosts"
+  setup: "setup.yml"
+  tenants_file: "{{ pds_provisioning_runner_tenants_file }}"
+  target: "{{ pds_provisioning_runner_ansible_target }}"
+  limit: "{{ pds_provisioning_runner_ansible_limit }}"
+  tags: "{{ pds_provisioning_runner_ansible_tags }}"
+  vault_password_file: "/etc/pds-provisioning-runner/secrets/vault-password"
+  ssh_private_key: "/etc/pds-provisioning-runner/secrets/ssh-key"
+
+authentik:
+  container: "{{ pds_provisioning_runner_authentik_container }}"
+
+callback:
+  base_url: "{{ pds_provisioning_runner_callback_base_url }}"
+  path: "{{ pds_provisioning_runner_callback_path }}"

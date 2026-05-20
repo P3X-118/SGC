@@ -1,0 +1,26 @@
+---
+- name: Ensure eagledrive base directory exists
+  ansible.builtin.file:
+    path: "{{ eagledrive_base_path }}"
+    state: directory
+    mode: "0750"
+
+- name: Clone/update eagledrive repo
+  ansible.builtin.git:
+    repo: "{{ eagledrive_repo_url }}"
+    dest: "{{ eagledrive_base_path }}/src"
+    version: "{{ eagledrive_repo_version }}"
+    force: true
+
+- name: Render .env for compose
+  ansible.builtin.template:
+    src: env.j2
+    dest: "{{ eagledrive_base_path }}/src/.env"
+    mode: "0600"
+
+- name: Build and (re)start the eagledrive stack
+  community.docker.docker_compose_v2:
+    project_src: "{{ eagledrive_base_path }}/src"
+    state: present
+    build: always
+    pull: missing

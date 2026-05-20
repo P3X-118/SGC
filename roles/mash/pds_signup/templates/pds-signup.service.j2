@@ -18,6 +18,24 @@ Environment="HOME={{ sysd_docker_unit_home_path }}"
 ExecStartPre=-{{ sysd_docker_host_sh }} -c '{{ sysd_docker_host_command }} stop -t {{ pds_signup_container_stop_grace_time_seconds }} {{ pds_signup_identifier }} 2>/dev/null || true'
 ExecStartPre=-{{ sysd_docker_host_sh }} -c '{{ sysd_docker_host_command }} rm {{ pds_signup_identifier }} 2>/dev/null || true'
 
+{% if pds_signup_database_auto_migrate | bool %}
+# Apply any unapplied SQL migrations as the service DB user before the
+# server starts. Idempotent (the migrator tracks applied filenames in a
+# schema_migrations table). Running as the service user — not root —
+# guarantees every schema object created here is owned by that user.
+ExecStartPre={{ sysd_docker_host_command }} run \
+      --rm \
+      --user={{ pds_signup_uid }}:{{ pds_signup_gid }} \
+      --cap-drop=ALL \
+      --read-only \
+      --tmpfs=/tmp:rw,noexec,nosuid,size=20m \
+      --network={{ postgres_container_network }} \
+      --mount type=bind,src={{ pds_signup_etc_path }}/config.yaml,dst=/etc/pds-signup/config.yaml,ro \
+      --mount type=bind,src={{ pds_signup_secrets_path }},dst=/etc/pds-signup/secrets,ro \
+      {{ pds_signup_container_image }} \
+      migrate --config /etc/pds-signup/config.yaml
+{% endif %}
+
 ExecStartPre={{ sysd_docker_host_command }} create \
       --rm \
       --name={{ pds_signup_identifier }} \
@@ -45,6 +63,9 @@ ExecStartPre={{ sysd_docker_host_command }} create \
       --mount type=bind,src={{ pds_signup_etc_path }}/config.yaml,dst=/etc/pds-signup/config.yaml,ro \
       --mount type=bind,src={{ pds_signup_secrets_path }},dst=/etc/pds-signup/secrets,ro \
       --mount type=bind,src={{ pds_signup_state_path }},dst=/etc/pds-signup/state \
+      {% for arg in pds_signup_container_extra_arguments %}
+      {{ arg }} \
+      {% endfor %}
       {{ pds_signup_container_image }} \
       --config /etc/pds-signup/config.yaml
 

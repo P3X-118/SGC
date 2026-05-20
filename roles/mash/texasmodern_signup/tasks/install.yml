@@ -1,0 +1,33 @@
+---
+- name: Ensure compose directory exists
+  ansible.builtin.file:
+    path: "{{ texasmodern_signup_compose_path }}"
+    state: directory
+    mode: "0755"
+
+- name: Render docker-compose.yml
+  ansible.builtin.template:
+    src: docker-compose.yml.j2
+    dest: "{{ texasmodern_signup_compose_path }}/docker-compose.yml"
+    mode: "0644"
+    backup: true
+  register: texasmodern_signup_compose_rendered
+
+- name: Render .env
+  ansible.builtin.template:
+    src: env.j2
+    dest: "{{ texasmodern_signup_compose_path }}/.env"
+    mode: "0600"
+    backup: true
+  register: texasmodern_signup_env_rendered
+
+- name: (Re)start the texasmodern_signup stack
+  community.docker.docker_compose_v2:
+    project_src: "{{ texasmodern_signup_compose_path }}"
+    state: present
+    # Don't rebuild web/api/caddy on every apply — those images are
+    # built out-of-band when their source under /opt/tmw/{api,web} is
+    # updated. `pull: missing` still ensures the pinned authentik
+    # proxy / postgres images get pulled the first time.
+    build: never
+    pull: missing

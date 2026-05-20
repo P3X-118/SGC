@@ -21,10 +21,10 @@ defaults:
 reserved_slugs: {{ pds_signup_reserved_slugs | to_json }}
 
 plans:
-  starter:
-    price_cents: {{ pds_signup_plans.starter.price_cents }}
-    max_accounts: {{ pds_signup_plans.starter.max_accounts }}
-    max_storage_gb: {{ pds_signup_plans.starter.max_storage_gb }}
+  community:
+    price_cents: {{ pds_signup_plans.community.price_cents }}
+    max_accounts: {{ pds_signup_plans.community.max_accounts }}
+    max_storage_gb: {{ pds_signup_plans.community.max_storage_gb }}
   pro:
     price_cents: {{ pds_signup_plans.pro.price_cents }}
     max_accounts: {{ pds_signup_plans.pro.max_accounts }}
@@ -35,6 +35,14 @@ plans:
     max_storage_gb: {{ pds_signup_plans.enterprise.max_storage_gb | default('null') }}
 
 oauth:
+{% if pds_signup_oauth_oidc_enabled | bool %}
+  oidc:
+    issuer_url: "{{ pds_signup_oauth_oidc_issuer_url }}"
+    client_id: "{{ pds_signup_oauth_oidc_client_id }}"
+    client_secret_file: "/etc/pds-signup/secrets/oidc-client-secret"
+    callback_url: "{{ pds_signup_base_url }}/auth/oidc/callback"
+    scopes: {{ pds_signup_oauth_oidc_scopes | to_json }}
+{% endif %}
 {% if pds_signup_oauth_google_enabled | bool %}
   google:
     client_id: "{{ pds_signup_oauth_google_client_id }}"
@@ -75,6 +83,14 @@ oauth:
     client_secret_file: "/etc/pds-signup/secrets/tiktok-client-secret"
     callback_url: "{{ pds_signup_base_url }}/auth/tiktok/callback"
 {% endif %}
+
+mail:
+  enabled: {{ pds_signup_mail_enabled | bool | string | lower }}
+  smtp_host: "{{ pds_signup_mail_smtp_host }}"
+  smtp_port: {{ pds_signup_mail_smtp_port }}
+  from_address: "{{ pds_signup_mail_from_address }}"
+  from_name: "{{ pds_signup_mail_from_name }}"
+  token_ttl_hours: {{ pds_signup_mail_token_ttl_hours }}
 
 billing:
   provider: "{{ pds_signup_billing_provider }}"

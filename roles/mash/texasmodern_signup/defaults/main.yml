@@ -1,0 +1,87 @@
+---
+# SGC role: texasmodern_signup
+#
+# Manages the texasmodern-signup.eagledrive.live AWS EC2 stack: Caddy
+# (TLS + forward_auth), Expo web bundle (nginx), Fastify API, Postgres,
+# and an Authentik proxy Outpost that connects OUT to the shared
+# Authentik on bskypds.pro over the SGC VPN mesh.
+#
+# Scope is intentionally narrow: this role owns
+#   /opt/tmw/infra/aws/docker-compose.yml
+#   /opt/tmw/infra/aws/.env
+# and runs `docker compose up -d`. The application source under
+# /opt/tmw/{api,web,caddy,...} is rsync'd in out-of-band — the role
+# does NOT clone or modify it. See [[project-tmw-authentik-outpost]] in
+# claude memory for why this scope was chosen.
+
+texasmodern_signup_enabled: false
+
+# Filesystem layout (mirrors what's already on the EC2; do not change
+# without coordinating with the team that places the source tree).
+texasmodern_signup_base_path: /opt/tmw
+texasmodern_signup_compose_path: "{{ texasmodern_signup_base_path }}/infra/aws"
+
+# Public-facing hostname (Caddy serves TLS for this; Cloudflare-proxied
+# orange-cloud, DNS-01 via the cloudflare token below).
+texasmodern_signup_hostname: "texasmodern-signup.eagledrive.live"
+
+# Caddy ACME contact.
+texasmodern_signup_caddy_email: ""
+
+# Cloudflare API token (Zone:DNS:Edit + Zone:Zone:Read on
+# eagledrive.live) — used by caddy-dns/cloudflare for DNS-01.
+# REQUIRED. Provide via vault.
+texasmodern_signup_cloudflare_api_token: ""
+
+# CORS: the Fastify API only accepts requests from the public origin.
+texasmodern_signup_cors_origins: "https://{{ texasmodern_signup_hostname }}"
+
+# Expo bundle is served at the site root, so the web app talks to /api
+# (relative) — leaving this empty mirrors the live deploy.
+texasmodern_signup_expo_public_api_url: ""
+
+# Postgres (compose-managed, single-host).
+texasmodern_signup_postgres_user: "tmw"
+texasmodern_signup_postgres_db: "tmw"
+# REQUIRED. Provide via vault. Cannot be silently rotated — the
+# database is initialized with this value and pg_authid holds it;
+# changing it without an ALTER USER will break the api container.
+texasmodern_signup_postgres_password: ""
+
+# ntfy push notifications. Empty NTFY_BASE_URL makes the API's
+# publish() a no-op, so the form stays functional even before ntfy is
+# reachable.
+texasmodern_signup_ntfy_base_url: "https://ntfy.eagledrive.live"
+# REQUIRED when NTFY_BASE_URL is set. Provide via vault.
+texasmodern_signup_ntfy_auth_token: ""
+texasmodern_signup_ntfy_topic_signup: "tmw-signup"
+texasmodern_signup_ntfy_topic_view: "tmw-view"
+
+# Authentik proxy Outpost.
+# Server-side provisioning lives on bskypds.pro (see
+# texasmodern_authentik_* vars + provision-texasmodern.py). The token
+# below is the Outpost API token printed by that script — paste it
+# into vault after a fresh provisioning run.
+#
+# The container reaches the server via the VPN mesh (extra_hosts pins
+# auth.eagledrive.live to bskypds's mesh IP). Public 128.254.161.222
+# is not reliably reachable from this EC2.
+#
+# IMPORTANT: pin the proxy image to the EXACT patch version of the
+# Authentik server on bskypds.pro. The floating :YYYY.MM tag drifts
+# ahead and a newer outpost will reject the server's API response
+# (schema mismatch → "no value given for required property
+# assigned_backchannel_application_slug" crash-loop). See
+# [[reference-authentik-outpost-version-pinning]].
+texasmodern_signup_authentik_host: "https://auth.eagledrive.live"
+texasmodern_signup_authentik_proxy_image: "ghcr.io/goauthentik/proxy"
+texasmodern_signup_authentik_proxy_image_tag: "2025.10.3"
+# REQUIRED. Provide via vault.
+texasmodern_signup_authentik_outpost_token: ""
+
+# Mesh IP of the Authentik server (bskypds.pro on the SGC overlay).
+# Used as an extra_hosts entry inside the authentik-proxy container so
+# DNS for auth.eagledrive.live resolves to the mesh, not the (broken)
+# public path. Traefik on bskypds serves the LE cert for that hostname
+# on the internal address, so TLS verification stays on.
+texasmodern_signup_authentik_mesh_ip: "169.254.0.127"

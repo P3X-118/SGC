@@ -57,11 +57,10 @@
 #  version: v4.37.5-10
 #  name: authelia
 #  activation_prefix: authelia_
-#- src: git+https://github.com/P3X-118/ansible-role-authentik.git
-#  version: v2025.10.3-0
-#  name: authentik
-#  activation_prefix: authentik_
-# prolly set this up
+- src: git+https://github.com/P3X-118/ansible-role-authentik.git
+  version: v2025.10.3-0
+  name: authentik
+  activation_prefix: authentik_
 #- src: git+https://github.com/spatterIight/ansible-role-autobrr.git
 #  version: v1.71.0-0
 #  name: autobrr
@@ -555,7 +554,7 @@
 #  name: overseerr
 #  activation_prefix: overseerr_
 - src: git+https://github.com/P3X-118/okast-ar.git
-  version: v0.2.3-7
+  version: v0.2.3-8
   name: owncast
   activation_prefix: owncast_
 #- src: git+https://github.com/P3X-118/ansible-role-oxitraffic.git
@@ -591,6 +590,11 @@
 # GitHub. No requirements.yml entry needed; setup.yml references it as
 # `mash/pds_signup` directly.
 # /role-specific:pds_signup
+# role-specific:pds_provisioning_runner
+# pds_provisioning_runner is a LOCAL role at roles/mash/pds_provisioning_runner/
+# — not fetched from GitHub. setup.yml references it as
+# `mash/pds_provisioning_runner` directly.
+# /role-specific:pds_provisioning_runner
 - src: git+https://github.com/P3X-118/ansible-role-peertube.git
   version: v7.2.3-5
   name: peertube
@@ -776,7 +780,7 @@
   name: ssh
   activation_prefix: system_security_ssh_
 - src: git+https://github.com/P3X-118/stargate-ar.git
-  version: 1.10.3-0
+  version: v1.10.3-0
   name: stargate
   activation_prefix: stargate_
 #- src: git+https://seed.radicle.garden/z4Ki52caKbH1y9jFNdKzQnc8WH1Jd.git

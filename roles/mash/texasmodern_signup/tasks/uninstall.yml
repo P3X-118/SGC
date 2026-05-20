@@ -1,0 +1,6 @@
+---
+- name: Stop and remove the texasmodern_signup stack
+  community.docker.docker_compose_v2:
+    project_src: "{{ texasmodern_signup_compose_path }}"
+    state: absent
+  failed_when: false

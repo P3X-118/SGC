@@ -1,0 +1,15 @@
+---
+galaxy_info:
+  author: oneill
+  description: texasmodern_signup — Texas Modern Waste signup intake stack on its own EC2, gated by an Authentik proxy outpost
+  company: SGC
+  license: AGPL-3.0-or-later
+  min_ansible_version: "2.14"
+  platforms:
+    - name: Ubuntu
+      versions:
+        - jammy
+        - noble
+  categories:
+    - web
+dependencies: []

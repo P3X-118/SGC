@@ -1,0 +1,22 @@
+---
+- name: Perform texasmodern_signup installation tasks
+  when: texasmodern_signup_enabled | bool
+  tags:
+    - setup-all
+    - setup-texasmodern_signup
+    - install-all
+    - install-texasmodern_signup
+  block:
+    - name: Validate texasmodern_signup configuration
+      ansible.builtin.include_tasks: "{{ role_path }}/tasks/validate_config.yml"
+    - name: Install texasmodern_signup
+      ansible.builtin.include_tasks: "{{ role_path }}/tasks/install.yml"
+
+- name: Perform texasmodern_signup uninstallation tasks
+  when: not texasmodern_signup_enabled | bool
+  tags:
+    - setup-all
+    - setup-texasmodern_signup
+  block:
+    - name: Uninstall texasmodern_signup
+      ansible.builtin.include_tasks: "{{ role_path }}/tasks/uninstall.yml"

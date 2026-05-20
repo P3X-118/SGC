@@ -1,0 +1,80 @@
+---
+- name: Ensure pds-provisioning-runner paths exist
+  ansible.builtin.file:
+    path: "{{ item.path }}"
+    state: directory
+    owner: "{{ pds_provisioning_runner_uid }}"
+    group: "{{ pds_provisioning_runner_gid }}"
+    mode: "{{ item.mode }}"
+  loop:
+    - { path: "{{ pds_provisioning_runner_base_path }}",            mode: "0755" }
+    - { path: "{{ pds_provisioning_runner_etc_path }}",             mode: "0750" }
+    - { path: "{{ pds_provisioning_runner_secrets_path }}",         mode: "0700" }
+    - { path: "{{ pds_provisioning_runner_state_path }}",           mode: "0750" }
+    - { path: "{{ pds_provisioning_runner_playbook_host_path }}",   mode: "0750" }
+
+- name: Write HMAC secret (shared with pds-signup)
+  ansible.builtin.copy:
+    dest: "{{ pds_provisioning_runner_secrets_path }}/hmac"
+    content: "{{ pds_provisioning_runner_hmac_secret }}"
+    owner: "{{ pds_provisioning_runner_uid }}"
+    group: "{{ pds_provisioning_runner_gid }}"
+    mode: "0400"
+  no_log: true
+  notify: restart pds-provisioning-runner
+
+- name: Write vault password (operator-supplied via host_vars / vault.yml)
+  ansible.builtin.copy:
+    dest: "{{ pds_provisioning_runner_secrets_path }}/vault-password"
+    content: "{{ pds_provisioning_runner_vault_password }}"
+    owner: "{{ pds_provisioning_runner_uid }}"
+    group: "{{ pds_provisioning_runner_gid }}"
+    mode: "0400"
+  no_log: true
+  when: pds_provisioning_runner_vault_password | length > 0
+  notify: restart pds-provisioning-runner
+
+- name: Write SSH private key (operator-supplied)
+  ansible.builtin.copy:
+    dest: "{{ pds_provisioning_runner_secrets_path }}/ssh-key"
+    content: "{{ pds_provisioning_runner_ssh_private_key }}"
+    owner: "{{ pds_provisioning_runner_uid }}"
+    group: "{{ pds_provisioning_runner_gid }}"
+    mode: "0400"
+  no_log: true
+  when: pds_provisioning_runner_ssh_private_key | length > 0
+  notify: restart pds-provisioning-runner
+
+- name: Render runner config.yaml
+  ansible.builtin.template:
+    src: "{{ role_path }}/templates/config.yaml.j2"
+    dest: "{{ pds_provisioning_runner_etc_path }}/config.yaml"
+    owner: "{{ pds_provisioning_runner_uid }}"
+    group: "{{ pds_provisioning_runner_gid }}"
+    mode: "0640"
+  notify: restart pds-provisioning-runner
+
+- name: Render runner systemd unit
+  ansible.builtin.template:
+    src: "{{ role_path }}/templates/pds-provisioning-runner.service.j2"
+    dest: "/etc/systemd/system/{{ pds_provisioning_runner_identifier }}.service"
+    mode: "0644"
+  notify: restart pds-provisioning-runner
+
+- name: Pull pds-provisioning-runner container image
+  community.docker.docker_image:
+    name: "{{ pds_provisioning_runner_container_image }}"
+    source: pull
+    force_source: false
+  when: not (pds_provisioning_runner_container_image_self_build | bool)
+
+- name: Ensure pds-provisioning-runner docker network exists
+  community.docker.docker_network:
+    name: "{{ pds_provisioning_runner_container_network }}"
+    driver: bridge
+
+- name: Ensure pds-provisioning-runner service is enabled
+  ansible.builtin.systemd:
+    name: "{{ pds_provisioning_runner_identifier }}.service"
+    enabled: true
+    daemon_reload: true

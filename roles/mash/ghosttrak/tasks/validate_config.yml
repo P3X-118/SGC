@@ -1,0 +1,17 @@
+---
+- name: Fail if required ghost-trak settings are not defined
+  ansible.builtin.fail:
+    msg: "You must set `{{ item }}` to use the ghost-trak role."
+  when: "vars[item] == '' or vars[item] is none"
+  with_items:
+    - ghosttrak_hostname
+    - ghosttrak_uid
+    - ghosttrak_gid
+
+- name: Fail if ghost-trak source path on controller does not exist
+  ansible.builtin.stat:
+    path: "{{ ghosttrak_source_path_on_controller }}/Dockerfile"
+  delegate_to: localhost
+  become: false
+  register: ghosttrak_controller_dockerfile_stat
+  failed_when: not ghosttrak_controller_dockerfile_stat.stat.exists

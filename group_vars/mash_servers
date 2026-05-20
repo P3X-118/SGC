@@ -926,6 +926,11 @@ sgc_sysd_srvc_list_auto_itemized:
     {{ ({'name': (pds_signup_identifier + '.service'), 'priority': 2000, 'groups': ['sgc', 'pds_signup']} if pds_signup_enabled else omit) }}
   # /role-specific:pds_signup
 
+  # role-specific:pds_provisioning_runner
+  - |-
+    {{ ({'name': (pds_provisioning_runner_identifier + '.service'), 'priority': 2100, 'groups': ['sgc', 'pds_provisioning_runner']} if pds_provisioning_runner_enabled else omit) }}
+  # /role-specific:pds_provisioning_runner
+
   # role-specific:peertube
   - |-
     {{ ({'name': (peertube_identifier + '.service'), 'priority': 2000, 'groups': ['sgc', 'peertube']} if peertube_enabled else omit) }}
@@ -3253,9 +3258,16 @@ authentik_base_path: "{{ sgc_playbook_base_path }}/{{ service_directory_prefix }
 authentik_uid: "{{ sgc_playbook_uid }}"
 authentik_gid: "{{ sgc_playbook_gid }}"
 
+# Required by the role (validate_config hard-fails if empty). Derived from
+# sgc_pgsk so it is stable across reinstalls. Salt is <=16 chars, no hyphen
+# (sha512_crypt constraint).
+authentik_secret_key: "{{ '%s' | format(sgc_pgsk) | password_hash('sha512', 'authentik.sk', rounds=655555) | to_uuid | replace('-', '') }}"
+
 authentik_server_systemd_required_services_list_auto: |
   {{
     ([postgres_identifier ~ '.service'] if postgres_enabled and authentik_database_hostname == postgres_connection_hostname else [])
+    +
+    ([redis_identifier ~ '.service'] if redis_enabled | default(false) else [])
   }}
 
 authentik_container_additional_networks_auto: |
@@ -3265,6 +3277,8 @@ authentik_container_additional_networks_auto: |
     ([revproxy_service_networks] if revproxy_service_networks else [])
     +
     ([postgres_container_network] if postgres_enabled and authentik_database_hostname == postgres_connection_hostname and authentik_container_network != postgres_container_network else [])
+    +
+    ([redis_container_network] if redis_enabled | default(false) and authentik_container_network != redis_container_network else [])
   }}
 
 authentik_container_labels_traefik_enabled: "{{ traefik_labels_enabled }}"
@@ -3282,6 +3296,46 @@ authentik_database_port: "{{ postgres_connection_port if postgres_enabled else '
 authentik_database_username: "{{ authentik_identifier }}"
 authentik_database_password: "{{ '%s' | format(sgc_pgsk) | password_hash('sha512', 'db.authentik', rounds=655555) | to_uuid }}"
 # /role-specific:postgres
+
+# role-specific:redis
+# Authentik REQUIRES Redis but this MASH role ships no Redis config and its
+# validate_config BLOCKLISTS the variable names authentik_redis_* (treated
+# as removed/deprecated — defining them hard-fails). So our helper vars use
+# the non-colliding prefix authentik_sgc_redis_*, and Redis reaches Authentik
+# solely via the injected AUTHENTIK_REDIS__* env (the role's additional-env
+# hook). redis role exposes redis_identifier (= container name, on
+# redis_container_network which authentik joins) + redis_connection_password;
+# it has no redis_connection_hostname/port, so we derive them.
+authentik_sgc_redis_hostname: "{{ redis_identifier if redis_enabled | default(false) else '' }}"
+authentik_sgc_redis_port: 6379
+authentik_sgc_redis_password: "{{ redis_connection_password | default('') }}"
+authentik_environment_variables_additional_variables: |
+  AUTHENTIK_REDIS__HOST={{ authentik_sgc_redis_hostname }}
+  AUTHENTIK_REDIS__PORT={{ authentik_sgc_redis_port }}
+  {% if authentik_sgc_redis_password %}AUTHENTIK_REDIS__PASSWORD={{ authentik_sgc_redis_password }}
+  {% endif %}AUTHENTIK_DISABLE_UPDATE_CHECK=true
+  AUTHENTIK_ERROR_REPORTING__ENABLED=false
+# /role-specific:redis
+
+# role-specific:sysd-compat
+# The authentik role is raw upstream MASH and references the devture/MASH
+# systemd-docker-base + playbook-help variable contract. SGC renamed that
+# contract to the sysd_* prefix (see roles/galaxy/systemd_docker_base), so
+# the devture_* names are undefined here. Shim them 1:1 to SGC's sysd_*
+# (literals where SGC has no equivalent). Scoped to the authentik block.
+devture_systemd_docker_base_container_image_pull_method: "{{ sysd_docker_image_pull_method }}"
+devture_systemd_docker_base_container_network_creation_method: "{{ sysd_docker_net_creation_method }}"
+devture_systemd_docker_base_container_networks_driver_options: "{{ sysd_docker_net_driver_opts }}"
+devture_systemd_docker_base_container_networks_driver_options_string: "{{ sysd_docker_net_driver_opts_string }}"
+devture_systemd_docker_base_container_stop_grace_time_seconds: "{{ sysd_docker_stop_grace }}"
+devture_systemd_docker_base_docker_service_name: "{{ sysd_docker_service }}"
+devture_systemd_docker_base_host_command_docker: "{{ sysd_docker_host_command }}"
+devture_systemd_docker_base_host_command_sh: "{{ sysd_docker_host_sh }}"
+devture_systemd_docker_base_ipv6_enabled: false
+devture_systemd_docker_base_systemd_path: "{{ sysd_docker_service_path }}"
+devture_playbook_help_container_retries_count: 30
+devture_playbook_help_container_retries_delay: 2
+# /role-specific:sysd-compat
 
 # role-specific:traefik
 authentik_container_labels_traefik_entrypoints: "{{ traefik_entrypoint_primary }}"
@@ -5749,7 +5803,7 @@ geome_systemd_required_services_list_auto: |
   {{
     ([postgres_identifier ~ '.service'] if postgres_enabled and geome_database_hostname == postgres_connection_hostname else [])
     +
-    ([redis_identifier ~ '.service'] if redis_enabled and geome_redis_hostname == redis_connection_hostname else [])
+    ([redis_identifier ~ '.service'] if redis_enabled | default(false) else [])
   }}
 
 geome_container_additional_networks_auto: |
@@ -5758,7 +5812,7 @@ geome_container_additional_networks_auto: |
     +
     ([postgres_container_network] if postgres_enabled and geome_database_hostname == postgres_connection_hostname and geome_container_network != postgres_container_network else [])
     +
-    ([redis_container_network] if redis_enabled and geome_redis_hostname == redis_connection_hostname else [])
+    ([redis_container_network] if redis_enabled | default(false) and geome_container_network != redis_container_network else [])
   }}
 
 geome_container_labels_traefik_enabled: "{{ traefik_labels_enabled }}"
@@ -5778,10 +5832,10 @@ geome_database_password: "{{ '%s' | format(sgc_pgsk) | password_hash('sha512', '
 # /role-specific:postgres
 
 # role-specific:redis
-geome_redis_hostname: "{{ redis_connection_hostname if redis_enabled else '' }}"
-geome_redis_port: "{{ redis_connection_port if redis_enabled else '6379' }}"
+geome_redis_hostname: "{{ redis_identifier if redis_enabled | default(false) else '' }}"
+geome_redis_port: 6379
 geome_redis_username: ""
-geome_redis_password: ""
+geome_redis_password: "{{ redis_connection_password | default('') }}"
 geome_redis_database: "0"
 # /role-specific:redis
 
@@ -11732,7 +11786,10 @@ pds_signup_gid: "{{ sgc_playbook_gid }}"
 pds_signup_hostname: ""
 
 # Session secret — derived per-host so reinstalls don't invalidate sessions.
-pds_signup_session_secret: "{{ '%s' | format(sgc_pgsk) | password_hash('sha512', 'pds-signup.session', rounds=655555) | to_uuid | replace('-', '') }}"
+# The Go side hex-decodes this and needs >=32 decoded bytes (>=64 hex chars);
+# a single to_uuid is only 32 hex, so concatenate two independent salted
+# derivations. Salts are <=16 chars, no hyphen (sha512_crypt limit).
+pds_signup_session_secret: "{{ ('%s' | format(sgc_pgsk) | password_hash('sha512', 'pdssignup.ss1', rounds=655555) | to_uuid | replace('-', '')) ~ ('%s' | format(sgc_pgsk) | password_hash('sha512', 'pdssignup.ss2', rounds=655555) | to_uuid | replace('-', '')) }}"
 
 # Postgres wiring — auto-pulls hostname/port from the postgres role when
 # both are enabled on the same host.
@@ -11741,13 +11798,13 @@ pds_signup_database_hostname: "{{ postgres_connection_hostname if postgres_enabl
 pds_signup_database_port: "{{ postgres_connection_port if postgres_enabled | default(false) else '5432' }}"
 pds_signup_database_name: "{{ pds_signup_identifier | replace('-', '_') }}"
 pds_signup_database_username: "{{ pds_signup_identifier | replace('-', '_') }}"
-pds_signup_database_password: "{{ '%s' | format(sgc_pgsk) | password_hash('sha512', 'db.pds-signup', rounds=655555) | to_uuid }}"
+pds_signup_database_password: "{{ '%s' | format(sgc_pgsk) | password_hash('sha512', 'db.pdssignup', rounds=655555) | to_uuid }}"
 # /role-specific:postgres
 
 # Provisioning HMAC — signs the {request_id, payload} webhook to the
 # ansible runner. Derived from sgc_pgsk; stable across reinstalls so
 # in-flight requests don't get rejected on signature mismatch.
-pds_signup_provisioning_hmac_secret: "{{ '%s' | format(sgc_pgsk) | password_hash('sha512', 'pds-signup.provisioning-hmac', rounds=655555) | to_uuid }}"
+pds_signup_provisioning_hmac_secret: "{{ '%s' | format(sgc_pgsk) | password_hash('sha512', 'pdssignup.phmac', rounds=655555) | to_uuid }}"
 
 # Default handle domain for tenants without a custom domain.
 pds_signup_handle_root_domain: "{{ pds_signup_hostname }}"
@@ -11789,6 +11846,37 @@ pds_signup_provisioning_runner_url: ""
 #                                                                      #
 ########################################################################
 # /role-specific:pds_signup
+
+# role-specific:pds_provisioning_runner
+########################################################################
+#                                                                      #
+# pds_provisioning_runner                                              #
+#                                                                      #
+########################################################################
+
+pds_provisioning_runner_enabled: false
+pds_provisioning_runner_identifier: "{{ service_id_prefix }}pds-provisioning-runner"
+pds_provisioning_runner_base_path: "{{ sgc_playbook_base_path }}/{{ service_directory_prefix }}pds-provisioning-runner"
+pds_provisioning_runner_uid: "{{ sgc_playbook_uid }}"
+pds_provisioning_runner_gid: "{{ sgc_playbook_gid }}"
+
+pds_provisioning_runner_container_additional_networks_auto: |
+  {{
+    ([revproxy_service_networks] if revproxy_service_networks else [])
+  }}
+
+# HMAC secret derivation — SAME value must be rendered into pds_signup's
+# provisioning HMAC file. Two concatenated derivations give 64 hex chars
+# (32 decoded bytes), the runner's required minimum. Salts are <=16 chars,
+# no hyphen (sha512_crypt limit).
+pds_provisioning_runner_hmac_secret: "{{ ('%s' | format(sgc_pgsk) | password_hash('sha512', 'pdsprov.hm1', rounds=655555) | to_uuid | replace('-', '')) ~ ('%s' | format(sgc_pgsk) | password_hash('sha512', 'pdsprov.hm2', rounds=655555) | to_uuid | replace('-', '')) }}"
+
+########################################################################
+#                                                                      #
+# /pds_provisioning_runner                                             #
+#                                                                      #
+########################################################################
+# /role-specific:pds_provisioning_runner
 
 
 

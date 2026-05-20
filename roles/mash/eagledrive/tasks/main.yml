@@ -1,0 +1,22 @@
+---
+- name: Perform eagledrive installation tasks
+  when: eagledrive_enabled | bool
+  tags:
+    - setup-all
+    - setup-eagledrive
+    - install-all
+    - install-eagledrive
+  block:
+    - name: Validate eagledrive configuration
+      ansible.builtin.include_tasks: "{{ role_path }}/tasks/validate_config.yml"
+    - name: Install eagledrive
+      ansible.builtin.include_tasks: "{{ role_path }}/tasks/install.yml"
+
+- name: Perform eagledrive uninstallation tasks
+  when: not eagledrive_enabled | bool
+  tags:
+    - setup-all
+    - setup-eagledrive
+  block:
+    - name: Uninstall eagledrive
+      ansible.builtin.include_tasks: "{{ role_path }}/tasks/uninstall.yml"
