@@ -1,0 +1,11 @@
+---
+- name: Perform pds-provisioning-runner installation tasks
+  when: pds_provisioning_runner_enabled | bool
+  tags:
+    - setup-all
+    - setup-pds_provisioning_runner
+    - install-all
+    - install-pds_provisioning_runner
+  block:
+    - name: Install pds-provisioning-runner
+      ansible.builtin.include_tasks: "{{ role_path }}/tasks/install.yml"

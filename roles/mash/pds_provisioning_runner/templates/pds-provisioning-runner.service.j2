@@ -1,0 +1,57 @@
+{# SPDX-FileCopyrightText: 2026 P3X-118
+   SPDX-License-Identifier: AGPL-3.0-or-later #}
+
+[Unit]
+Description=pds-provisioning-runner ({{ pds_provisioning_runner_identifier }})
+{% for service in (pds_provisioning_runner_systemd_required_services_list + (pds_provisioning_runner_systemd_required_services_list_auto | from_yaml if pds_provisioning_runner_systemd_required_services_list_auto is string else pds_provisioning_runner_systemd_required_services_list_auto)) %}
+Requires={{ service }}
+After={{ service }}
+{% endfor %}
+{% for service in (pds_provisioning_runner_systemd_wanted_services_list + (pds_provisioning_runner_systemd_wanted_services_list_auto | from_yaml if pds_provisioning_runner_systemd_wanted_services_list_auto is string else pds_provisioning_runner_systemd_wanted_services_list_auto)) %}
+Wants={{ service }}
+{% endfor %}
+
+[Service]
+Type=simple
+Environment="HOME={{ sysd_docker_unit_home_path }}"
+ExecStartPre=-{{ sysd_docker_host_sh }} -c '{{ sysd_docker_host_command }} stop -t {{ pds_provisioning_runner_container_stop_grace_time_seconds }} {{ pds_provisioning_runner_identifier }} 2>/dev/null || true'
+ExecStartPre=-{{ sysd_docker_host_sh }} -c '{{ sysd_docker_host_command }} rm {{ pds_provisioning_runner_identifier }} 2>/dev/null || true'
+
+ExecStartPre={{ sysd_docker_host_command }} create \
+      --rm \
+      --name={{ pds_provisioning_runner_identifier }} \
+      --log-driver=none \
+      --user={{ pds_provisioning_runner_uid }}:{{ pds_provisioning_runner_gid }} \
+      --network={{ pds_provisioning_runner_container_network }} \
+      {% set additional_networks = (pds_provisioning_runner_container_additional_networks_auto | from_yaml if pds_provisioning_runner_container_additional_networks_auto is string else pds_provisioning_runner_container_additional_networks_auto) %}
+      {% for network in (pds_provisioning_runner_container_additional_networks + additional_networks) %}
+      --network-alias={{ pds_provisioning_runner_identifier }} \
+      {% endfor %}
+      --mount type=bind,src={{ pds_provisioning_runner_etc_path }}/config.yaml,dst=/etc/pds-provisioning-runner/config.yaml,ro \
+      --mount type=bind,src={{ pds_provisioning_runner_secrets_path }},dst=/etc/pds-provisioning-runner/secrets,ro \
+      --mount type=bind,src={{ pds_provisioning_runner_state_path }},dst=/var/lib/pds-provisioning-runner \
+      --mount type=bind,src={{ pds_provisioning_runner_playbook_host_path }},dst={{ pds_provisioning_runner_playbook_container_path }} \
+      --mount type=bind,src=/var/run/docker.sock,dst=/var/run/docker.sock \
+      --add-host=bskypds.pro:host-gateway \
+      {% for arg in pds_provisioning_runner_container_extra_arguments %}
+      {{ arg }} \
+      {% endfor %}
+      {{ pds_provisioning_runner_container_image }} \
+      --config /etc/pds-provisioning-runner/config.yaml
+
+{% set additional_networks = (pds_provisioning_runner_container_additional_networks_auto | from_yaml if pds_provisioning_runner_container_additional_networks_auto is string else pds_provisioning_runner_container_additional_networks_auto) %}
+{% for network in (pds_provisioning_runner_container_additional_networks + additional_networks) %}
+ExecStartPre={{ sysd_docker_host_command }} network connect {{ network }} {{ pds_provisioning_runner_identifier }}
+{% endfor %}
+
+ExecStart={{ sysd_docker_host_command }} start --attach {{ pds_provisioning_runner_identifier }}
+
+ExecStop=-{{ sysd_docker_host_sh }} -c '{{ sysd_docker_host_command }} stop -t {{ pds_provisioning_runner_container_stop_grace_time_seconds }} {{ pds_provisioning_runner_identifier }} 2>/dev/null || true'
+ExecStop=-{{ sysd_docker_host_sh }} -c '{{ sysd_docker_host_command }} rm {{ pds_provisioning_runner_identifier }} 2>/dev/null || true'
+
+Restart=always
+RestartSec=30
+SyslogIdentifier={{ pds_provisioning_runner_identifier }}
+
+[Install]
+WantedBy=multi-user.target

@@ -1,0 +1,7 @@
+---
+- name: restart pds-provisioning-runner
+  ansible.builtin.systemd:
+    name: "{{ pds_provisioning_runner_identifier }}.service"
+    daemon_reload: true
+    state: restarted
+  listen: restart pds-provisioning-runner

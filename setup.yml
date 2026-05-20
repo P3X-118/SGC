@@ -747,6 +747,12 @@
       role: mash/pds_signup
     # /role-specific:pds_signup
 
+    # role-specific:pds_provisioning_runner
+    # Local-only role at roles/mash/pds_provisioning_runner/.
+    - when: pds_provisioning_runner_enabled | bool
+      role: mash/pds_provisioning_runner
+    # /role-specific:pds_provisioning_runner
+
     # role-specific:peertube
     - role: galaxy/peertube
     # /role-specific:peertube
@@ -1073,3 +1079,33 @@
     # role-specific:playbook_runtime_messages
     - role: galaxy/playbook_runtime_messages
     # /role-specific:playbook_runtime_messages
+
+# role-specific:pds_per_tenant
+# Per-tenant PDS fan-out: invoke galaxy/pds once per entry in
+# pds_per_tenant_instances (managed by pds-provisioning-runner). The role is
+# already multi-instance-ready — every path/unit/network/traefik label is
+# derived from pds_identifier — so the only new SGC pattern is this loop.
+# Lives in its own play because ansible's `roles:` block doesn't accept
+# `loop:` directives.
+- name: Per-tenant PDS instances
+  hosts: "{{ target | default('mash_servers') }}"
+  become: true
+  gather_facts: false
+  tasks:
+    - name: Provision per-tenant PDS instances
+      when: pds_enabled | bool and (pds_per_tenant_instances | default([]) | length > 0)
+      ansible.builtin.include_role:
+        name: galaxy/pds
+      loop: "{{ pds_per_tenant_instances }}"
+      loop_control:
+        loop_var: tenant
+      vars:
+        pds_identifier: "{{ service_id_prefix }}pds-{{ tenant.slug }}"
+        pds_hostname: "{{ tenant.hostname }}"
+        pds_admin_password_salt: "pds.admin.{{ tenant.slug }}"
+      tags:
+        - setup-all
+        - setup-pds
+        - install-all
+        - install-pds
+# /role-specific:pds_per_tenant

@@ -1,0 +1,68 @@
+---
+# pds-provisioning-runner Ansible Role Defaults
+#
+# Tiny HTTP service that drives end-to-end per-tenant PDS provisioning:
+# HMAC-verifies the request from pds-signup → writes tenants.yml → runs
+# ansible-playbook → bootstraps the tenant admin via goat → mints the
+# Authentik group → POSTs the callback to pds-signup.
+
+pds_provisioning_runner_enabled: false
+
+pds_provisioning_runner_identifier: "{{ service_id_prefix }}pds-provisioning-runner"
+
+pds_provisioning_runner_base_path: "{{ sgc_playbook_base_path }}/{{ service_directory_prefix }}pds-provisioning-runner"
+pds_provisioning_runner_etc_path: "{{ pds_provisioning_runner_base_path }}/etc"
+pds_provisioning_runner_secrets_path: "{{ pds_provisioning_runner_etc_path }}/secrets"
+pds_provisioning_runner_state_path: "{{ pds_provisioning_runner_base_path }}/state"
+
+pds_provisioning_runner_uid: "{{ sgc_playbook_uid }}"
+pds_provisioning_runner_gid: "{{ sgc_playbook_gid }}"
+
+# Container image. Built locally + transferred via `docker save | ssh ...
+# docker load` per the SGC pattern — NEVER pushed to a public registry.
+pds_provisioning_runner_container_image: "docker.io/legitservices/pds-provisioning-runner:0.1.0"
+pds_provisioning_runner_container_image_self_build: false
+pds_provisioning_runner_container_stop_grace_time_seconds: 15
+
+pds_provisioning_runner_container_network: "{{ pds_provisioning_runner_identifier }}"
+pds_provisioning_runner_container_additional_networks: []
+pds_provisioning_runner_container_additional_networks_auto: |
+  {{
+    ([revproxy_service_networks] if revproxy_service_networks else [])
+  }}
+
+pds_provisioning_runner_container_extra_arguments: []
+pds_provisioning_runner_systemd_required_services_list: []
+pds_provisioning_runner_systemd_required_services_list_auto: []
+pds_provisioning_runner_systemd_wanted_services_list: []
+pds_provisioning_runner_systemd_wanted_services_list_auto: []
+
+pds_provisioning_runner_listen_addr: ":8090"
+
+# Operator-managed bind-mount: a working copy of the ~/sgc/SGC playbook tree
+# that the runner shells `ansible-playbook` against. Lives on the host at
+# this path, kept in sync by the operator (Phase 1: manual `rsync`). The
+# runner only writes to `tenants_file` under this tree.
+pds_provisioning_runner_playbook_host_path: "{{ pds_provisioning_runner_base_path }}/sgc-tree"
+pds_provisioning_runner_playbook_container_path: "/sgc-tree"
+pds_provisioning_runner_tenants_file: "inventory/host_vars/bskypds.pro/tenants.yml"
+
+# Target host the runner provisions onto. Must match an entry in the
+# playbook's inventory.
+pds_provisioning_runner_ansible_target: "bskypds.pro"
+pds_provisioning_runner_ansible_limit: "bskypds.pro"
+pds_provisioning_runner_ansible_tags: "install-pds,install-pds_pro"
+
+# Operator-managed secret files (written by the role with the values
+# rendered from host_vars / vault; no sensitive content in this defaults
+# file).
+pds_provisioning_runner_hmac_secret: ""
+pds_provisioning_runner_vault_password: ""
+pds_provisioning_runner_ssh_private_key: ""
+
+# Authentik container the runner shells `ak shell` into.
+pds_provisioning_runner_authentik_container: "pds-authentik-server"
+
+# pds-signup callback endpoint.
+pds_provisioning_runner_callback_base_url: ""
+pds_provisioning_runner_callback_path: "/api/v1/provisioning/callback"

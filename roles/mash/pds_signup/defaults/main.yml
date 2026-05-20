@@ -46,6 +46,8 @@ pds_signup_container_additional_networks_auto: |
     +
     ([(exim_relay_container_network | default('sgc-exim-relay'))] if exim_relay_enabled | default(false) else [])
     +
+    ([pds_provisioning_runner_container_network | default('sgc-pds-provisioning-runner')] if pds_provisioning_runner_enabled | default(false) else [])
+    +
     ([revproxy_service_networks] if revproxy_service_networks else [])
   }}
 
@@ -218,7 +220,11 @@ pds_signup_billing_paddle_webhook_secret: ""
 # a new tenant's PDS deployment. URL points at AWX, an ansible runner, or
 # (for the hybrid model) a queue that an operator approves.
 pds_signup_provisioning_runner_url: ""
-pds_signup_provisioning_hmac_secret: "{{ '%s' | format(sgc_pgsk) | password_hash('sha512', 'pdssignup.phmac', rounds=655555) | to_uuid }}"
+# SAME derivation as pds_provisioning_runner_hmac_secret (group_vars,
+# salts pdsprov.hm1 + pdsprov.hm2). Two concatenated derivations → 64 hex
+# (32 bytes), the runner's required minimum. The two services derive the
+# secret independently from sgc_pgsk so it never crosses a wire.
+pds_signup_provisioning_hmac_secret: "{{ ('%s' | format(sgc_pgsk) | password_hash('sha512', 'pdsprov.hm1', rounds=655555) | to_uuid | replace('-', '')) ~ ('%s' | format(sgc_pgsk) | password_hash('sha512', 'pdsprov.hm2', rounds=655555) | to_uuid | replace('-', '')) }}"
 pds_signup_provisioning_callback_path: "/api/v1/provisioning/callback"
 
 # Cloudflare — used for DNS-01 ACME (wildcard certs) and creating per-tenant

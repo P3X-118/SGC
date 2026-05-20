@@ -926,6 +926,11 @@ sgc_sysd_srvc_list_auto_itemized:
     {{ ({'name': (pds_signup_identifier + '.service'), 'priority': 2000, 'groups': ['sgc', 'pds_signup']} if pds_signup_enabled else omit) }}
   # /role-specific:pds_signup
 
+  # role-specific:pds_provisioning_runner
+  - |-
+    {{ ({'name': (pds_provisioning_runner_identifier + '.service'), 'priority': 2100, 'groups': ['sgc', 'pds_provisioning_runner']} if pds_provisioning_runner_enabled else omit) }}
+  # /role-specific:pds_provisioning_runner
+
   # role-specific:peertube
   - |-
     {{ ({'name': (peertube_identifier + '.service'), 'priority': 2000, 'groups': ['sgc', 'peertube']} if peertube_enabled else omit) }}
@@ -11841,6 +11846,37 @@ pds_signup_provisioning_runner_url: ""
 #                                                                      #
 ########################################################################
 # /role-specific:pds_signup
+
+# role-specific:pds_provisioning_runner
+########################################################################
+#                                                                      #
+# pds_provisioning_runner                                              #
+#                                                                      #
+########################################################################
+
+pds_provisioning_runner_enabled: false
+pds_provisioning_runner_identifier: "{{ service_id_prefix }}pds-provisioning-runner"
+pds_provisioning_runner_base_path: "{{ sgc_playbook_base_path }}/{{ service_directory_prefix }}pds-provisioning-runner"
+pds_provisioning_runner_uid: "{{ sgc_playbook_uid }}"
+pds_provisioning_runner_gid: "{{ sgc_playbook_gid }}"
+
+pds_provisioning_runner_container_additional_networks_auto: |
+  {{
+    ([revproxy_service_networks] if revproxy_service_networks else [])
+  }}
+
+# HMAC secret derivation — SAME value must be rendered into pds_signup's
+# provisioning HMAC file. Two concatenated derivations give 64 hex chars
+# (32 decoded bytes), the runner's required minimum. Salts are <=16 chars,
+# no hyphen (sha512_crypt limit).
+pds_provisioning_runner_hmac_secret: "{{ ('%s' | format(sgc_pgsk) | password_hash('sha512', 'pdsprov.hm1', rounds=655555) | to_uuid | replace('-', '')) ~ ('%s' | format(sgc_pgsk) | password_hash('sha512', 'pdsprov.hm2', rounds=655555) | to_uuid | replace('-', '')) }}"
+
+########################################################################
+#                                                                      #
+# /pds_provisioning_runner                                             #
+#                                                                      #
+########################################################################
+# /role-specific:pds_provisioning_runner
 
 
 
