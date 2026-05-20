@@ -1,0 +1,8 @@
+---
+# No systemd unit is owned by this role — the compose stack is restarted
+# via docker_compose_v2 in tasks/install.yml when the templates change.
+# Handlers kept here for parity with sibling roles in case a future
+# task needs a notify target.
+- name: noop texasmodern_signup
+  ansible.builtin.debug:
+    msg: "texasmodern_signup: handler placeholder"

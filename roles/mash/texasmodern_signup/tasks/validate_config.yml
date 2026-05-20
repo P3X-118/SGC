@@ -1,0 +1,14 @@
+---
+- name: Validate required texasmodern_signup variables
+  ansible.builtin.assert:
+    that:
+      - texasmodern_signup_hostname | length > 0
+      - texasmodern_signup_caddy_email | length > 0
+      - texasmodern_signup_cloudflare_api_token | length > 0
+      - texasmodern_signup_postgres_password | length > 0
+      - texasmodern_signup_authentik_outpost_token | length > 0
+      - texasmodern_signup_authentik_mesh_ip | length > 0
+    fail_msg: >-
+      texasmodern_signup requires: hostname, caddy_email,
+      cloudflare_api_token, postgres_password, authentik_outpost_token,
+      and authentik_mesh_ip. Provide secrets via vault.

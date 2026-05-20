@@ -753,6 +753,16 @@
       role: mash/pds_provisioning_runner
     # /role-specific:pds_provisioning_runner
 
+    # role-specific:texasmodern_signup
+    # Local-only role at roles/mash/texasmodern_signup/.
+    # Owns the docker-compose project on the tmw EC2 that backs
+    # texasmodern-signup.eagledrive.live (Caddy + web + api + db +
+    # Authentik proxy outpost). Server-side Authentik provisioning
+    # for this app lives on bskypds.pro (texasmodern_authentik_*).
+    - when: texasmodern_signup_enabled | bool
+      role: mash/texasmodern_signup
+    # /role-specific:texasmodern_signup
+
     # role-specific:peertube
     - role: galaxy/peertube
     # /role-specific:peertube
