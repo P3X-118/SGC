@@ -1,0 +1,48 @@
+---
+# SGC role: eagledrive.live (city-wide local events platform)
+# Deploys the docker-compose stack from the eagledrive.live repo onto a prod host.
+
+eagledrive_enabled: false
+
+# Where the compose project lives on the host
+eagledrive_base_path: /opt/eagledrive
+eagledrive_repo_url: ""              # set in group_vars; e.g. https://forgejo.example/oneill/eagledrive.live.git
+eagledrive_repo_version: main
+
+# API
+eagledrive_api_port: 4000
+eagledrive_api_log_level: info
+
+# Postgres (compose-managed)
+eagledrive_postgres_user: eagledrive
+eagledrive_postgres_password: ""      # required; provide via vault
+eagledrive_postgres_db: eagledrive
+eagledrive_postgres_port: 5432
+
+# Redis (compose-managed)
+eagledrive_redis_port: 6379
+
+# External SGC service endpoints (override per host)
+eagledrive_ntfy_url: ""
+eagledrive_ntfy_token: ""
+eagledrive_pds_url: ""
+eagledrive_pds_pro_url: ""
+eagledrive_changedetection_url: ""
+eagledrive_changedetection_api_key: ""
+eagledrive_reitti_url: ""
+eagledrive_gun_relay_url: ""
+
+# Authentik OIDC (env-gated soft cutover). Leave the issuer blank to keep
+# the pre-auth behavior (open create, edit_token claim) — the API/app
+# stay dormant on auth. To go live, deploy Authentik (authentik_enabled
+# + authentik_hostname) and create the eagledrive OAuth2 application,
+# then set the issuer + client id/secret here (e.g. via vault):
+#   eagledrive_authentik_issuer:
+#     "https://{{ authentik_hostname }}/application/o/eagledrive/"
+# JWKS + audience derive from the issuer when left blank.
+eagledrive_authentik_issuer: ""
+eagledrive_authentik_jwks_url: ""
+eagledrive_authentik_audience: ""
+eagledrive_authentik_client_id: ""
+eagledrive_authentik_admin_group: "eagledrive-admins"
+eagledrive_authentik_moderator_group: "eagledrive-moderators"

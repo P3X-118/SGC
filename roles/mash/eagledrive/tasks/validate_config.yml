@@ -1,0 +1,14 @@
+---
+- name: Fail when required eagledrive variables are missing
+  ansible.builtin.assert:
+    that:
+      - eagledrive_repo_url | length > 0
+      - eagledrive_postgres_password | length > 0
+      - eagledrive_ntfy_url | length > 0
+      - eagledrive_pds_url | length > 0
+      - eagledrive_changedetection_url | length > 0
+      - eagledrive_reitti_url | length > 0
+      - eagledrive_gun_relay_url | length > 0
+    fail_msg: >-
+      eagledrive role requires: eagledrive_repo_url, eagledrive_postgres_password,
+      and all SGC service endpoints (ntfy/pds/changedetection/reitti/gun_relay).
