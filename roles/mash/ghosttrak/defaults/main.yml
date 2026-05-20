@@ -1,0 +1,99 @@
+---
+# Ghost-trak local role — multi-video overlay SPA.
+# Source lives on the Ansible controller (not pushed to GitHub).
+# Image is built on the target host from synchronized source. No registry push.
+
+ghosttrak_enabled: true
+
+ghosttrak_identifier: ghosttrak
+ghosttrak_base_path: "/{{ ghosttrak_identifier }}"
+
+# Tag the locally-built image. Bump when the source changes meaningfully
+# so the `restart_necessary` logic actually triggers a redeploy.
+ghosttrak_version: "0.0.1"
+
+ghosttrak_uid: ""
+ghosttrak_gid: ""
+
+# The scheme used for serving ghost-trak.
+ghosttrak_scheme: https
+
+# The hostname at which ghost-trak is served (e.g. ghosttrak.sgc.ai).
+ghosttrak_hostname: ""
+
+# Path prefix (must be `/` or not end with a slash). The SPA assumes `/`.
+ghosttrak_path_prefix: /
+
+# --- Source sync (controller -> host) -----------------------------------
+# Absolute path on the *controller* where the ghost-trak source tree lives.
+# This directory must contain Dockerfile, nginx.conf, package.json, src/, etc.
+ghosttrak_source_path_on_controller: /home/oneill/apps/ghost-trak
+
+# rsync exclude patterns when shipping source to the host.
+ghosttrak_source_sync_excludes:
+  - node_modules
+  - dist
+  - .git
+  - .vite
+  - .claude
+  - .DS_Store
+  - "*.log"
+
+# --- Image -------------------------------------------------------------
+# Always self-built locally. No registry pull path.
+ghosttrak_container_image_self_build: true
+ghosttrak_container_image_self_build_name: "ghosttrak:{{ ghosttrak_version }}"
+ghosttrak_container_image_self_build_src_files_path: "{{ ghosttrak_base_path }}/docker-src"
+ghosttrak_container_image_self_build_repo_dockerfile: "Dockerfile"
+
+# Resolved image reference used by the systemd unit.
+ghosttrak_container_image: "{{ ghosttrak_container_image_self_build_name }}"
+
+# --- Networking --------------------------------------------------------
+ghosttrak_container_network: "{{ ghosttrak_identifier }}"
+ghosttrak_container_network_deletion_enabled: true
+
+# "<ip>:<port>" / "<port>" to publish on host, or empty to expose only via Traefik.
+ghosttrak_container_http_host_bind_port: ""
+
+# Port inside the container (nginx listens on 80).
+ghosttrak_container_http_port: 80
+
+# Additional networks the container should join (typically the traefik network).
+ghosttrak_container_additional_networks: "{{ ghosttrak_container_additional_networks_auto + ghosttrak_container_additional_networks_custom }}"
+ghosttrak_container_additional_networks_auto: []
+ghosttrak_container_additional_networks_custom: []
+
+# Extra `docker create` arguments.
+ghosttrak_container_extra_arguments: "{{ ghosttrak_container_extra_arguments_auto + ghosttrak_container_extra_arguments_custom }}"
+ghosttrak_container_extra_arguments_auto: []
+ghosttrak_container_extra_arguments_custom: []
+
+# --- Traefik labels ----------------------------------------------------
+ghosttrak_container_labels_traefik_enabled: true
+ghosttrak_container_labels_traefik_docker_network: "{{ ghosttrak_container_network }}"
+ghosttrak_container_labels_traefik_hostname: "{{ ghosttrak_hostname }}"
+ghosttrak_container_labels_traefik_path_prefix: "{{ ghosttrak_path_prefix }}"
+ghosttrak_container_labels_traefik_rule: "Host(`{{ ghosttrak_container_labels_traefik_hostname }}`){% if ghosttrak_container_labels_traefik_path_prefix != '/' %} && PathPrefix(`{{ ghosttrak_container_labels_traefik_path_prefix }}`){% endif %}"
+ghosttrak_container_labels_traefik_priority: 0
+ghosttrak_container_labels_traefik_entrypoints: web-secure
+ghosttrak_container_labels_traefik_tls: "{{ ghosttrak_container_labels_traefik_entrypoints != 'web' }}"
+ghosttrak_container_labels_traefik_tls_certResolver: default  # noqa var-naming
+
+ghosttrak_container_labels_additional_labels: "{{ ghosttrak_container_labels_additional_labels_auto + ghosttrak_container_labels_additional_labels_custom }}"
+ghosttrak_container_labels_additional_labels_auto: []
+ghosttrak_container_labels_additional_labels_custom: []
+
+# --- systemd ----------------------------------------------------------
+ghosttrak_systemd_required_services_list: "{{ ghosttrak_systemd_required_services_list_default + ghosttrak_systemd_required_services_list_auto + ghosttrak_systemd_required_services_list_custom }}"
+ghosttrak_systemd_required_services_list_default: "{{ [sysd_docker_service] if sysd_docker_service else [] }}"
+ghosttrak_systemd_required_services_list_auto: []
+ghosttrak_systemd_required_services_list_custom: []
+
+ghosttrak_systemd_wanted_services_list: "{{ ghosttrak_systemd_wanted_services_list_default + ghosttrak_systemd_wanted_services_list_auto + ghosttrak_systemd_wanted_services_list_custom }}"
+ghosttrak_systemd_wanted_services_list_default: []
+ghosttrak_systemd_wanted_services_list_auto: []
+ghosttrak_systemd_wanted_services_list_custom: []
+
+# Recomputed during install. Drives the conditional restart.
+ghosttrak_restart_necessary: false

@@ -1,0 +1,18 @@
+---
+galaxy_info:
+  author: Oneill
+  company: SGC
+  role_name: ghosttrak
+  namespace: SGC
+  description: |
+    Ghost-trak — browser-based multi-video overlay with opacity, time-synced
+    to a reference video. Static Vite/React SPA served by nginx.
+  license: MIT
+  min_ansible_version: "2.10"
+  platforms:
+    - name: Debian
+      versions:
+        - all
+    - name: Ubuntu
+      versions:
+        - all

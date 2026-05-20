@@ -1,0 +1,103 @@
+---
+- name: Ensure the Docker Compose v2 plugin is available on the host
+  ansible.builtin.command:
+    cmd: "{{ sysd_docker_host_command }} compose version"
+  register: ghosttrak_compose_version_result
+  changed_when: false
+  failed_when: ghosttrak_compose_version_result.rc != 0
+  # ghost-trak is served via docker compose; the v2 plugin must be present.
+
+- name: Ensure ghost-trak paths exist
+  ansible.builtin.file:
+    path: "{{ item }}"
+    state: directory
+    mode: "0750"
+    owner: "{{ ghosttrak_uid }}"
+    group: "{{ ghosttrak_gid }}"
+  with_items:
+    - "{{ ghosttrak_base_path }}"
+    - "{{ ghosttrak_container_image_self_build_src_files_path }}"
+
+- name: Ensure ghost-trak docker-compose.yml is installed
+  ansible.builtin.template:
+    src: "{{ role_path }}/templates/docker-compose.yml.j2"
+    dest: "{{ ghosttrak_base_path }}/docker-compose.yml"
+    mode: "0640"
+    owner: "{{ ghosttrak_uid }}"
+    group: "{{ ghosttrak_gid }}"
+  register: ghosttrak_compose_file_result
+
+- name: Validate the rendered ghost-trak compose file
+  ansible.builtin.command:
+    cmd: "{{ sysd_docker_host_command }} compose -f {{ ghosttrak_base_path }}/docker-compose.yml config --quiet"
+  changed_when: false
+  # Fails the deploy with a clear error if the template produced invalid
+  # YAML / compose schema, instead of leaving a broken systemd unit.
+
+# Source tree is shipped from the controller — no git/registry pulls.
+- name: Ensure ghost-trak source is synchronized to host
+  ansible.posix.synchronize:
+    src: "{{ ghosttrak_source_path_on_controller }}/"
+    dest: "{{ ghosttrak_container_image_self_build_src_files_path }}/"
+    delete: true
+    recursive: true
+    rsync_opts: "{{ ghosttrak_source_sync_excludes | map('regex_replace', '^', '--exclude=') | list }}"
+  register: ghosttrak_source_sync_result
+
+- name: Ensure ghost-trak source files have correct ownership
+  ansible.builtin.file:
+    path: "{{ ghosttrak_container_image_self_build_src_files_path }}"
+    state: directory
+    recurse: true
+    owner: "{{ ghosttrak_uid }}"
+    group: "{{ ghosttrak_gid }}"
+  when: ghosttrak_source_sync_result.changed
+
+- name: Ensure ghost-trak container image is built
+  community.docker.docker_image:
+    name: "{{ ghosttrak_container_image_self_build_name }}"
+    source: build
+    force_source: "{{ ghosttrak_source_sync_result.changed }}"
+    build:
+      dockerfile: "{{ ghosttrak_container_image_self_build_repo_dockerfile }}"
+      path: "{{ ghosttrak_container_image_self_build_src_files_path }}"
+      pull: true
+  register: ghosttrak_container_image_build_result
+
+- name: Ensure ghost-trak container network is created via community.docker.docker_network
+  when: sysd_docker_net_creation_method == 'ansible-module'
+  community.docker.docker_network:
+    enable_ipv6: "{{ sysd_docker_ipv6_enabled }}"
+    name: "{{ ghosttrak_container_network }}"
+    driver: bridge
+    driver_options: "{{ sysd_docker_net_driver_opts }}"
+  register: ghosttrak_network_creation_result
+
+- name: Ensure ghost-trak container network is created via ansible.builtin.command
+  when: sysd_docker_net_creation_method == 'command'
+  ansible.builtin.command:
+    cmd: >-
+      {{ sysd_docker_host_command }} network create
+      {% if sysd_docker_ipv6_enabled %}--ipv6{% endif %}
+      {{ sysd_docker_net_driver_opts_string }}
+      {{ ghosttrak_container_network }}
+  register: ghosttrak_network_creation_result
+  changed_when: ghosttrak_network_creation_result.rc == 0
+  failed_when: ghosttrak_network_creation_result.rc != 0 and 'already exists' not in ghosttrak_network_creation_result.stderr
+
+- name: Ensure ghost-trak systemd service is present
+  ansible.builtin.template:
+    src: "{{ role_path }}/templates/systemd/ghosttrak.service.j2"
+    dest: "{{ sysd_docker_service_path }}/{{ ghosttrak_identifier }}.service"
+    mode: "0644"
+  register: ghosttrak_systemd_service_result
+
+- name: Determine whether ghost-trak needs a restart
+  ansible.builtin.set_fact:
+    ghosttrak_restart_necessary: >-
+      {{
+        ghosttrak_compose_file_result.changed | default(false)
+        or ghosttrak_systemd_service_result.changed | default(false)
+        or ghosttrak_source_sync_result.changed | default(false)
+        or ghosttrak_container_image_build_result.changed | default(false)
+      }}

@@ -1,0 +1,22 @@
+---
+- name: Perform ghost-trak installation tasks
+  when: ghosttrak_enabled | bool
+  tags:
+    - setup-all
+    - setup-ghosttrak
+    - install-all
+    - install-ghosttrak
+  block:
+    - name: Validate ghost-trak configuration
+      ansible.builtin.include_tasks: "{{ role_path }}/tasks/validate_config.yml"
+    - name: Install ghost-trak
+      ansible.builtin.include_tasks: "{{ role_path }}/tasks/install.yml"
+
+- name: Perform ghost-trak uninstallation tasks
+  when: not ghosttrak_enabled | bool
+  tags:
+    - setup-all
+    - setup-ghosttrak
+  block:
+    - name: Uninstall ghost-trak
+      ansible.builtin.include_tasks: "{{ role_path }}/tasks/uninstall.yml"

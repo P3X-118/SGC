@@ -1,0 +1,36 @@
+[Unit]
+Description=Ghost-trak ({{ ghosttrak_identifier }})
+{% for service in ghosttrak_systemd_required_services_list %}
+Requires={{ service }}
+After={{ service }}
+{% endfor %}
+{% for service in ghosttrak_systemd_wanted_services_list %}
+Wants={{ service }}
+{% endfor %}
+DefaultDependencies=no
+
+[Service]
+# Foreground `compose up` (not `-d`) so systemd sees the unit as actively
+# running — matches the SGC framework's running-check and the original
+# unit's Type=simple semantics. Per-container crash recovery is still
+# handled by the compose service's own `restart: always`.
+Type=simple
+Environment="HOME={{ sysd_docker_unit_home_path }}"
+WorkingDirectory={{ ghosttrak_base_path }}
+
+ExecStartPre=-{{ sysd_docker_host_command }} compose -f {{ ghosttrak_base_path }}/docker-compose.yml down --remove-orphans
+# Force-remove any same-named container compose doesn't own — notably the
+# pre-migration container created by the old `docker create` unit, which
+# `compose down` won't touch and would otherwise cause a name conflict.
+ExecStartPre=-{{ sysd_docker_host_command }} rm -f {{ ghosttrak_identifier }}
+
+ExecStart={{ sysd_docker_host_command }} compose -f {{ ghosttrak_base_path }}/docker-compose.yml up --remove-orphans
+
+ExecStop=-{{ sysd_docker_host_command }} compose -f {{ ghosttrak_base_path }}/docker-compose.yml down
+
+Restart=always
+RestartSec=30
+SyslogIdentifier={{ ghosttrak_identifier }}
+
+[Install]
+WantedBy=multi-user.target

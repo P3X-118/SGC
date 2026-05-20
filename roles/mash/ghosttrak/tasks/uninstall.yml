@@ -1,0 +1,45 @@
+---
+- name: Check existence of ghost-trak systemd service
+  ansible.builtin.stat:
+    path: "{{ sysd_docker_service_path }}/{{ ghosttrak_identifier }}.service"
+  register: ghosttrak_systemd_service_stat
+
+- name: Ensure ghost-trak systemd service is stopped
+  ansible.builtin.systemd:
+    name: "{{ ghosttrak_identifier }}"
+    state: stopped
+    enabled: false
+    daemon_reload: true
+  when: ghosttrak_systemd_service_stat.stat.exists | bool
+
+- name: Ensure ghost-trak systemd service unit is removed
+  ansible.builtin.file:
+    path: "{{ sysd_docker_service_path }}/{{ ghosttrak_identifier }}.service"
+    state: absent
+  when: ghosttrak_systemd_service_stat.stat.exists | bool
+
+# Stopping the unit above ran `docker compose down` via the unit's ExecStop,
+# so containers are already gone; just drop the rendered compose file.
+- name: Ensure ghost-trak docker-compose.yml is removed
+  ansible.builtin.file:
+    path: "{{ ghosttrak_base_path }}/docker-compose.yml"
+    state: absent
+
+- name: Ensure ghost-trak container network is removed (community.docker)
+  when:
+    - sysd_docker_net_creation_method == 'ansible-module'
+    - ghosttrak_container_network_deletion_enabled | bool
+  community.docker.docker_network:
+    name: "{{ ghosttrak_container_network }}"
+    state: absent
+  ignore_errors: true
+
+- name: Ensure ghost-trak container network is removed (command)
+  when:
+    - sysd_docker_net_creation_method == 'command'
+    - ghosttrak_container_network_deletion_enabled | bool
+  ansible.builtin.command:
+    cmd: "{{ sysd_docker_host_command }} network rm {{ ghosttrak_container_network }}"
+  register: ghosttrak_network_rm_result
+  changed_when: ghosttrak_network_rm_result.rc == 0
+  failed_when: ghosttrak_network_rm_result.rc != 0 and 'No such network' not in ghosttrak_network_rm_result.stderr
