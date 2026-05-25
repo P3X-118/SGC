@@ -1,0 +1,89 @@
+// Rendered by the peertube_branding role; piped to `node` inside the PeerTube
+// container. Idempotently applies instance branding via PeerTube's admin API:
+//   - instance.name + shortDescription
+//   - theme.customization colors (PeerTube >= 8 native theming)
+//   - instance.customizations.css
+//   - instance avatar (uploaded from a file already staged in the container)
+//
+// HTTP via curl (child_process), NOT node fetch: PeerTube rejects API calls
+// whose Host header != its configured hostname, and undici/fetch strips the
+// (forbidden) Host header — curl honors `-H "Host: ..."`.
+//
+// Idempotency: a sha256 of {desired config + avatar bytes} is recorded in
+// MARKER; the script no-ops when it matches. PeerTube's config/custom PUT
+// validates the WHOLE object, so we GET it, merge our fields, and PUT it back.
+const { execFileSync } = require('child_process');
+const crypto = require('crypto');
+const fs = require('fs');
+
+const BASE = 'http://localhost:9000';
+const MARKER = '/data/.peertube-branding-applied';
+const HOST = {{ peertube_branding_hostname | to_json }};
+const ADMIN_USER = {{ peertube_branding_admin_username | to_json }};
+const ADMIN_PASS = {{ peertube_branding_admin_password | to_json }};
+const AVATAR_PATH = {{ (peertube_branding_avatar_container_path if peertube_branding_avatar_enabled else '') | to_json }};
+
+const desired = {
+  name: {{ peertube_branding_instance_name | to_json }},
+  shortDescription: {{ peertube_branding_short_description | trim | to_json }},
+  theme: {{ peertube_branding_theme_customization | to_json }},
+  css: {{ peertube_branding_custom_css | to_json }},
+};
+
+function curl(args) {
+  return execFileSync('curl', ['-fsS', '-H', `Host: ${HOST}`, ...args], {
+    encoding: 'utf8',
+    maxBuffer: 10 * 1024 * 1024,
+  });
+}
+
+try {
+  let avatarSha = '';
+  if (AVATAR_PATH && fs.existsSync(AVATAR_PATH)) {
+    avatarSha = crypto.createHash('sha256').update(fs.readFileSync(AVATAR_PATH)).digest('hex');
+  }
+  const want = crypto
+    .createHash('sha256')
+    .update(JSON.stringify({ desired, avatarSha }))
+    .digest('hex');
+  let prev = '';
+  try { prev = fs.readFileSync(MARKER, 'utf8').trim(); } catch (_) { /* no marker yet */ }
+  if (prev === want) { console.log('BRANDING_UNCHANGED'); process.exit(0); }
+
+  // Admin token (password grant against the local OAuth client).
+  const cl = JSON.parse(curl([`${BASE}/api/v1/oauth-clients/local`]));
+  const tok = JSON.parse(curl([
+    '-X', 'POST', `${BASE}/api/v1/users/token`,
+    '--data-urlencode', `client_id=${cl.client_id}`,
+    '--data-urlencode', `client_secret=${cl.client_secret}`,
+    '--data-urlencode', 'grant_type=password',
+    '--data-urlencode', `username=${ADMIN_USER}`,
+    '--data-urlencode', `password=${ADMIN_PASS}`,
+  ]));
+  if (!tok.access_token) { console.error('TOKEN_FAIL ' + JSON.stringify(tok).slice(0, 200)); process.exit(1); }
+  const auth = ['-H', `Authorization: Bearer ${tok.access_token}`];
+
+  // GET → merge → PUT the full config (PeerTube validates the whole object).
+  const cfg = JSON.parse(curl([...auth, `${BASE}/api/v1/config/custom`]));
+  cfg.instance.name = desired.name;
+  cfg.instance.shortDescription = desired.shortDescription;
+  Object.assign(cfg.theme.customization, desired.theme);
+  cfg.instance.customizations = cfg.instance.customizations || {};
+  cfg.instance.customizations.css = desired.css;
+  fs.writeFileSync('/tmp/.gr-cfg.json', JSON.stringify(cfg));
+  curl([...auth, '-X', 'PUT', '-H', 'Content-Type: application/json',
+    '--data', '@/tmp/.gr-cfg.json', `${BASE}/api/v1/config/custom`]);
+
+  // Instance avatar (PeerTube generates the resized variants).
+  if (avatarSha) {
+    curl([...auth, '-X', 'POST', '-F', `avatarfile=@${AVATAR_PATH}`,
+      `${BASE}/api/v1/config/instance-avatar/pick`]);
+  }
+
+  fs.writeFileSync(MARKER, want);
+  console.log('BRANDING_CHANGED');
+} catch (e) {
+  const out = e && e.stderr ? e.stderr.toString() : e && e.message ? e.message : String(e);
+  console.error('ERROR ' + out.slice(0, 300));
+  process.exit(1);
+}

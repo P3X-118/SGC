@@ -1,0 +1,101 @@
+// Rendered by the peertube_oidc role; piped to `node` inside the PeerTube
+// container. Idempotently pushes the auth-openid-connect plugin settings
+// via PeerTube's REST API.
+//
+// HTTP is done via curl (child_process), NOT node's fetch: PeerTube rejects
+// API calls whose Host header doesn't match its configured webserver
+// hostname, and undici/fetch silently strips the (forbidden) Host header —
+// curl honors `-H "Host: ..."`. node is used for the JSON munging + diff,
+// which is the part that's miserable in pure shell.
+const { execFileSync } = require('child_process');
+const crypto = require('crypto');
+const fs = require('fs');
+
+const BASE = 'http://localhost:9000';
+// Idempotency marker. PeerTube marks these settings `private: true`, so it
+// never returns their values via the API (anti-secret-leak) — we can't read
+// current state back to diff. Instead we record a hash of the last applied
+// desired-settings here (in the persistent /data volume) and skip the PUT
+// when it matches. Changing any desired value changes the hash → re-applies.
+const HASH_FILE = '/data/.peertube-oidc-applied';
+const HOST = {{ peertube_oidc_hostname | to_json }};
+const PLUGIN = {{ peertube_oidc_plugin_npm_name | to_json }};
+const ADMIN_USER = {{ peertube_oidc_admin_username | to_json }};
+const ADMIN_PASS = {{ peertube_oidc_admin_password | to_json }};
+
+// Desired plugin settings. Keys are the plugin's registerSettings names.
+const desired = {
+  'auth-display-name': {{ peertube_oidc_auth_display_name | to_json }},
+  'discover-url': {{ peertube_oidc_discover_url | to_json }},
+  'client-id': {{ peertube_oidc_client_id | to_json }},
+  'client-secret': {{ peertube_oidc_client_secret | to_json }},
+  'scope': {{ peertube_oidc_scope | to_json }},
+  'username-property': {{ peertube_oidc_username_property | to_json }},
+  'mail-property': {{ peertube_oidc_mail_property | to_json }},
+  'display-name-property': {{ peertube_oidc_display_name_property | to_json }},
+  'group-property': {{ peertube_oidc_group_property | to_json }},
+{% if peertube_oidc_role_property %}
+  'role-property': {{ peertube_oidc_role_property | to_json }},
+{% endif %}
+};
+
+function curl(args) {
+  return execFileSync('curl', ['-fsS', '-H', `Host: ${HOST}`, ...args], {
+    encoding: 'utf8',
+    maxBuffer: 10 * 1024 * 1024,
+  });
+}
+
+try {
+  // 0. Skip entirely if the desired settings are already applied.
+  const desiredHash = crypto
+    .createHash('sha256')
+    .update(JSON.stringify(desired))
+    .digest('hex');
+  let prevHash = '';
+  try {
+    prevHash = fs.readFileSync(HASH_FILE, 'utf8').trim();
+  } catch (_) {
+    /* no marker yet */
+  }
+  if (prevHash === desiredHash) {
+    console.log('SETTINGS_UNCHANGED');
+    process.exit(0);
+  }
+
+  // 1. Local OAuth client credentials (for the password grant).
+  const cl = JSON.parse(curl([`${BASE}/api/v1/oauth-clients/local`]));
+
+  // 2. Admin access token.
+  const tok = JSON.parse(
+    curl([
+      '-X', 'POST', `${BASE}/api/v1/users/token`,
+      '--data-urlencode', `client_id=${cl.client_id}`,
+      '--data-urlencode', `client_secret=${cl.client_secret}`,
+      '--data-urlencode', 'grant_type=password',
+      '--data-urlencode', `username=${ADMIN_USER}`,
+      '--data-urlencode', `password=${ADMIN_PASS}`,
+    ]),
+  );
+  if (!tok.access_token) {
+    console.error('TOKEN_FAIL ' + JSON.stringify(tok).slice(0, 200));
+    process.exit(1);
+  }
+  const authH = ['-H', `Authorization: Bearer ${tok.access_token}`];
+
+  // 3. PUT the desired settings, then record the hash so subsequent runs
+  // no-op (see HASH_FILE note above).
+  curl([
+    '-X', 'PUT',
+    ...authH,
+    '-H', 'Content-Type: application/json',
+    '--data', JSON.stringify({ settings: desired }),
+    `${BASE}/api/v1/plugins/${PLUGIN}/settings`,
+  ]);
+  fs.writeFileSync(HASH_FILE, desiredHash);
+  console.log('SETTINGS_CHANGED');
+} catch (e) {
+  const out = e && e.stderr ? e.stderr.toString() : e && e.message ? e.message : String(e);
+  console.error('ERROR ' + out.slice(0, 300));
+  process.exit(1);
+}

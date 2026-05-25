@@ -1,0 +1,11 @@
+---
+galaxy_info:
+  role_name: peertube_branding
+  author: SGC
+  description: >-
+    Applies ghostrak instance branding (name, native theme colors, custom CSS,
+    instance avatar) to a PeerTube instance (deployed by galaxy/peertube) via
+    its admin API. Idempotent.
+  license: AGPL-3.0-or-later
+  min_ansible_version: "2.12"
+dependencies: []

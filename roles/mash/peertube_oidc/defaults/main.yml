@@ -1,0 +1,53 @@
+---
+# peertube_oidc — installs + configures the auth-openid-connect plugin on a
+# PeerTube instance deployed by the upstream galaxy/peertube role. Kept
+# separate so the galaxy role stays pristine (it's re-pulled and would
+# overwrite local edits) and so the OIDC layer is a reusable, repeatable
+# step across every PeerTube instance that federates into our Authentik.
+#
+# Unified accounts fall out of pointing this at the same Authentik the
+# other apps use — Authentik's user pool is shared across all OIDC clients.
+
+peertube_oidc_enabled: false
+
+# Container to operate on. Matches the galaxy role's identifier (which the
+# SGC playbook prefixes with service_id_prefix → e.g. training-peertube).
+peertube_oidc_container_name: "{{ peertube_identifier }}"
+
+# The public hostname PeerTube serves on — required as the Host header for
+# the internal API calls (PeerTube rejects requests whose Host doesn't
+# match its configured webserver hostname).
+peertube_oidc_hostname: "{{ peertube_hostname }}"
+
+# HOME must point at a writable dir for the install step: PeerTube's plugin
+# installer shells out to pnpm, whose default store is $HOME/.local — and
+# the container's HOME is `/` (unwritable). /data is owned by the runtime
+# user, so point pnpm's store there.
+peertube_oidc_container_home: "/data"
+
+# Plugin to install. Pin the version for reproducible installs.
+peertube_oidc_plugin_npm_name: "peertube-plugin-auth-openid-connect"
+peertube_oidc_plugin_version: ""  # empty = latest; set "1.1.0" etc. to pin
+
+# --- OIDC provider settings (pushed into the plugin via PeerTube's API) --
+peertube_oidc_discover_url: ""   # required, e.g. https://auth.../o/peertube/.well-known/openid-configuration
+peertube_oidc_client_id: ""      # required
+peertube_oidc_client_secret: ""  # required
+peertube_oidc_scope: "openid email profile groups"
+peertube_oidc_auth_display_name: "SSO"
+
+# Claim → PeerTube field mappings (the plugin's setting keys).
+peertube_oidc_username_property: "preferred_username"
+peertube_oidc_mail_property: "email"
+peertube_oidc_display_name_property: "name"
+peertube_oidc_group_property: "groups"
+# Optional role mapping. Leave role-property empty to give every SSO user
+# the default PeerTube role (User); set it to the claim that carries an
+# integer PeerTube role if you want admins/mods provisioned via SSO.
+peertube_oidc_role_property: ""
+
+# Admin credentials for the one-time settings push (PeerTube password
+# grant). Defaults to the root account the galaxy role seeds; override if
+# the root password was rotated after first login.
+peertube_oidc_admin_username: "root"
+peertube_oidc_admin_password: ""  # required when enabled

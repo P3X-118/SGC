@@ -1,0 +1,64 @@
+// Rendered by the peertube_tiers role; piped to `node` inside the PeerTube
+// container. Idempotently pushes the ghostrak-tiers plugin settings via
+// PeerTube's admin API.
+//
+// HTTP via curl (child_process), NOT node fetch: PeerTube rejects API calls
+// whose Host header != its configured hostname, and undici/fetch strips the
+// (forbidden) Host header. Idempotency: sha256 marker in /data (plugin
+// settings are private and not readable back, same as the OIDC role).
+const { execFileSync } = require('child_process');
+const crypto = require('crypto');
+const fs = require('fs');
+
+const BASE = 'http://localhost:9000';
+const MARKER = '/data/.ghostrak-tiers-applied';
+const HOST = {{ peertube_tiers_hostname | to_json }};
+const PLUGIN = {{ peertube_tiers_plugin_npm_name | to_json }};
+const ADMIN_USER = {{ peertube_tiers_admin_username | to_json }};
+const ADMIN_PASS = {{ peertube_tiers_admin_password | to_json }};
+
+// 'tier-config' is a JSON STRING the plugin parses (registerSetting textarea).
+const desired = {
+  'authentik-url': {{ peertube_tiers_authentik_url | to_json }},
+  'authentik-token': {{ peertube_tiers_authentik_token | to_json }},
+  'cache-ttl': {{ (peertube_tiers_cache_ttl | string) | to_json }},
+  'admin-groups': {{ peertube_tiers_admin_groups | to_json }},
+  'tier-config': {{ (peertube_tiers_matrix | to_json) | to_json }},
+};
+
+function curl(args) {
+  return execFileSync('curl', ['-fsS', '-H', `Host: ${HOST}`, ...args], {
+    encoding: 'utf8', maxBuffer: 10 * 1024 * 1024,
+  });
+}
+
+try {
+  const want = crypto.createHash('sha256').update(JSON.stringify(desired)).digest('hex');
+  let prev = '';
+  try { prev = fs.readFileSync(MARKER, 'utf8').trim(); } catch (_) {}
+  if (prev === want) { console.log('TIERS_SETTINGS_UNCHANGED'); process.exit(0); }
+
+  const cl = JSON.parse(curl([`${BASE}/api/v1/oauth-clients/local`]));
+  const tok = JSON.parse(curl([
+    '-X', 'POST', `${BASE}/api/v1/users/token`,
+    '--data-urlencode', `client_id=${cl.client_id}`,
+    '--data-urlencode', `client_secret=${cl.client_secret}`,
+    '--data-urlencode', 'grant_type=password',
+    '--data-urlencode', `username=${ADMIN_USER}`,
+    '--data-urlencode', `password=${ADMIN_PASS}`,
+  ]));
+  if (!tok.access_token) { console.error('TOKEN_FAIL ' + JSON.stringify(tok).slice(0, 200)); process.exit(1); }
+  const auth = ['-H', `Authorization: Bearer ${tok.access_token}`];
+
+  curl([
+    '-X', 'PUT', ...auth, '-H', 'Content-Type: application/json',
+    '--data', JSON.stringify({ settings: desired }),
+    `${BASE}/api/v1/plugins/${PLUGIN}/settings`,
+  ]);
+  fs.writeFileSync(MARKER, want);
+  console.log('TIERS_SETTINGS_CHANGED');
+} catch (e) {
+  const out = e && e.stderr ? e.stderr.toString() : e && e.message ? e.message : String(e);
+  console.error('ERROR ' + out.slice(0, 300));
+  process.exit(1);
+}

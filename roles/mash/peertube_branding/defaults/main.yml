@@ -1,0 +1,44 @@
+---
+# peertube_branding — applies ghostrak instance branding (name, native theme
+# colors, custom CSS, instance avatar) to a PeerTube instance via its admin
+# API. Separate from galaxy/peertube (kept pristine) and peertube_oidc so the
+# branding layer is a reusable, repeatable step. Idempotent via a sha256
+# marker in /data. No-op unless peertube_branding_enabled.
+peertube_branding_enabled: false
+
+peertube_branding_container_name: "{{ peertube_identifier }}"
+peertube_branding_hostname: "{{ peertube_hostname }}"
+
+# Admin creds for the API push (PeerTube password grant). Default to the same
+# root account peertube_oidc uses.
+peertube_branding_admin_username: "{{ peertube_oidc_admin_username | default('root') }}"
+peertube_branding_admin_password: "{{ peertube_oidc_admin_password | default('') }}"
+
+# Instance identity.
+peertube_branding_instance_name: "Ghostrak Training"
+peertube_branding_short_description: >-
+  Ghostrak training video library — coaches, trainees, recruiting.
+
+# Native theme customization (PeerTube >= 8): ghostrak cyan-on-dark palette.
+peertube_branding_theme_customization:
+  primaryColor: "#22d3ee"
+  foregroundColor: "#e7e9ee"
+  backgroundColor: "#0b0f17"
+  backgroundSecondaryColor: "#15171d"
+  menuForegroundColor: "#e7e9ee"
+  menuBackgroundColor: "#0a0e16"
+  menuBorderRadius: "10px"
+  headerForegroundColor: "#e7e9ee"
+  headerBackgroundColor: "#0b0f17"
+  inputBorderRadius: "8px"
+
+# Extra CSS injected via instance.customizations.css (optional).
+peertube_branding_custom_css: ""
+
+# Instance avatar (the ghost). `src` is a path on the CONTROLLER; it's copied
+# to the host, streamed into the container's writable /data (the rootfs is
+# read-only, so `docker cp` is refused), then uploaded via the API.
+peertube_branding_avatar_enabled: true
+peertube_branding_avatar_src: "/home/oneill/apps/ghostrak/apps/web/public/icon-512.png"
+peertube_branding_avatar_host_tmp: "/tmp/ghostrak-instance-avatar.png"
+peertube_branding_avatar_container_path: "/data/.gr-instance-avatar.png"

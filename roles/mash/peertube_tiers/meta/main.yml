@@ -1,0 +1,12 @@
+---
+galaxy_info:
+  role_name: peertube_tiers
+  author: SGC
+  description: >-
+    Installs and configures peertube-plugin-ghostrak-tiers — role-tiered,
+    hard-isolated video access (password-protected tier channels with
+    group-gated discovery and seamless playback) on a PeerTube instance
+    deployed by galaxy/peertube.
+  license: AGPL-3.0-or-later
+  min_ansible_version: "2.12"
+dependencies: []

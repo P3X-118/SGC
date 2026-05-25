@@ -1,0 +1,117 @@
+---
+- name: Perform PeerTube tiers plugin tasks
+  when: peertube_tiers_enabled | bool
+  tags:
+    - setup-all
+    - setup-peertube_tiers
+    - install-all
+    - install-peertube_tiers
+  block:
+    - name: Validate peertube_tiers config
+      ansible.builtin.assert:
+        that:
+          - peertube_tiers_hostname | length > 0
+          - peertube_tiers_admin_password | length > 0
+          - peertube_tiers_authentik_token | length > 0
+        fail_msg: >-
+          peertube_tiers requires hostname, admin_password and authentik_token
+          when enabled.
+
+    - name: Read desired plugin version (controller package.json)
+      ansible.builtin.set_fact:
+        peertube_tiers_desired_version: "{{ (lookup('file', peertube_tiers_plugin_src ~ '/package.json') | from_json).version }}"
+
+    - name: Read installed plugin version (if any)
+      ansible.builtin.shell:
+        cmd: >-
+          docker exec {{ peertube_tiers_container_name }}
+          cat /data/plugins/node_modules/{{ peertube_tiers_plugin_npm_name }}/package.json
+          2>/dev/null || true
+      register: peertube_tiers_installed_pkg
+      changed_when: false
+
+    - name: Determine installed plugin version
+      ansible.builtin.set_fact:
+        peertube_tiers_installed_version: "{{ (peertube_tiers_installed_pkg.stdout | from_json).version if (peertube_tiers_installed_pkg.stdout | trim | length > 0) else 'none' }}"
+
+    # ---- install/update only when the version changed ----
+    - name: Install or update the plugin
+      when: peertube_tiers_installed_version != peertube_tiers_desired_version
+      block:
+        - name: Copy plugin source from controller to host
+          ansible.builtin.copy:
+            src: "{{ peertube_tiers_plugin_src }}/"
+            dest: "{{ peertube_tiers_plugin_host_dir }}/"
+            mode: "0644"
+            directory_mode: "0755"
+
+        - name: Stage plugin into the container (read-only rootfs → stream into /data)
+          # Basename MUST equal the npm package name — PeerTube derives the
+          # plugin name from the directory, not package.json. docker cp is
+          # refused on the read-only rootfs, so tar-stream into /data.
+          ansible.builtin.shell:
+            cmd: >-
+              tar -C {{ peertube_tiers_plugin_host_dir }} -cf - . |
+              docker exec -i {{ peertube_tiers_container_name }}
+              sh -c 'rm -rf {{ peertube_tiers_plugin_container_dir }} &&
+              mkdir -p {{ peertube_tiers_plugin_container_dir }} &&
+              tar -C {{ peertube_tiers_plugin_container_dir }} -xf -'
+          changed_when: false
+
+        - name: Register the plugin with PeerTube (first install only)
+          # plugin:install registers the plugin in PeerTube's DB and creates
+          # the node_modules entry. Only needed once; on later runs the plugin
+          # is already registered and we just refresh its files below.
+          when: peertube_tiers_installed_version == 'none'
+          ansible.builtin.command:
+            cmd: >-
+              docker exec -e HOME={{ peertube_tiers_container_home }}
+              {{ peertube_tiers_container_name }}
+              npm run plugin:install -- --plugin-path {{ peertube_tiers_plugin_container_dir }}
+          register: peertube_tiers_install
+          changed_when: "'Successful installation' in peertube_tiers_install.stdout"
+
+        - name: Sync plugin source over the installed location (reliable code update)
+          # plugin:install does NOT overwrite an already-installed plugin's
+          # files, so copy the staged source over node_modules directly to
+          # guarantee the running code (and package.json version) match source.
+          ansible.builtin.shell:
+            cmd: >-
+              docker exec {{ peertube_tiers_container_name }} sh -c
+              'mkdir -p /data/plugins/node_modules/{{ peertube_tiers_plugin_npm_name }} &&
+              cp -a {{ peertube_tiers_plugin_container_dir }}/.
+              /data/plugins/node_modules/{{ peertube_tiers_plugin_npm_name }}/'
+          changed_when: true
+
+        - name: Mark restart needed (PeerTube loads plugins at boot)
+          ansible.builtin.set_fact:
+            peertube_tiers_needs_restart: true
+
+    # ---- restart so the running server loads the (re)installed plugin ----
+    - name: Restart PeerTube to load the plugin
+      when: peertube_tiers_needs_restart | default(false) | bool
+      ansible.builtin.command:
+        cmd: docker restart {{ peertube_tiers_container_name }}
+      changed_when: true
+
+    - name: Wait for the PeerTube API to come back up
+      when: peertube_tiers_needs_restart | default(false) | bool
+      ansible.builtin.command:
+        cmd: >-
+          docker exec {{ peertube_tiers_container_name }}
+          curl -fsS -o /dev/null -H "Host: {{ peertube_tiers_hostname }}"
+          http://localhost:9000/api/v1/config
+      register: peertube_tiers_wait
+      until: peertube_tiers_wait.rc == 0
+      retries: 40
+      delay: 4
+      changed_when: false
+
+    # ---- configure plugin settings (idempotent; plugin must be loaded) ----
+    - name: Configure plugin settings (Authentik creds + tier matrix) via the API
+      ansible.builtin.shell:
+        cmd: "docker exec -i {{ peertube_tiers_container_name }} node"
+        stdin: "{{ lookup('template', 'configure-tiers.js.j2') }}"
+      register: peertube_tiers_settings
+      changed_when: "'TIERS_SETTINGS_CHANGED' in peertube_tiers_settings.stdout"
+      failed_when: peertube_tiers_settings.rc != 0

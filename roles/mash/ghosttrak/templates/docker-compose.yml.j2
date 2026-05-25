@@ -44,18 +44,43 @@ services:
     read_only: true
     cap_drop:
       - ALL
-    cap_add:
-      - CHOWN
-      - SETUID
-      - SETGID
-      - NET_BIND_SERVICE
     tmpfs:
-      - /var/cache/nginx
-      - /var/run
       - /tmp
     restart: always
     logging:
       driver: "none"
+    environment:
+      NODE_ENV: production
+      HOST: "0.0.0.0"
+      PORT: "{{ ghosttrak_container_http_port }}"
+      OIDC_ISSUER: "{{ ghosttrak_oidc_issuer }}"
+      OIDC_CLIENT_ID: "{{ ghosttrak_oidc_client_id }}"
+      OIDC_CLIENT_SECRET: "{{ ghosttrak_oidc_client_secret }}"
+      OIDC_REDIRECT_URIS: "{{ ghosttrak_oidc_redirect_uris }}"
+      OIDC_POST_LOGOUT_REDIRECT_URI: "{{ ghosttrak_oidc_post_logout_redirect_uri }}"
+      SESSION_SECRET: "{{ ghosttrak_session_secret }}"
+      REDIS_URL: "redis://{{ ghosttrak_redis_container_name }}:6379"
+      DATABASE_URL: "postgres://{{ ghosttrak_pg_user }}:{{ ghosttrak_pg_password }}@{{ ghosttrak_pg_container_name }}:5432/{{ ghosttrak_pg_db }}"
+      AUTHENTIK_API_URL: "https://{{ ghosttrak_authentik_hostname }}"
+      AUTHENTIK_API_TOKEN: "{{ ghosttrak_authentik_api_token }}"
+      PEERTUBE_INTERNAL_URL: "{{ ghosttrak_peertube_internal_url }}"
+      PEERTUBE_PUBLIC_HOST: "{{ ghosttrak_peertube_public_host }}"
+      PEERTUBE_ROSTER_USER: "{{ ghosttrak_peertube_roster_user }}"
+      PEERTUBE_ROSTER_PASSWORD: "{{ ghosttrak_peertube_roster_password }}"
+      COOKIE_SECURE: "true"
+    depends_on:
+      {{ ghosttrak_redis_container_name }}:
+        condition: service_healthy
+      {{ ghosttrak_pg_container_name }}:
+        condition: service_healthy
+{% if ghosttrak_authentik_mesh_ip %}
+    extra_hosts:
+      # Pin the Authentik hostname to its mesh IP so the BFF's OIDC
+      # discovery + token-exchange traffic egresses over the SGC VPN
+      # mesh, not the (firewalled) public path. TLS verification stays
+      # on — bskypds Traefik serves the real LE cert here too.
+      - "{{ ghosttrak_authentik_hostname }}:{{ ghosttrak_authentik_mesh_ip }}"
+{% endif %}
 {% if ghosttrak_container_http_host_bind_port %}
     ports:
       - "{{ ghosttrak_container_http_host_bind_port }}:{{ ghosttrak_container_http_port }}"
@@ -71,6 +96,123 @@ services:
       - {{ l | to_json }}
 {% endfor %}
 {% endif %}
+
+  # Session store for the Fastify BFF. Internal-only — reachable only by
+  # the ghosttrak container over the default network; no host port, no AUTH
+  # (acceptable because the network is isolated and not host-published).
+  #
+  # Persistence: AOF (everysec) + RDB snapshot. Sessions survive a redis
+  # restart so an ansible reapply or container crash doesn't mass-log-out
+  # everyone. Volume is project-scoped (compose creates+manages it).
+  #
+  # Memory: capped at maxmemory ({{ ghosttrak_redis_maxmemory }}) with
+  # allkeys-lru eviction so the worst case is "oldest sessions get logged
+  # out" instead of OOM-kill.
+  #
+  # Healthcheck: `redis-cli ping`. Gates the BFF's depends_on:service_healthy
+  # so Fastify never starts up against a half-loaded redis.
+  {{ ghosttrak_redis_container_name }}:
+    image: {{ ghosttrak_redis_image | to_json }}
+    container_name: {{ ghosttrak_redis_container_name }}
+    pull_policy: missing
+    read_only: true
+    cap_drop:
+      - ALL
+    # The redis:alpine entrypoint runs as root, does
+    #   find . ! -user redis -exec chown redis '{}' +
+    # then setpriv's to the redis user. With cap_drop=ALL this hits EPERM
+    # because:
+    #   - CHOWN: chown itself
+    #   - SETUID/SETGID: setpriv
+    #   - DAC_OVERRIDE: traversing ./appendonlydir (created mode 0700 by the
+    #     redis user on a previous run) and walking other restrictive dirs.
+    # The entrypoint has `set -e`, so find returning non-zero exits 1 before
+    # redis-server ever launches — manifesting as endless container restarts
+    # and "Permission denied" on appendonlydir in the logs. These four caps
+    # are the minimum to let the entrypoint complete its privilege-drop dance
+    # while still denying everything else (no NET_ADMIN, no SYS_*, etc.).
+    cap_add:
+      - CHOWN
+      - SETUID
+      - SETGID
+      - DAC_OVERRIDE
+    command:
+      - redis-server
+      - --maxmemory
+      - {{ ghosttrak_redis_maxmemory | to_json }}
+      - --maxmemory-policy
+      - {{ ghosttrak_redis_maxmemory_policy | to_json }}
+      - --appendonly
+      - "yes"
+      - --appendfsync
+      - everysec
+      - --save
+      - "60 1"
+      - --dir
+      - /data
+    volumes:
+      - {{ ghosttrak_redis_data_volume }}:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 3s
+      retries: 5
+      start_period: 5s
+    mem_limit: {{ ghosttrak_redis_mem_limit | to_json }}
+    mem_reservation: {{ ghosttrak_redis_mem_reservation | to_json }}
+    restart: always
+    # json-file w/ size cap — diverges from the ghosttrak service's
+    # `driver: none`. Redis startup errors (eviction-policy parse failures,
+    # AOF replay errors, port binds) are exactly the kind of thing you
+    # NEED to see in a postmortem; cost is a few MB of disk.
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "5m"
+        max-file: "2"
+    networks:
+      - default
+
+  # Durable app data for the BFF (facilities, rosters, coach/player
+  # assignments, filming sessions). Internal-only: no host port, reachable
+  # only by the ghosttrak container over the default network. The BFF runs
+  # migrate() on boot; depends_on:service_healthy gates that on Postgres
+  # finishing init.
+  {{ ghosttrak_pg_container_name }}:
+    image: {{ ghosttrak_pg_image | to_json }}
+    container_name: {{ ghosttrak_pg_container_name }}
+    pull_policy: missing
+    restart: always
+    environment:
+      POSTGRES_DB: {{ ghosttrak_pg_db | to_json }}
+      POSTGRES_USER: {{ ghosttrak_pg_user | to_json }}
+      POSTGRES_PASSWORD: {{ ghosttrak_pg_password | to_json }}
+    volumes:
+      - {{ ghosttrak_pg_data_volume }}:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U {{ ghosttrak_pg_user }} -d {{ ghosttrak_pg_db }}"]
+      interval: 10s
+      timeout: 3s
+      retries: 10
+      start_period: 15s
+    mem_limit: {{ ghosttrak_pg_mem_limit | to_json }}
+    mem_reservation: {{ ghosttrak_pg_mem_reservation | to_json }}
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "5m"
+        max-file: "2"
+    networks:
+      - default
+
+volumes:
+  # Persistence for redis session store. Project-scoped (compose owns its
+  # lifecycle); `docker compose down -v` will wipe sessions.
+  {{ ghosttrak_redis_data_volume }}:
+    name: {{ ghosttrak_redis_data_volume }}
+  # Durable Postgres data (app domain). `docker compose down -v` wipes it.
+  {{ ghosttrak_pg_data_volume }}:
+    name: {{ ghosttrak_pg_data_volume }}
 
 networks:
   # Pre-created out of band (the role's docker_network task + the

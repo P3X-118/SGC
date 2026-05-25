@@ -1,0 +1,55 @@
+---
+- name: Perform PeerTube OIDC plugin tasks
+  when: peertube_oidc_enabled | bool
+  tags:
+    - setup-all
+    - setup-peertube_oidc
+    - install-all
+    - install-peertube_oidc
+  block:
+    - name: Validate peertube_oidc config
+      ansible.builtin.assert:
+        that:
+          - peertube_oidc_discover_url | length > 0
+          - peertube_oidc_client_id | length > 0
+          - peertube_oidc_client_secret | length > 0
+          - peertube_oidc_admin_password | length > 0
+        fail_msg: >-
+          peertube_oidc requires discover_url, client_id, client_secret and
+          admin_password to be set when enabled.
+
+    - name: Check whether the OIDC plugin is already installed
+      ansible.builtin.command:
+        cmd: >-
+          docker exec {{ peertube_oidc_container_name }}
+          test -d /data/plugins/node_modules/{{ peertube_oidc_plugin_npm_name }}
+      register: peertube_oidc_plugin_present
+      changed_when: false
+      failed_when: false
+
+    - name: Install the OIDC plugin
+      # HOME override: PeerTube's installer shells out to pnpm, whose default
+      # store ($HOME/.local) is unwritable because the container HOME is `/`.
+      ansible.builtin.command:
+        cmd: >-
+          docker exec -e HOME={{ peertube_oidc_container_home }}
+          {{ peertube_oidc_container_name }}
+          npm run plugin:install --
+          --npm-name {{ peertube_oidc_plugin_npm_name }}{{ ('@' ~ peertube_oidc_plugin_version) if peertube_oidc_plugin_version else '' }}
+      register: peertube_oidc_install
+      changed_when: "'Successful installation' in peertube_oidc_install.stdout"
+      when: peertube_oidc_plugin_present.rc != 0
+
+    - name: Configure the OIDC plugin settings via PeerTube's API
+      # Piped to node /dev/stdin (node 20 ships global fetch). Idempotent:
+      # diffs current vs desired settings, only PUTs on change, emitting
+      # SETTINGS_CHANGED / SETTINGS_UNCHANGED for changed_when.
+      # `node` with no file arg evaluates piped stdin as the program;
+      # `node /dev/stdin` fails when stdin is a pipe (it tries to stat the
+      # fd as a real path → ENOENT).
+      ansible.builtin.shell:
+        cmd: "docker exec -i {{ peertube_oidc_container_name }} node"
+        stdin: "{{ lookup('template', 'configure-oidc.js.j2') }}"
+      register: peertube_oidc_settings
+      changed_when: "'SETTINGS_CHANGED' in peertube_oidc_settings.stdout"
+      failed_when: peertube_oidc_settings.rc != 0

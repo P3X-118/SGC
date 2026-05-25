@@ -1,0 +1,11 @@
+---
+galaxy_info:
+  role_name: peertube_oidc
+  author: SGC
+  description: >-
+    Installs and configures the peertube-plugin-auth-openid-connect plugin on
+    a PeerTube instance (deployed by the upstream galaxy/peertube role),
+    federating it into a shared Authentik for unified accounts.
+  license: AGPL-3.0-or-later
+  min_ansible_version: "2.12"
+dependencies: []

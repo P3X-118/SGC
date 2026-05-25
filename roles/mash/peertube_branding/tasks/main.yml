@@ -1,0 +1,44 @@
+---
+- name: Perform PeerTube branding tasks
+  when: peertube_branding_enabled | bool
+  tags:
+    - setup-all
+    - setup-peertube_branding
+    - install-all
+    - install-peertube_branding
+  block:
+    - name: Validate peertube_branding config
+      ansible.builtin.assert:
+        that:
+          - peertube_branding_hostname | length > 0
+          - peertube_branding_admin_password | length > 0
+        fail_msg: >-
+          peertube_branding requires hostname and admin_password when enabled.
+
+    - name: Copy the instance avatar from the controller to the host
+      ansible.builtin.copy:
+        src: "{{ peertube_branding_avatar_src }}"
+        dest: "{{ peertube_branding_avatar_host_tmp }}"
+        mode: "0644"
+      when: peertube_branding_avatar_enabled | bool
+
+    - name: Stage the avatar inside the container (read-only rootfs → stream into /data)
+      # `docker cp` is refused on a read-only rootfs; stream the bytes through a
+      # process write to the writable /data volume instead.
+      ansible.builtin.shell:
+        cmd: >-
+          docker exec -i {{ peertube_branding_container_name }}
+          sh -c 'cat > {{ peertube_branding_avatar_container_path }}'
+          < {{ peertube_branding_avatar_host_tmp }}
+      changed_when: false
+      when: peertube_branding_avatar_enabled | bool
+
+    - name: Apply branding (name, theme colors, custom CSS, avatar) via PeerTube's API
+      # Piped to bare `node` (reads stdin as the program; `node /dev/stdin`
+      # fails on a pipe). Idempotent: BRANDING_CHANGED / BRANDING_UNCHANGED.
+      ansible.builtin.shell:
+        cmd: "docker exec -i {{ peertube_branding_container_name }} node"
+        stdin: "{{ lookup('template', 'configure-branding.js.j2') }}"
+      register: peertube_branding_apply
+      changed_when: "'BRANDING_CHANGED' in peertube_branding_apply.stdout"
+      failed_when: peertube_branding_apply.rc != 0

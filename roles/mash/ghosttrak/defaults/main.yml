@@ -25,9 +25,9 @@ ghosttrak_hostname: ""
 ghosttrak_path_prefix: /
 
 # --- Source sync (controller -> host) -----------------------------------
-# Absolute path on the *controller* where the ghost-trak source tree lives.
-# This directory must contain Dockerfile, nginx.conf, package.json, src/, etc.
-ghosttrak_source_path_on_controller: /home/oneill/apps/ghost-trak
+# Absolute path on the *controller* where the ghostrak source tree lives.
+# This directory must contain Dockerfile, package.json, apps/web/, apps/api/, etc.
+ghosttrak_source_path_on_controller: /home/oneill/apps/ghostrak
 
 # rsync exclude patterns when shipping source to the host.
 ghosttrak_source_sync_excludes:
@@ -56,8 +56,86 @@ ghosttrak_container_network_deletion_enabled: true
 # "<ip>:<port>" / "<port>" to publish on host, or empty to expose only via Traefik.
 ghosttrak_container_http_host_bind_port: ""
 
-# Port inside the container (nginx listens on 80).
-ghosttrak_container_http_port: 80
+# Port inside the container. Fastify BFF listens on 3001.
+ghosttrak_container_http_port: 3001
+
+# --- BFF / OIDC --------------------------------------------------------
+# Authentik OIDC client config consumed by apps/api at runtime. Mirrors
+# the eagledrive split — issuer + client_id are well-known, the client
+# secret + session secret are derived from sgc_pgsk in host_vars so they
+# remain stable across redeploys but never enter source control.
+ghosttrak_oidc_issuer: "https://auth.ghostrak.app/application/o/ghostrak/"
+ghosttrak_oidc_client_id: "ghostrak"
+ghosttrak_oidc_client_secret: ""  # required; set in host_vars
+# Comma-separated list. The BFF picks the entry matching the incoming
+# request's host so users who start auth on a vanity alias (e.g.
+# go.ghostrak.pro) stay on that host through the callback — their session
+# cookie is host-scoped and a cross-host callback would arrive cookieless.
+# Every entry here must ALSO be registered on the Authentik provider
+# (see provision-ghostrak.py / GHOSTRAK_OIDC_REDIRECTS).
+ghosttrak_oidc_redirect_uris: "{{ ghosttrak_scheme }}://{{ ghosttrak_hostname }}/api/auth/callback"
+ghosttrak_oidc_post_logout_redirect_uri: "{{ ghosttrak_scheme }}://{{ ghosttrak_hostname }}/"
+
+# Signs the session cookie. Must be ≥32 chars. Required; per-host derivation.
+ghosttrak_session_secret: ""
+
+# Mesh IP override for the Authentik hostname. Same pattern as the
+# texasmodern-signup EC2: when this host is on the SGC mesh and the
+# Authentik server (bskypds) is reachable on a 169.254.x.x address, pin
+# `auth.ghostrak.app` to that mesh IP via the container's hosts file so
+# the BFF's outbound OIDC discovery + token-exchange traffic egresses
+# over the mesh instead of the (firewalled) public IP path. TLS verify
+# stays ON — bskypds Traefik serves the real LE cert on the mesh too.
+# Empty = no override (resolve via public DNS only).
+ghosttrak_authentik_mesh_ip: ""
+ghosttrak_authentik_hostname: "auth.ghostrak.app"
+
+# Read-only Authentik API token for the BFF (resolve users by email when
+# assigning coaches/facility-owners). Empty by default; set in host_vars
+# (derived from sgc_pgsk; matches provision-ghostrak-bff-token.py).
+ghosttrak_authentik_api_token: ""
+
+# PeerTube integration for the BFF: it authenticates as the roster service
+# account (ghostrak-roster) to create per-player private channels + upload
+# filming sessions. Reaches PeerTube over the shared traefik network at the
+# internal URL, sending the public Host header (PeerTube rejects mismatched
+# Host). Roster password derived from sgc_pgsk (matches the account password
+# set on the PeerTube side).
+ghosttrak_peertube_internal_url: ""           # e.g. http://training-peertube:9000
+ghosttrak_peertube_public_host: ""            # e.g. training.ghostrak.pro
+ghosttrak_peertube_roster_user: "ghostrak-roster"
+ghosttrak_peertube_roster_password: ""
+
+# --- Redis sidecar (session store) -------------------------------------
+# Internal-only redis on the ghosttrak docker network. AOF + RDB persistence
+# on a named volume so sessions survive a redis restart; LRU eviction caps
+# memory; healthcheck gates the BFF's `depends_on` so Fastify doesn't start
+# pinging a still-loading redis.
+ghosttrak_redis_image: "redis:7.4-alpine"
+ghosttrak_redis_container_name: "{{ ghosttrak_identifier }}-redis"
+ghosttrak_redis_data_volume: "{{ ghosttrak_identifier }}_redis_data"
+# Sized for sessions: each is ~1-2KB, 64MB holds ~30k concurrent sessions.
+# Bump if active user count grows. LRU eviction means we drop oldest first
+# when full, so worst case is some users get logged out — never an OOM.
+ghosttrak_redis_maxmemory: "64mb"
+ghosttrak_redis_maxmemory_policy: "allkeys-lru"
+# Hard cap on the container's own memory (a few MB of headroom above maxmemory).
+ghosttrak_redis_mem_limit: "96m"
+ghosttrak_redis_mem_reservation: "32m"
+
+# Internal-only Postgres on the ghosttrak docker network — durable app data
+# (facilities, rosters, coach/player assignments, filming sessions). No host
+# port; reachable only by the BFF. Password derived from sgc_pgsk so it's
+# stable across redeploys and never hand-managed. Healthcheck gates the BFF's
+# depends_on so Fastify's migrate() never races a still-initializing Postgres.
+ghosttrak_pg_image: "postgres:16-alpine"
+ghosttrak_pg_container_name: "{{ ghosttrak_identifier }}-postgres"
+ghosttrak_pg_data_volume: "{{ ghosttrak_identifier }}_pg_data"
+ghosttrak_pg_db: "ghostrak"
+ghosttrak_pg_user: "ghostrak"
+ghosttrak_pg_password: "{{ (sgc_pgsk ~ '.ghosttrak.pg') | hash('sha256') }}"
+ghosttrak_pg_mem_limit: "256m"
+ghosttrak_pg_mem_reservation: "64m"
 
 # Additional networks the container should join (typically the traefik network).
 ghosttrak_container_additional_networks: "{{ ghosttrak_container_additional_networks_auto + ghosttrak_container_additional_networks_custom }}"

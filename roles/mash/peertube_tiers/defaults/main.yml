@@ -1,0 +1,40 @@
+---
+# peertube_tiers — installs + configures the local peertube-plugin-ghostrak-tiers
+# plugin: role-tiered, hard-isolated video access (password-protected tier
+# channels, group-gated discovery + seamless playback) on a PeerTube instance
+# deployed by galaxy/peertube. Idempotent. No-op unless peertube_tiers_enabled.
+peertube_tiers_enabled: false
+
+peertube_tiers_container_name: "{{ peertube_identifier }}"
+peertube_tiers_hostname: "{{ peertube_hostname }}"
+
+# Admin creds for the settings push (PeerTube password grant). Default to the
+# peertube_oidc ones.
+peertube_tiers_admin_username: "{{ peertube_oidc_admin_username | default('root') }}"
+peertube_tiers_admin_password: "{{ peertube_oidc_admin_password | default('') }}"
+
+# Plugin source (on the CONTROLLER) + staging paths. The container rootfs is
+# read-only, so the source is streamed into the writable /data volume and
+# installed from there with `--plugin-path`.
+peertube_tiers_plugin_npm_name: "peertube-plugin-ghostrak-tiers"
+peertube_tiers_plugin_src: "/home/oneill/apps/ghostrak/peertube-plugin-ghostrak-tiers"
+peertube_tiers_plugin_host_dir: "/tmp/ghostrak-tiers-plugin"
+# Basename MUST equal the npm package name: PeerTube's plugin:install derives
+# the plugin name/type from the directory basename, not package.json.
+peertube_tiers_plugin_container_dir: "/data/peertube-plugin-ghostrak-tiers"
+peertube_tiers_container_home: "/data"
+
+# --- plugin settings (pushed via PeerTube's API) ----------------------------
+# Authentik read-only service-account token (provision-ghostrak-tiers-token.py).
+peertube_tiers_authentik_url: "https://auth.ghostrak.app"
+peertube_tiers_authentik_token: ""   # required when enabled
+peertube_tiers_cache_ttl: 300
+peertube_tiers_admin_groups: "ghostrak-admins"
+
+# channel handle -> { groups: [...] | ["*"], password: "..." }. Compartmentalized:
+# each role sees only its own channel; gr_public is everyone; admins see all.
+peertube_tiers_matrix:
+  gr_showcase: { groups: ["ghostrak-recruiting"], password: "" }
+  gr_training: { groups: ["ghostrak-trainees"], password: "" }
+  gr_coaching: { groups: ["ghostrak-coaches"], password: "" }
+  gr_public: { groups: ["*"] }
