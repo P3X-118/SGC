@@ -1,0 +1,21 @@
+---
+galaxy_info:
+  author: Oneill
+  company: SGC
+  role_name: ghosttrak_dev
+  namespace: SGC
+  description: |
+    Ghostrak DEV hot-reload stack for go.ghostrak.app — a node container running
+    the repo's `yarn dev` (vite HMR + tsx watch) with source bind-mounted from a
+    synced working tree, behind Traefik, with its own dev Postgres + Redis. No
+    built image; edit + re-sync + auto-reload. Sibling of the built-image
+    `ghosttrak` (prod) role.
+  license: MIT
+  min_ansible_version: "2.10"
+  platforms:
+    - name: Debian
+      versions:
+        - all
+    - name: Ubuntu
+      versions:
+        - all

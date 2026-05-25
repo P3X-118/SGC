@@ -1,0 +1,117 @@
+---
+# ghosttrak_dev — hot-reload dev stack for go.ghostrak.app. Single flat task
+# file so tag selection is predictable: the block tags apply to every task, and
+# the source-sync task carries an extra `sync-ghosttrak_dev` tag so the tight
+# edit loop can re-sync (and let vite/tsx hot-reload) WITHOUT a container bounce.
+
+- name: Perform ghosttrak-dev installation tasks
+  when: ghosttrak_dev_enabled | bool
+  tags:
+    - setup-all
+    - setup-ghosttrak_dev
+    - install-all
+    - install-ghosttrak_dev
+    - sync-ghosttrak_dev
+  block:
+    # ---- validation ---------------------------------------------------
+    - name: Fail if required ghosttrak-dev settings are not defined
+      ansible.builtin.fail:
+        msg: "You must set `{{ item }}` to use the ghosttrak_dev role."
+      when: "vars[item] == '' or vars[item] is none"
+      with_items:
+        - ghosttrak_dev_hostname
+        - ghosttrak_dev_uid
+        - ghosttrak_dev_gid
+        - ghosttrak_dev_oidc_client_secret
+        - ghosttrak_dev_session_secret
+        - ghosttrak_dev_traefik_network
+      tags: [setup-ghosttrak_dev, install-ghosttrak_dev]
+
+    - name: Fail if the ghosttrak-dev source tree on the controller is missing
+      ansible.builtin.stat:
+        path: "{{ ghosttrak_dev_src_path_on_controller }}/package.json"
+      delegate_to: localhost
+      become: false
+      register: ghosttrak_dev_controller_src_stat
+      failed_when: not ghosttrak_dev_controller_src_stat.stat.exists
+      tags: [setup-ghosttrak_dev, install-ghosttrak_dev, sync-ghosttrak_dev]
+
+    # ---- paths --------------------------------------------------------
+    - name: Ensure ghosttrak-dev paths exist
+      ansible.builtin.file:
+        path: "{{ item }}"
+        state: directory
+        mode: "0755"
+        owner: "{{ ghosttrak_dev_uid }}"
+        group: "{{ ghosttrak_dev_gid }}"
+      with_items:
+        - "{{ ghosttrak_dev_base_path }}"
+        - "{{ ghosttrak_dev_src_host_path }}"
+      tags: [setup-ghosttrak_dev, install-ghosttrak_dev]
+
+    # ---- source sync (the hot-reload feed) ----------------------------
+    # Ships the working tree to the host's bind-mount source. node_modules is
+    # excluded so the container's installed deps survive (rsync --delete does
+    # not touch excluded paths). This task is independently taggable so the
+    # tight loop re-syncs without re-rendering/restarting anything.
+    - name: Ensure ghosttrak-dev source is synchronized to the host
+      ansible.posix.synchronize:
+        src: "{{ ghosttrak_dev_src_path_on_controller }}/"
+        dest: "{{ ghosttrak_dev_src_host_path }}/"
+        delete: true
+        recursive: true
+        rsync_opts: "{{ ghosttrak_dev_source_sync_excludes | map('regex_replace', '^', '--exclude=') | list }}"
+      register: ghosttrak_dev_source_sync_result
+      tags: [setup-ghosttrak_dev, install-ghosttrak_dev, sync-ghosttrak_dev]
+
+    # ---- compose + systemd unit ---------------------------------------
+    - name: Ensure ghosttrak-dev docker-compose.yml is installed
+      ansible.builtin.template:
+        src: "{{ role_path }}/templates/docker-compose.yml.j2"
+        dest: "{{ ghosttrak_dev_base_path }}/docker-compose.yml"
+        mode: "0640"
+        owner: "{{ ghosttrak_dev_uid }}"
+        group: "{{ ghosttrak_dev_gid }}"
+      register: ghosttrak_dev_compose_file_result
+      tags: [setup-ghosttrak_dev, install-ghosttrak_dev]
+
+    - name: Validate the rendered ghosttrak-dev compose file
+      ansible.builtin.command:
+        cmd: "{{ sysd_docker_host_command }} compose -f {{ ghosttrak_dev_base_path }}/docker-compose.yml config --quiet"
+      changed_when: false
+      tags: [setup-ghosttrak_dev, install-ghosttrak_dev]
+
+    - name: Ensure ghosttrak-dev systemd service is present
+      ansible.builtin.template:
+        src: "{{ role_path }}/templates/systemd/ghosttrak_dev.service.j2"
+        dest: "{{ sysd_docker_service_path }}/{{ ghosttrak_dev_identifier }}.service"
+        mode: "0644"
+      register: ghosttrak_dev_systemd_service_result
+      tags: [setup-ghosttrak_dev, install-ghosttrak_dev]
+
+# Uninstall path (role disabled): stop + remove the unit and stack.
+- name: Perform ghosttrak-dev uninstallation tasks
+  when: not (ghosttrak_dev_enabled | bool)
+  tags:
+    - setup-all
+    - setup-ghosttrak_dev
+  block:
+    - name: Check whether the ghosttrak-dev systemd unit exists
+      ansible.builtin.stat:
+        path: "{{ sysd_docker_service_path }}/{{ ghosttrak_dev_identifier }}.service"
+      register: ghosttrak_dev_unit_stat
+
+    - name: Ensure ghosttrak-dev is stopped + disabled
+      ansible.builtin.systemd:
+        name: "{{ ghosttrak_dev_identifier }}.service"
+        state: stopped
+        enabled: false
+        daemon_reload: true
+      when: ghosttrak_dev_unit_stat.stat.exists | bool
+      failed_when: false
+
+    - name: Ensure the ghosttrak-dev systemd unit is removed
+      ansible.builtin.file:
+        path: "{{ sysd_docker_service_path }}/{{ ghosttrak_dev_identifier }}.service"
+        state: absent
+      when: ghosttrak_dev_unit_stat.stat.exists | bool

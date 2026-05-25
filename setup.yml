@@ -387,6 +387,21 @@
         - install-ghosttrak
     # /role-specific:ghosttrak
 
+    # role-specific:ghosttrak_dev
+    # Hot-reload DEV stack for go.ghostrak.app (sibling of the prod ghosttrak
+    # built-image role). No-op unless ghosttrak_dev_enabled (matches the prod
+    # ghosttrak gate). The role's own uninstall block tears a stack down when
+    # invoked with the flag flipped off.
+    - when: ghosttrak_dev_enabled | default(false) | bool
+      role: mash/ghosttrak_dev
+      tags:
+        - setup-all
+        - setup-ghosttrak_dev
+        - install-all
+        - install-ghosttrak_dev
+        - sync-ghosttrak_dev
+    # /role-specific:ghosttrak_dev
+
     # role-specific:gitea
     #- role: galaxy/gitea
     # /role-specific:gitea

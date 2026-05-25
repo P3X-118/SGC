@@ -1,0 +1,73 @@
+---
+# ghosttrak_dev — hot-reload development stack for go.ghostrak.app. Runs the
+# repo's `yarn dev` (vite HMR + tsx watch) in a node container with the source
+# bind-mounted from a synced copy of the headless-peertube working tree, behind
+# Traefik, with its own dev Postgres + Redis. NOT a built image — edit + re-sync
+# + auto-reload. No-op unless ghosttrak_dev_enabled. See project_dev-prod-split.
+ghosttrak_dev_enabled: false
+
+ghosttrak_dev_identifier: "{{ service_id_prefix }}ghosttrak-dev"
+ghosttrak_dev_hostname: "go.ghostrak.app"
+
+# Source: synced from the controller's main working tree (headless-peertube)
+# to the host, then bind-mounted into the dev container.
+ghosttrak_dev_src_path_on_controller: "/home/oneill/apps/ghostrak"
+ghosttrak_dev_base_path: "{{ sgc_playbook_base_path }}/{{ ghosttrak_dev_identifier }}"
+ghosttrak_dev_src_host_path: "{{ ghosttrak_dev_base_path }}/src"
+ghosttrak_dev_uid: "{{ sgc_playbook_uid }}"
+ghosttrak_dev_gid: "{{ sgc_playbook_gid }}"
+
+# rsync excludes when shipping source from controller -> host. node_modules is
+# excluded so `yarn install` inside the container (writing into the bind-mount)
+# is NOT clobbered or deleted by re-syncs (rsync --delete leaves excludes alone).
+ghosttrak_dev_source_sync_excludes:
+  - node_modules
+  - dist
+  - .git
+  - .vite
+  - .claude
+  - .DS_Store
+  - "*.log"
+
+# node:20 full Debian (NOT -slim/-alpine): guarantees the bundled yarn-classic
+# the repo's v1 lockfile needs, and avoids esbuild/musl issues with vite.
+ghosttrak_dev_node_image: "node:20-bookworm"
+ghosttrak_dev_web_port: 5173
+ghosttrak_dev_api_port: 3001
+ghosttrak_dev_node_mem_limit: "1200m"
+
+# OIDC — same Authentik `ghostrak` client as prod (both redirects registered);
+# secrets reused from the prod ghosttrak vars (same derivation).
+ghosttrak_dev_oidc_issuer: "https://auth.ghostrak.app/application/o/ghostrak/"
+ghosttrak_dev_oidc_client_id: "ghostrak"
+ghosttrak_dev_oidc_client_secret: "{{ ghosttrak_oidc_client_secret }}"
+ghosttrak_dev_oidc_redirect_uris: "https://go.ghostrak.app/api/auth/callback"
+ghosttrak_dev_oidc_post_logout_redirect_uri: "https://go.ghostrak.app/"
+ghosttrak_dev_session_secret: "{{ ('ghostrak-dev-sess.' ~ sgc_pgsk) | hash('sha256') }}"
+
+# Authentik + PeerTube — same backends as prod (over the mesh / shared net).
+ghosttrak_dev_authentik_hostname: "{{ ghosttrak_authentik_hostname | default('auth.ghostrak.app') }}"
+ghosttrak_dev_authentik_mesh_ip: "{{ ghosttrak_authentik_mesh_ip | default('') }}"
+ghosttrak_dev_authentik_api_token: "{{ ghosttrak_authentik_api_token | default('') }}"
+ghosttrak_dev_peertube_internal_url: "{{ ghosttrak_peertube_internal_url | default('') }}"
+ghosttrak_dev_peertube_public_host: "{{ ghosttrak_peertube_public_host | default('') }}"
+ghosttrak_dev_peertube_roster_user: "{{ ghosttrak_peertube_roster_user | default('ghostrak-roster') }}"
+ghosttrak_dev_peertube_roster_password: "{{ ghosttrak_peertube_roster_password | default('') }}"
+
+# Dev Postgres + Redis (separate from prod — dev data is disposable).
+ghosttrak_dev_pg_image: "postgres:16-alpine"
+ghosttrak_dev_pg_db: "ghostrak"
+ghosttrak_dev_pg_user: "ghostrak"
+ghosttrak_dev_pg_password: "{{ (sgc_pgsk ~ '.ghosttrak.dev.pg') | hash('sha256') }}"
+ghosttrak_dev_pg_data_volume: "{{ ghosttrak_dev_identifier }}_pg_data"
+ghosttrak_dev_redis_image: "redis:7.4-alpine"
+
+# Networking — join the playbook traefik network so Traefik routes to us and
+# the BFF can reach the PeerTube container.
+ghosttrak_dev_traefik_network: "{{ revproxy_service_networks }}"
+ghosttrak_dev_traefik_labels_enabled: "{{ traefik_labels_enabled }}"
+ghosttrak_dev_traefik_entrypoint: "{{ traefik_entrypoint_primary }}"
+ghosttrak_dev_traefik_certresolver: "{{ traefik_certResolver_primary }}"
+
+# systemd — the unit Requires/After the docker service (same as every mash svc).
+ghosttrak_dev_systemd_required_services_list: "{{ [sysd_docker_service] if sysd_docker_service else [] }}"

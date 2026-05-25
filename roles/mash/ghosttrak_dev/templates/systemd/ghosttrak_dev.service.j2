@@ -1,0 +1,30 @@
+[Unit]
+Description=Ghostrak DEV hot-reload stack ({{ ghosttrak_dev_identifier }})
+{% for service in ghosttrak_dev_systemd_required_services_list %}
+Requires={{ service }}
+After={{ service }}
+{% endfor %}
+DefaultDependencies=no
+
+[Service]
+# Foreground `compose up` (not `-d`) so systemd sees the unit as actively
+# running — matches the SGC running-check. The node container runs
+# `yarn install && yarn dev` (vite HMR + tsx watch); first boot installs deps
+# into the bind-mount, which can take a few minutes — the unit is "up" the
+# moment compose is running, so there's no start timeout.
+Type=simple
+Environment="HOME={{ sysd_docker_unit_home_path }}"
+WorkingDirectory={{ ghosttrak_dev_base_path }}
+
+ExecStartPre=-{{ sysd_docker_host_command }} compose -f {{ ghosttrak_dev_base_path }}/docker-compose.yml down --remove-orphans
+
+ExecStart={{ sysd_docker_host_command }} compose -f {{ ghosttrak_dev_base_path }}/docker-compose.yml up --remove-orphans
+
+ExecStop=-{{ sysd_docker_host_command }} compose -f {{ ghosttrak_dev_base_path }}/docker-compose.yml down
+
+Restart=always
+RestartSec=30
+SyslogIdentifier={{ ghosttrak_dev_identifier }}
+
+[Install]
+WantedBy=multi-user.target

@@ -455,6 +455,11 @@ sgc_sysd_srvc_list_auto_itemized:
     {{ ({'name': (ghosttrak_identifier + '.service'), 'priority': 2000, 'groups': ['sgc', 'ghosttrak']} if ghosttrak_enabled else omit) }}
   # /role-specific:ghosttrak
 
+  # role-specific:ghosttrak_dev
+  - |-
+    {{ ({'name': (ghosttrak_dev_identifier + '.service'), 'priority': 2000, 'groups': ['sgc', 'ghosttrak_dev']} if ghosttrak_dev_enabled | default(false) else omit) }}
+  # /role-specific:ghosttrak_dev
+
   # role-specific:gitea
   - |-
     {{ ({'name': (gitea_identifier + '.service'), 'priority': 2000, 'groups': ['mash', 'gitea']} if gitea_enabled else omit) }}
@@ -5942,6 +5947,29 @@ ghosttrak_container_labels_traefik_tls_certResolver: "{{ traefik_certResolver_pr
 #                                                                      #
 ########################################################################
 # /role-specific:ghosttrak
+
+
+
+# role-specific:ghosttrak_dev
+########################################################################
+#                                                                      #
+# ghosttrak_dev (hot-reload dev stack for go.ghostrak.app)             #
+#                                                                      #
+########################################################################
+# Only the framework-facing vars live here (they must resolve at group scope:
+# the systemd auto-list + the setup.yml gate reference them from outside the
+# role). Everything else is in roles/mash/ghosttrak_dev/defaults/main.yml.
+
+ghosttrak_dev_enabled: false
+
+ghosttrak_dev_identifier: "{{ service_id_prefix }}ghosttrak-dev"
+
+########################################################################
+#                                                                      #
+# /ghosttrak_dev                                                       #
+#                                                                      #
+########################################################################
+# /role-specific:ghosttrak_dev
 
 
 

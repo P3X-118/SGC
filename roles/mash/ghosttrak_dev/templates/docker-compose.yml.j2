@@ -1,0 +1,131 @@
+{#
+  Managed by the SGC `ghosttrak_dev` role. Hot-reload DEV stack for
+  go.ghostrak.app — source is bind-mounted (no image build); the container runs
+  `yarn dev` (vite HMR + tsx watch). Edit on the controller + re-sync; vite/tsx
+  auto-reload. Do NOT edit on the host.
+#}
+services:
+  {{ ghosttrak_dev_identifier }}:
+    image: {{ ghosttrak_dev_node_image | to_json }}
+    container_name: {{ ghosttrak_dev_identifier }}
+    pull_policy: missing
+    working_dir: /app
+    # Install workspace deps into the bind-mounted /app (persists on the host;
+    # re-syncs exclude node_modules), then run both dev servers concurrently.
+    command:
+      - sh
+      - -lc
+      - "yarn install && yarn dev"
+    environment:
+      NODE_ENV: development
+      HOST: "0.0.0.0"
+      PORT: "{{ ghosttrak_dev_api_port }}"
+      API_PORT: "{{ ghosttrak_dev_api_port }}"
+      VITE_HOST: "0.0.0.0"
+      VITE_ALLOWED_HOST: "{{ ghosttrak_dev_hostname }}"
+      VITE_HMR_HOST: "{{ ghosttrak_dev_hostname }}"
+      OIDC_ISSUER: "{{ ghosttrak_dev_oidc_issuer }}"
+      OIDC_CLIENT_ID: "{{ ghosttrak_dev_oidc_client_id }}"
+      OIDC_CLIENT_SECRET: "{{ ghosttrak_dev_oidc_client_secret }}"
+      OIDC_REDIRECT_URIS: "{{ ghosttrak_dev_oidc_redirect_uris }}"
+      OIDC_POST_LOGOUT_REDIRECT_URI: "{{ ghosttrak_dev_oidc_post_logout_redirect_uri }}"
+      SESSION_SECRET: "{{ ghosttrak_dev_session_secret }}"
+      COOKIE_SECURE: "true"
+      REDIS_URL: "redis://{{ ghosttrak_dev_identifier }}-redis:6379"
+      DATABASE_URL: "postgres://{{ ghosttrak_dev_pg_user }}:{{ ghosttrak_dev_pg_password }}@{{ ghosttrak_dev_identifier }}-postgres:5432/{{ ghosttrak_dev_pg_db }}"
+      AUTHENTIK_API_URL: "https://{{ ghosttrak_dev_authentik_hostname }}"
+      AUTHENTIK_API_TOKEN: "{{ ghosttrak_dev_authentik_api_token }}"
+      PEERTUBE_INTERNAL_URL: "{{ ghosttrak_dev_peertube_internal_url }}"
+      PEERTUBE_PUBLIC_HOST: "{{ ghosttrak_dev_peertube_public_host }}"
+      PEERTUBE_ROSTER_USER: "{{ ghosttrak_dev_peertube_roster_user }}"
+      PEERTUBE_ROSTER_PASSWORD: "{{ ghosttrak_dev_peertube_roster_password }}"
+    volumes:
+      - {{ ghosttrak_dev_src_host_path }}:/app
+    depends_on:
+      {{ ghosttrak_dev_identifier }}-postgres:
+        condition: service_healthy
+      {{ ghosttrak_dev_identifier }}-redis:
+        condition: service_healthy
+{% if ghosttrak_dev_authentik_mesh_ip %}
+    extra_hosts:
+      # Reach the shared Authentik over the SGC mesh (same as prod).
+      - "{{ ghosttrak_dev_authentik_hostname }}:{{ ghosttrak_dev_authentik_mesh_ip }}"
+{% endif %}
+    mem_limit: {{ ghosttrak_dev_node_mem_limit | to_json }}
+    restart: unless-stopped
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
+    networks:
+      - default
+      - traefik
+    labels:
+      - "traefik.enable=true"
+      - "traefik.docker.network={{ ghosttrak_dev_traefik_network }}"
+      # /api -> the BFF directly (so it sees Traefik's X-Forwarded-Host for
+      # OIDC redirect + cookie host); higher priority than the catch-all.
+      - "traefik.http.routers.{{ ghosttrak_dev_identifier }}-api.rule=Host(`{{ ghosttrak_dev_hostname }}`) && PathPrefix(`/api`)"
+      - "traefik.http.routers.{{ ghosttrak_dev_identifier }}-api.priority=20"
+      - "traefik.http.routers.{{ ghosttrak_dev_identifier }}-api.entrypoints={{ ghosttrak_dev_traefik_entrypoint }}"
+      - "traefik.http.routers.{{ ghosttrak_dev_identifier }}-api.tls=true"
+      - "traefik.http.routers.{{ ghosttrak_dev_identifier }}-api.tls.certResolver={{ ghosttrak_dev_traefik_certresolver }}"
+      - "traefik.http.routers.{{ ghosttrak_dev_identifier }}-api.service={{ ghosttrak_dev_identifier }}-api"
+      - "traefik.http.services.{{ ghosttrak_dev_identifier }}-api.loadbalancer.server.port={{ ghosttrak_dev_api_port }}"
+      # everything else -> vite dev server (serves the SPA + the HMR websocket).
+      - "traefik.http.routers.{{ ghosttrak_dev_identifier }}-web.rule=Host(`{{ ghosttrak_dev_hostname }}`)"
+      - "traefik.http.routers.{{ ghosttrak_dev_identifier }}-web.priority=10"
+      - "traefik.http.routers.{{ ghosttrak_dev_identifier }}-web.entrypoints={{ ghosttrak_dev_traefik_entrypoint }}"
+      - "traefik.http.routers.{{ ghosttrak_dev_identifier }}-web.tls=true"
+      - "traefik.http.routers.{{ ghosttrak_dev_identifier }}-web.tls.certResolver={{ ghosttrak_dev_traefik_certresolver }}"
+      - "traefik.http.routers.{{ ghosttrak_dev_identifier }}-web.service={{ ghosttrak_dev_identifier }}-web"
+      - "traefik.http.services.{{ ghosttrak_dev_identifier }}-web.loadbalancer.server.port={{ ghosttrak_dev_web_port }}"
+
+  {{ ghosttrak_dev_identifier }}-postgres:
+    image: {{ ghosttrak_dev_pg_image | to_json }}
+    container_name: {{ ghosttrak_dev_identifier }}-postgres
+    pull_policy: missing
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: {{ ghosttrak_dev_pg_db | to_json }}
+      POSTGRES_USER: {{ ghosttrak_dev_pg_user | to_json }}
+      POSTGRES_PASSWORD: {{ ghosttrak_dev_pg_password | to_json }}
+    volumes:
+      - {{ ghosttrak_dev_pg_data_volume }}:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U {{ ghosttrak_dev_pg_user }} -d {{ ghosttrak_dev_pg_db }}"]
+      interval: 10s
+      timeout: 3s
+      retries: 10
+      start_period: 15s
+    mem_limit: "256m"
+    networks:
+      - default
+
+  {{ ghosttrak_dev_identifier }}-redis:
+    image: {{ ghosttrak_dev_redis_image | to_json }}
+    container_name: {{ ghosttrak_dev_identifier }}-redis
+    pull_policy: missing
+    restart: unless-stopped
+    # Dev sessions are disposable — no persistence.
+    command: ["redis-server", "--save", "", "--appendonly", "no"]
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 3s
+      retries: 5
+    mem_limit: "96m"
+    networks:
+      - default
+
+volumes:
+  {{ ghosttrak_dev_pg_data_volume }}:
+    name: {{ ghosttrak_dev_pg_data_volume }}
+
+networks:
+  default:
+    name: {{ ghosttrak_dev_identifier }}
+  traefik:
+    external: true
+    name: {{ ghosttrak_dev_traefik_network }}
