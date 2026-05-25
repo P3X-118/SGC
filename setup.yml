@@ -271,7 +271,10 @@
     # /role-specific:duplicati
 
     # role-specific:eagledrive
-    - when: eagledrive_enabled | bool
+    # Also invoked for the PDS-env-patch path on hosts where the app is
+    # hand-managed (eagledrive_enabled stays false but
+    # eagledrive_pds_env_manage repeatably wires PDS_URL into the live stack).
+    - when: eagledrive_enabled | bool or (eagledrive_pds_env_manage | default(false) | bool)
       role: mash/eagledrive
       tags:
         - setup-eagledrive
@@ -329,7 +332,7 @@
     # /role-specific:firezone
 
     # role-specific:flaresolverr
-    #- role: galaxy/flaresolverr
+    - role: galaxy/flaresolverr
     # /role-specific:flaresolverr
 
     # role-specific:fmd_server
@@ -508,6 +511,12 @@
     #- role: galaxy/languagetool
     # /role-specific:languagetool
 
+    # role-specific:legit_services
+    # Local-only role (no GitHub fetch). Lives at roles/mash/legit_services/.
+    - when: legit_services_enabled | bool
+      role: mash/legit_services
+    # /role-specific:legit_services
+
     # role-specific:limesurvey
     #- role: galaxy/limesurvey
     # /role-specific:limesurvey
@@ -575,6 +584,16 @@
     # role-specific:miniflux
     #- role: galaxy/miniflux
     # /role-specific:miniflux
+
+    # role-specific:minio
+    - when: minio_enabled | bool
+      role: mash/minio
+      tags:
+        - setup-minio
+        - setup-all
+        - install-minio
+        - install-all
+    # /role-specific:minio
 
     # role-specific:mirotalk
     - role: galaxy/mirotalk
@@ -766,6 +785,38 @@
     # role-specific:peertube
     - role: galaxy/peertube
     # /role-specific:peertube
+
+    # role-specific:peertube_roster
+    # Local layer on top of galaxy/peertube: ensures the ghostrak-roster
+    # service account, raised channel limit, and mp4 transcoding (coaching
+    # platform prerequisites). No-op unless peertube_roster_enabled.
+    - when: peertube_roster_enabled | default(false) | bool
+      role: mash/peertube_roster
+    # /role-specific:peertube_roster
+
+    # role-specific:peertube_oidc
+    # Local layer on top of galaxy/peertube: installs + configures the
+    # auth-openid-connect plugin so the instance federates into our shared
+    # Authentik (unified accounts). No-op unless peertube_oidc_enabled.
+    - when: peertube_oidc_enabled | default(false) | bool
+      role: mash/peertube_oidc
+    # /role-specific:peertube_oidc
+
+    # role-specific:peertube_branding
+    # Local layer on top of galaxy/peertube: applies ghostrak instance
+    # branding (name, theme colors, custom CSS, avatar) via PeerTube's API.
+    # No-op unless peertube_branding_enabled.
+    - when: peertube_branding_enabled | default(false) | bool
+      role: mash/peertube_branding
+    # /role-specific:peertube_branding
+
+    # role-specific:peertube_tiers
+    # Local layer on top of galaxy/peertube: installs + configures
+    # peertube-plugin-ghostrak-tiers (role-tiered, hard-isolated video access).
+    # No-op unless peertube_tiers_enabled.
+    - when: peertube_tiers_enabled | default(false) | bool
+      role: mash/peertube_tiers
+    # /role-specific:peertube_tiers
 
     # role-specific:pgadmin
     #- role: galaxy/pgadmin
@@ -1090,32 +1141,69 @@
     - role: galaxy/playbook_runtime_messages
     # /role-specific:playbook_runtime_messages
 
-# role-specific:pds_per_tenant
-# Per-tenant PDS fan-out: invoke galaxy/pds once per entry in
-# pds_per_tenant_instances (managed by pds-provisioning-runner). The role is
-# already multi-instance-ready — every path/unit/network/traefik label is
-# derived from pds_identifier — so the only new SGC pattern is this loop.
-# Lives in its own play because ansible's `roles:` block doesn't accept
-# `loop:` directives.
-- name: Per-tenant PDS instances
-  hosts: "{{ target | default('mash_servers') }}"
-  become: true
-  gather_facts: false
   tasks:
+    # role-specific:pds_per_tenant
+    # Per-tenant PDS fan-out: invoke galaxy/pds once per entry in
+    # pds_per_tenant_instances (managed by pds-provisioning-runner). The role is
+    # already multi-instance-ready — every path/unit/network/traefik label is
+    # derived from pds_identifier — so the only new SGC pattern is this loop.
+    #
+    # Runs as a post-role task of the MAIN play (NOT a separate play) so it
+    # inherits the full var scope galaxy/pds needs: sgc_playbook_base_path
+    # (playbook_base), sysd_docker_* (systemd_docker_base), and
+    # traefik_entrypoint_primary / traefik_certResolver_primary (traefik), etc.
+    # A separate play only sees its own roles' defaults, so each of those
+    # surfaced as an undefined-var failure. `tasks:` run after `roles:`, so the
+    # whole role stack — and its accumulated defaults — is in scope here.
     - name: Provision per-tenant PDS instances
       when: pds_enabled | bool and (pds_per_tenant_instances | default([]) | length > 0)
       ansible.builtin.include_role:
         name: galaxy/pds
+        # Propagate the tags to the INCLUDED role's tasks — without this a
+        # dynamic include_role under `--tags install-pds` skips every task in
+        # galaxy/pds, so the tenant container is never created.
+        apply:
+          tags:
+            - setup-all
+            - setup-pds
+            - install-all
+            - install-pds
       loop: "{{ pds_per_tenant_instances }}"
       loop_control:
         loop_var: tenant
       vars:
         pds_identifier: "{{ service_id_prefix }}pds-{{ tenant.slug }}"
         pds_hostname: "{{ tenant.hostname }}"
-        pds_admin_password_salt: "pds.admin.{{ tenant.slug }}"
+        # sha512_crypt salts must be <= 16 chars; "pds.admin.<slug>" overflows
+        # for most slugs (e.g. eagledrive = 20). Use a stable 16-char hash,
+        # unique per tenant, so the derived admin password stays per-tenant.
+        pds_admin_password_salt: "{{ (('pds.admin.' ~ tenant.slug) | hash('sha1'))[:16] }}"
+        # Per-tenant data dir. The role default ({{ ... }}/{{ service_directory_prefix }}pds)
+        # is NOT identifier-derived, so without this every tenant + the root PDS
+        # would collide on one data dir. Key it off the per-tenant identifier.
+        pds_base_path: "{{ sgc_playbook_base_path }}/{{ pds_identifier }}"
+        # Per-tenant handle scheme (bare-domain handles). Derive the handle
+        # domain from THIS tenant's hostname and set it here so it overrides any
+        # HOST-level pds_environment_extra (e.g. the bskypds root PDS's
+        # transition-safe override) — otherwise every tenant would inherit the
+        # host's handle domain instead of its own. Examples:
+        #   acme.bskypds.pro    -> PDS_SERVICE_HANDLE_DOMAINS=.acme.bskypds.pro
+        #   pds.eagledrive.live -> PDS_SERVICE_HANDLE_DOMAINS=.eagledrive.live
+        pds_handle_domain: "{{ tenant.hostname[4:] if tenant.hostname.startswith('pds.') else tenant.hostname }}"
+        pds_admin_handle: "admin.{{ pds_handle_domain }}"
+        # Handle domains always. Transactional email only for custom-domain
+        # tenants (claimed_domain set): that domain must be set up in mailcow
+        # (added + DKIM + DNS, plus a sender_acl letting the shared relay's auth
+        # user no-reply@bskypds.pro send as @<domain>). Email routes through the
+        # same exim relay as the root PDS. Subdomain tenants get empty strings →
+        # ignored blank env lines (no PDS_EMAIL). See host_vars exim-relay block.
+        pds_environment_extra:
+          - "PDS_SERVICE_HANDLE_DOMAINS=.{{ pds_handle_domain }}"
+          - "{{ ('PDS_EMAIL_SMTP_URL=smtp://' ~ (exim_relay_identifier | default('sgc-exim-relay')) ~ ':8025/') if (tenant.claimed_domain | default('')) else '' }}"
+          - "{{ ('PDS_EMAIL_FROM_ADDRESS=no-reply@' ~ tenant.claimed_domain) if (tenant.claimed_domain | default('')) else '' }}"
       tags:
         - setup-all
         - setup-pds
         - install-all
         - install-pds
-# /role-specific:pds_per_tenant
+    # /role-specific:pds_per_tenant

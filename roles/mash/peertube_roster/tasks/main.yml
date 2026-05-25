@@ -1,0 +1,29 @@
+---
+- name: Perform PeerTube roster prerequisites tasks
+  when: peertube_roster_enabled | bool
+  tags:
+    - setup-all
+    - setup-peertube_roster
+    - install-all
+    - install-peertube_roster
+  block:
+    - name: Validate peertube_roster config
+      ansible.builtin.assert:
+        that:
+          - peertube_roster_hostname | length > 0
+          - peertube_roster_admin_password | length > 0
+          - peertube_roster_account_password | length > 0
+          - peertube_roster_account_password | length <= 50
+        fail_msg: >-
+          peertube_roster requires hostname, admin_password and a
+          account_password of <= 50 chars (PeerTube's password max) when enabled.
+
+    - name: Ensure roster account + channel limit + mp4 transcoding via the API
+      # Piped to bare `node` (reads stdin as the program). Idempotent:
+      # ROSTER_CHANGED / ROSTER_UNCHANGED.
+      ansible.builtin.shell:
+        cmd: "docker exec -i {{ peertube_roster_container_name }} node"
+        stdin: "{{ lookup('template', 'configure-roster.js.j2') }}"
+      register: peertube_roster_apply
+      changed_when: "'ROSTER_CHANGED' in peertube_roster_apply.stdout"
+      failed_when: peertube_roster_apply.rc != 0

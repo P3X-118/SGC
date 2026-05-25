@@ -1,0 +1,11 @@
+---
+galaxy_info:
+  role_name: peertube_roster
+  author: SGC
+  description: >-
+    Provisions the PeerTube-side prerequisites for the ghostrak coaching
+    platform: the ghostrak-roster service account, a raised per-account channel
+    limit, and mp4 web-video transcoding. Idempotent.
+  license: AGPL-3.0-or-later
+  min_ansible_version: "2.12"
+dependencies: []

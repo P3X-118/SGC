@@ -1,0 +1,89 @@
+// Rendered by the peertube_roster role; piped to `node` inside the PeerTube
+// container. Idempotently ensures the ghostrak-roster service account, the
+// per-account channel limit, and mp4 web-video transcoding.
+//
+// HTTP via curl (child_process), NOT node fetch: PeerTube rejects API calls
+// whose Host header != its configured hostname, and undici/fetch strips the
+// (forbidden) Host header. Idempotency via a sha256 marker in /data.
+const { execFileSync } = require('child_process');
+const crypto = require('crypto');
+const fs = require('fs');
+
+const BASE = 'http://localhost:9000';
+const MARKER = '/data/.ghostrak-roster-applied';
+const HOST = {{ peertube_roster_hostname | to_json }};
+const ADMIN_USER = {{ peertube_roster_admin_username | to_json }};
+const ADMIN_PASS = {{ peertube_roster_admin_password | to_json }};
+const RUSER = {{ peertube_roster_account_username | to_json }};
+const REMAIL = {{ peertube_roster_account_email | to_json }};
+const RPASS = {{ peertube_roster_account_password | to_json }};
+const MAXCH = {{ peertube_roster_max_channels_per_user | int }};
+const WEBVIDEOS = {{ peertube_roster_enable_web_videos | to_json }};
+
+function curl(args) {
+  return execFileSync('curl', ['-fsS', '-H', `Host: ${HOST}`, ...args], {
+    encoding: 'utf8', maxBuffer: 10 * 1024 * 1024,
+  });
+}
+const j = (args) => JSON.parse(curl(args));
+
+try {
+  const want = crypto
+    .createHash('sha256')
+    .update(JSON.stringify({ RUSER, RPASS, MAXCH, WEBVIDEOS }))
+    .digest('hex');
+  let prev = '';
+  try { prev = fs.readFileSync(MARKER, 'utf8').trim(); } catch (_) {}
+
+  const cl = j([`${BASE}/api/v1/oauth-clients/local`]);
+  const tok = j([
+    '-X', 'POST', `${BASE}/api/v1/users/token`,
+    '--data-urlencode', `client_id=${cl.client_id}`,
+    '--data-urlencode', `client_secret=${cl.client_secret}`,
+    '--data-urlencode', 'grant_type=password',
+    '--data-urlencode', `username=${ADMIN_USER}`,
+    '--data-urlencode', `password=${ADMIN_PASS}`,
+  ]);
+  if (!tok.access_token) { console.error('TOKEN_FAIL'); process.exit(1); }
+  const auth = ['-H', `Authorization: Bearer ${tok.access_token}`];
+
+  const existing = (j([...auth, `${BASE}/api/v1/users?search=${encodeURIComponent(RUSER)}&count=50`]).data || [])
+    .find((u) => u.username === RUSER);
+
+  if (existing && prev === want) {
+    console.log('ROSTER_UNCHANGED');
+    process.exit(0);
+  }
+
+  // Account: create or sync password.
+  if (!existing) {
+    curl([...auth, '-X', 'POST', '-H', 'Content-Type: application/json',
+      '--data', JSON.stringify({ username: RUSER, email: REMAIL, password: RPASS, role: 2, videoQuota: -1, videoQuotaDaily: -1 }),
+      `${BASE}/api/v1/users`]);
+  } else {
+    curl([...auth, '-X', 'PUT', '-H', 'Content-Type: application/json',
+      '--data', JSON.stringify({ password: RPASS }), `${BASE}/api/v1/users/${existing.id}`]);
+  }
+
+  // Instance config: channel limit + mp4 web videos. GET → merge → PUT (PeerTube
+  // validates the whole object); merging preserves other roles' settings.
+  const cfg = j([...auth, `${BASE}/api/v1/config/custom`]);
+  cfg.videoChannels = cfg.videoChannels || {};
+  cfg.videoChannels.maxPerUser = MAXCH;
+  if (WEBVIDEOS) {
+    cfg.transcoding = cfg.transcoding || {};
+    cfg.transcoding.enabled = true;
+    cfg.transcoding.webVideos = cfg.transcoding.webVideos || {};
+    cfg.transcoding.webVideos.enabled = true;
+  }
+  fs.writeFileSync('/tmp/.gr-roster-cfg.json', JSON.stringify(cfg));
+  curl([...auth, '-X', 'PUT', '-H', 'Content-Type: application/json',
+    '--data', '@/tmp/.gr-roster-cfg.json', `${BASE}/api/v1/config/custom`]);
+
+  fs.writeFileSync(MARKER, want);
+  console.log('ROSTER_CHANGED');
+} catch (e) {
+  const out = e && e.stderr ? e.stderr.toString() : e && e.message ? e.message : String(e);
+  console.error('ERROR ' + out.slice(0, 300));
+  process.exit(1);
+}

@@ -1,0 +1,32 @@
+---
+# peertube_roster — provisions the PeerTube-side prerequisites for the ghostrak
+# coaching platform's roster/sessions feature, so it's reproducible from
+# scratch (no ad-hoc API calls):
+#   - the `ghostrak-roster` service account the BFF authenticates as to create
+#     per-player private channels + upload sessions,
+#   - a raised per-account channel limit (one account owns many player channels),
+#   - mp4 web-video transcoding (so sessions are directly overlay-playable).
+# Idempotent via a sha256 marker in /data. No-op unless peertube_roster_enabled.
+peertube_roster_enabled: false
+
+peertube_roster_container_name: "{{ peertube_identifier }}"
+peertube_roster_hostname: "{{ peertube_hostname }}"
+
+# Admin creds for the API (PeerTube password grant). Default to peertube_oidc's.
+peertube_roster_admin_username: "{{ peertube_oidc_admin_username | default('root') }}"
+peertube_roster_admin_password: "{{ peertube_oidc_admin_password | default('') }}"
+
+# The roster service account. password is REQUIRED and MUST equal the BFF's
+# ghosttrak_peertube_roster_password (set in go.ghostrak.app host_vars). It's a
+# cross-host shared secret, so it's a literal in this host's host_vars (≤50
+# chars — PeerTube's password max).
+peertube_roster_account_username: "ghostrak-roster"
+peertube_roster_account_email: "roster@ghostrak.app"
+peertube_roster_account_password: ""   # required when enabled
+
+# One roster account owns one private channel per player → raise the cap.
+peertube_roster_max_channels_per_user: 500
+
+# Produce mp4 web videos (in addition to HLS) so sessions can be loaded into
+# the ghostrak overlay (plain <video>, not HLS).
+peertube_roster_enable_web_videos: true
