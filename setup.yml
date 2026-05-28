@@ -797,6 +797,16 @@
       role: mash/texasmodern_signup
     # /role-specific:texasmodern_signup
 
+    # role-specific:peertube_lockdown
+    # Headless-PeerTube settings layer: contributes PEERTUBE_* env vars and a
+    # Traefik block-router into the galaxy/peertube role's inputs. Must run
+    # BEFORE galaxy/peertube so its set_fact mutations are visible when the
+    # main role renders env + labels. No-op unless peertube_lockdown_enabled.
+    - when: peertube_lockdown_enabled | default(false) | bool
+      role: mash/peertube_lockdown
+      tags: [setup-all, setup-peertube, setup-peertube_lockdown, install-all, install-peertube, install-peertube_lockdown]
+    # /role-specific:peertube_lockdown
+
     # role-specific:peertube
     - role: galaxy/peertube
     # /role-specific:peertube

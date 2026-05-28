@@ -1,0 +1,95 @@
+---
+# peertube_lockdown — turns the PeerTube install at training.ghostrak.pro into
+# a HEADLESS storage/transcoder/CDN for the ghostrak app. Users never log into
+# PeerTube directly; everything (browse, upload, rename, delete, review,
+# overlay) is mediated by the ghostrak BFF which authenticates as the
+# ghostrak-roster service account.
+#
+# This role contributes settings only — it does NOT manage the PeerTube
+# container itself (the galaxy/peertube role still owns lifecycle). What it
+# DOES:
+#   1. Assembles a bundle of PEERTUBE_* env vars into
+#      `peertube_environment_variables_additional_variables` (disabling signup,
+#      live, imports, public discovery, etc).
+#   2. Optionally appends a Traefik middleware that 403s the public browse
+#      pages (/, /videos/local, /videos/trending, …) for anyone whose request
+#      doesn't carry the ghostrak BFF service-account cookie.
+#
+# How to enable (on training.ghostrak.pro host_vars):
+#   peertube_lockdown_enabled: true
+# Then redeploy the host: `just install-service peertube --limit training.ghostrak.pro`.
+# (peertube_lockdown writes into peertube_environment_variables_additional_variables
+# which the galaxy/peertube role picks up; the role itself has no service of its own.)
+
+peertube_lockdown_enabled: false
+
+# --- Feature kill-switches ---------------------------------------------------
+# Public signup: never. (Authentik OIDC + the ghostrak-tiers plugin govern who
+# gets a PeerTube identity at all.)
+peertube_lockdown_signup_enabled: false
+
+# Live streaming: off for MVP (training clips are short uploads).
+peertube_lockdown_live_enabled: false
+
+# HTTP/torrent imports: off — we never want a user-pasted URL becoming a video.
+peertube_lockdown_import_http_enabled: false
+peertube_lockdown_import_torrent_enabled: false
+
+# Federation: off — this is a private storage backend, not a fediverse node.
+peertube_lockdown_federation_enabled: false
+
+# Search remote URI / index: off (no outbound discovery).
+peertube_lockdown_search_remote_uri_users: false
+peertube_lockdown_search_remote_uri_anonymous: false
+
+# Trending / overviews / instance-wide stats: off — there's no audience here.
+peertube_lockdown_trending_videos_enabled: false
+
+# Auto-blacklist: off. We trust the BFF (only the roster service account can
+# upload via the API; users never have upload rights).
+peertube_lockdown_auto_blacklist_videos_of_users: false
+
+# Transcoding profile. HLS on (good seeking + range support for the
+# /api/sessions/:id/video proxy), web-videos on for the mp4 path the overlay
+# uses today, no fancy codecs (keep CPU bounded).
+peertube_lockdown_transcoding_enabled: true
+peertube_lockdown_transcoding_hls_enabled: true
+peertube_lockdown_transcoding_web_videos_enabled: true
+
+# --- Traefik web-UI lockdown -------------------------------------------------
+# Adds a Traefik middleware that 403s public discovery paths. Disable if you
+# need to access the PeerTube admin UI from a browser for emergency ops (you
+# can also flip `peertube_lockdown_enabled: false` and redeploy).
+peertube_lockdown_block_web_ui: true
+
+# The Traefik router priority that the block needs to OUTRANK — must be higher
+# than the main peertube router (which is 0 by default in the galaxy role).
+peertube_lockdown_block_priority: 50
+
+# Paths that get the 403. /api/v1/* (BFF traffic), /static/*, /lazy-static/*,
+# /plugins/*, /download/* (with videoFileToken), /videos/embed/* (gated by
+# videoFileToken in the URL) are deliberately NOT in this list.
+peertube_lockdown_blocked_path_prefixes:
+  - /videos/local
+  - /videos/recently-added
+  - /videos/most-liked
+  - /videos/trending
+  - /videos/upload
+  - /videos/upcoming
+  - /videos/subscriptions
+  - /videos/overview
+  - /search
+  - /a/
+  - /c/
+  - /accounts/
+  - /admin/
+  - /signup
+  - /register
+  - /my-account
+  - /my-library
+  - /about
+  - /home
+
+# Whether to 403 the bare `/` (PeerTube root). On by default — the user's
+# entrypoint is go.ghostrak.pro, never training.ghostrak.pro/.
+peertube_lockdown_block_root: true

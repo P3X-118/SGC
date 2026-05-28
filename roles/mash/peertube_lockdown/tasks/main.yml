@@ -1,0 +1,64 @@
+---
+# peertube_lockdown — contributes env-var + Traefik-label additions to the
+# galaxy/peertube role. No own container/service. The galaxy role picks up
+# the additions via peertube_environment_variables_additional_variables and
+# peertube_container_labels_additional_labels.
+
+- name: peertube_lockdown — render env additions
+  ansible.builtin.set_fact:
+    peertube_lockdown_env_block: "{{ lookup('template', 'env-additions.j2') }}"
+  tags:
+    - setup-all
+    - setup-peertube
+    - setup-peertube_lockdown
+    - install-all
+    - install-peertube
+    - install-peertube_lockdown
+  when: peertube_lockdown_enabled | bool
+
+- name: peertube_lockdown — append env additions to peertube_environment_variables_additional_variables
+  ansible.builtin.set_fact:
+    peertube_environment_variables_additional_variables: |
+      {{ peertube_environment_variables_additional_variables | default('') }}
+      {{ peertube_lockdown_env_block }}
+  tags:
+    - setup-all
+    - setup-peertube
+    - setup-peertube_lockdown
+    - install-all
+    - install-peertube
+    - install-peertube_lockdown
+  when: peertube_lockdown_enabled | bool
+
+# Traefik middleware: a high-priority router whose rule matches the public
+# discovery paths (and optionally `/`), routed through an `ipAllowList`
+# middleware whose only allowed source is 127.0.0.1/32. Real-world clients
+# never have that source IP after going through the cloud LB + traefik, so
+# every matched request 403s. The /api/v1, /static, /lazy-static, /plugins,
+# /videos/embed, /download routes the BFF + embed need are NOT in the
+# blocklist, so they flow to the main router unchanged.
+#
+# (This uses Traefik's built-in `ipAllowList` middleware — no plugin needed.
+# The older name `ipWhiteList` is a deprecated alias; we use the current one.)
+- name: peertube_lockdown — register Traefik block labels
+  ansible.builtin.set_fact:
+    peertube_container_labels_additional_labels: |
+      {{ peertube_container_labels_additional_labels | default('') }}
+      traefik.http.routers.{{ peertube_identifier }}-block.rule={% if peertube_lockdown_block_root %}Host(`{{ peertube_hostname }}`) && (Path(`/`) || PathRegexp(`^({{ peertube_lockdown_blocked_path_prefixes | join('|') }})`)){% else %}Host(`{{ peertube_hostname }}`) && PathRegexp(`^({{ peertube_lockdown_blocked_path_prefixes | join('|') }})`){% endif %}
+      traefik.http.routers.{{ peertube_identifier }}-block.priority={{ peertube_lockdown_block_priority }}
+      traefik.http.routers.{{ peertube_identifier }}-block.entrypoints={{ peertube_container_labels_traefik_entrypoints }}
+      traefik.http.routers.{{ peertube_identifier }}-block.tls={{ peertube_container_labels_traefik_tls | to_json }}
+      traefik.http.routers.{{ peertube_identifier }}-block.tls.certResolver={{ peertube_container_labels_traefik_tls_certResolver }}
+      traefik.http.routers.{{ peertube_identifier }}-block.service=noop@internal
+      traefik.http.routers.{{ peertube_identifier }}-block.middlewares={{ peertube_identifier }}-deny
+      traefik.http.middlewares.{{ peertube_identifier }}-deny.ipAllowList.sourceRange=127.0.0.1/32
+  tags:
+    - setup-all
+    - setup-peertube
+    - setup-peertube_lockdown
+    - install-all
+    - install-peertube
+    - install-peertube_lockdown
+  when:
+    - peertube_lockdown_enabled | bool
+    - peertube_lockdown_block_web_ui | bool

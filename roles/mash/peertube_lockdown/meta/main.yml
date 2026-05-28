@@ -1,0 +1,19 @@
+---
+galaxy_info:
+  author: Oneill
+  company: SGC
+  role_name: peertube_lockdown
+  namespace: SGC
+  description: |
+    Hardens a PeerTube install to be a headless storage backend for the
+    ghostrak app: disables signup/live/imports/discovery/federation via
+    PEERTUBE_* env vars, and optionally appends Traefik middleware that 403s
+    public browse pages. Contributes settings only — galaxy/peertube still
+    owns the container lifecycle.
+  license: MIT
+  min_ansible_version: "2.10"
+  platforms:
+    - name: Debian
+      versions: [all]
+    - name: Ubuntu
+      versions: [all]

@@ -1,0 +1,22 @@
+{# Rendered into peertube_environment_variables_additional_variables. Every
+   PEERTUBE_* env var here overrides the corresponding production.yaml setting
+   inside the PeerTube container. Keep names matching upstream config keys.
+   Reference: https://docs.joinpeertube.org/maintain/configuration #}
+# Begin peertube_lockdown env (managed by SGC role mash/peertube_lockdown)
+PEERTUBE_SIGNUP_ENABLED={{ peertube_lockdown_signup_enabled | to_json }}
+PEERTUBE_LIVE_ENABLED={{ peertube_lockdown_live_enabled | to_json }}
+PEERTUBE_IMPORT_VIDEOS_HTTP_ENABLED={{ peertube_lockdown_import_http_enabled | to_json }}
+PEERTUBE_IMPORT_VIDEOS_TORRENT_ENABLED={{ peertube_lockdown_import_torrent_enabled | to_json }}
+PEERTUBE_FEDERATION_VIDEOS_ENABLED={{ peertube_lockdown_federation_enabled | to_json }}
+PEERTUBE_SEARCH_REMOTE_URI_USERS={{ peertube_lockdown_search_remote_uri_users | to_json }}
+PEERTUBE_SEARCH_REMOTE_URI_ANONYMOUS={{ peertube_lockdown_search_remote_uri_anonymous | to_json }}
+# NOTE: trending is disabled at the Traefik layer (blocked path prefix), not
+# here — PeerTube's env loader doesn't reliably accept a JSON-array value for
+# `trending.videos.algorithms.enabled` without a custom-environment-variables
+# mapping declaring __format: json for that key, and a bare `[]` either fails
+# config validation or coerces to ["[]"]. Routing-level block is sufficient.
+PEERTUBE_AUTO_BLACKLIST_VIDEOS_OF_USERS_ENABLED={{ peertube_lockdown_auto_blacklist_videos_of_users | to_json }}
+PEERTUBE_TRANSCODING_ENABLED={{ peertube_lockdown_transcoding_enabled | to_json }}
+PEERTUBE_TRANSCODING_HLS_ENABLED={{ peertube_lockdown_transcoding_hls_enabled | to_json }}
+PEERTUBE_TRANSCODING_WEB_VIDEOS_ENABLED={{ peertube_lockdown_transcoding_web_videos_enabled | to_json }}
+# End peertube_lockdown env
