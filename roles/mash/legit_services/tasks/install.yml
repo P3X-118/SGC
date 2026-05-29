@@ -1,0 +1,119 @@
+---
+- name: Validate configuration
+  ansible.builtin.assert:
+    that:
+      - legit_services_enabled | bool
+      - legit_services_hostname | length > 0
+      - legit_services_localai_api_key | length > 0
+      - legit_services_owner_key | length >= 16
+    fail_msg: >-
+      legit_services_enabled, legit_services_hostname, legit_services_localai_api_key,
+      and a strong legit_services_owner_key (>=16 chars) are required. Set them
+      per-host in inventory/host_vars/<host>/vars.yml.
+
+- name: Create legit-services base directories
+  ansible.builtin.file:
+    path: "{{ item.path }}"
+    state: directory
+    owner: "{{ legit_services_uid }}"
+    group: "{{ legit_services_gid }}"
+    mode: "{{ item.mode }}"
+  loop:
+    - { path: "{{ legit_services_base_path }}",   mode: "0755" }
+    - { path: "{{ legit_services_src_path }}",    mode: "0755" }
+    - { path: "{{ legit_services_data_path }}",   mode: "0750" }
+    - { path: "{{ legit_services_radata_path }}", mode: "0750" }
+    - { path: "{{ legit_services_redis_path }}",  mode: "0750" }
+
+# Ship the app source from the controller as a tarball, then unarchive
+# on the remote. Uses the normal ssh connection plugin so inventory-level
+# `ansible_ssh_common_args` (e.g. ProxyJump) is honored — unlike the
+# synchronize module, which builds its own ssh invocation and drops those
+# args. .git, node_modules, runtime data, and local env are all excluded
+# so we ship the same logical artifact a fresh clone would.
+- name: Build legit-services source tarball locally
+  delegate_to: localhost
+  become: false
+  ansible.builtin.archive:
+    path: "{{ legit_services_source_dir_controller }}"
+    dest: "/tmp/legit-services-src.tar.gz"
+    format: gz
+    exclude_path:
+      - "{{ legit_services_source_dir_controller }}/.git"
+      - "{{ legit_services_source_dir_controller }}/node_modules"
+      - "{{ legit_services_source_dir_controller }}/radata"
+      - "{{ legit_services_source_dir_controller }}/.env"
+      - "{{ legit_services_source_dir_controller }}/.env.local"
+      - "{{ legit_services_source_dir_controller }}/.claude"
+  register: legit_services_src_archive
+
+- name: Unpack legit-services source on prod
+  ansible.builtin.unarchive:
+    src: "/tmp/legit-services-src.tar.gz"
+    dest: "{{ legit_services_src_path }}"
+    remote_src: false
+    extra_opts:
+      - "--strip-components=1"
+    owner: "{{ legit_services_uid }}"
+    group: "{{ legit_services_gid }}"
+  register: legit_services_src_sync
+  notify: restart legit-services
+
+- name: Remove local source tarball
+  delegate_to: localhost
+  become: false
+  ansible.builtin.file:
+    path: "/tmp/legit-services-src.tar.gz"
+    state: absent
+
+- name: Render legit-services env file
+  ansible.builtin.template:
+    src: env.j2
+    dest: "{{ legit_services_base_path }}/env"
+    owner: "{{ legit_services_uid }}"
+    group: "{{ legit_services_gid }}"
+    mode: "0640"
+  no_log: true
+  notify: restart legit-services
+
+- name: Render legit-services docker-compose.yml
+  ansible.builtin.template:
+    src: docker-compose.yml.j2
+    dest: "{{ legit_services_base_path }}/docker-compose.yml"
+    owner: "{{ legit_services_uid }}"
+    group: "{{ legit_services_gid }}"
+    mode: "0644"
+  notify: restart legit-services
+
+- name: Install legit-services systemd unit
+  ansible.builtin.template:
+    src: legit-services.service.j2
+    dest: "/etc/systemd/system/{{ legit_services_identifier }}.service"
+    mode: "0644"
+  notify: restart legit-services
+
+- name: Pull redis image
+  community.docker.docker_image:
+    name: "{{ legit_services_redis_image }}"
+    source: pull
+
+# Build the app image on prod from the synced source. Idempotent (Docker
+# caches layers); only rebuilds when source actually changed.
+- name: Build legit-services app image
+  community.docker.docker_image:
+    name: "{{ legit_services_app_image }}"
+    source: build
+    build:
+      path: "{{ legit_services_src_path }}"
+      pull: true
+    force_source: "{{ legit_services_src_sync is changed }}"
+
+- name: Reload systemd
+  ansible.builtin.systemd:
+    daemon_reload: true
+
+- name: Start legit-services
+  ansible.builtin.service:
+    name: "{{ legit_services_identifier }}"
+    state: started
+    enabled: true

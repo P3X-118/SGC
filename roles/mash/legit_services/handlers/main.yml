@@ -1,0 +1,5 @@
+---
+- name: restart legit-services
+  ansible.builtin.service:
+    name: "{{ legit_services_identifier }}"
+    state: restarted

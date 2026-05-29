@@ -1,0 +1,13 @@
+---
+# Single tagged block so `just install-service legit_services` /
+# `just setup-service legit_services` actually reach the tasks.
+- name: Perform legit-services installation tasks
+  when: legit_services_enabled | bool
+  tags:
+    - setup-all
+    - setup-legit_services
+    - install-all
+    - install-legit_services
+  block:
+    - name: Install legit-services
+      ansible.builtin.include_tasks: "{{ role_path }}/tasks/install.yml"

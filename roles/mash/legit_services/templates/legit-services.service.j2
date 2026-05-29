@@ -1,0 +1,33 @@
+{# SPDX-License-Identifier: AGPL-3.0-or-later #}
+[Unit]
+Description=legit.services ({{ legit_services_identifier }})
+{% for service in legit_services_systemd_required_services_list %}
+Requires={{ service }}
+After={{ service }}
+{% endfor %}
+{% for service in legit_services_systemd_wanted_services_list %}
+Wants={{ service }}
+{% endfor %}
+
+[Service]
+# Type=simple with `compose up` in the foreground so systemd sees a
+# real long-running process — SGC's systemd_service_manager verifier
+# rejects `Type=oneshot RemainAfterExit=yes` units as "not running".
+Type=simple
+WorkingDirectory={{ legit_services_base_path }}
+Environment="HOME={{ sysd_docker_unit_home_path | default('/root') }}"
+
+# Bring stale containers down (in case the previous run left orphans),
+# then run compose in the foreground.
+ExecStartPre=-/usr/bin/docker compose --env-file env -p {{ legit_services_compose_project }} down --timeout {{ legit_services_container_stop_grace_time_seconds }}
+ExecStart=/usr/bin/docker compose --env-file env -p {{ legit_services_compose_project }} up --no-build --remove-orphans
+ExecStop=/usr/bin/docker compose --env-file env -p {{ legit_services_compose_project }} down --timeout {{ legit_services_container_stop_grace_time_seconds }}
+
+TimeoutStartSec=300
+TimeoutStopSec=120
+Restart=on-failure
+RestartSec=30
+SyslogIdentifier={{ legit_services_identifier }}
+
+[Install]
+WantedBy=multi-user.target

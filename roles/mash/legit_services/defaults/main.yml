@@ -1,0 +1,90 @@
+---
+# legit-services Ansible Role Defaults
+#
+# Marketing site for technical services with an embedded hybrid chat
+# (visitor <-> AI <-> owner). Runs as a docker compose project (Node +
+# Redis), wrapped in a single systemd unit. The Node container joins the
+# host's existing Traefik network so it can be reverse-proxied at
+# https://legit.services without publishing host ports directly.
+#
+# Source of truth for the app code: /home/oneill/apps/legit.services on
+# the controller. The role rsyncs it to {{ legit_services_src_path }} on
+# the prod host; `docker compose build` rebuilds the image when source
+# changes.
+
+legit_services_enabled: false
+
+legit_services_identifier: "{{ service_id_prefix }}legit-services"
+
+legit_services_base_path: "{{ sgc_playbook_base_path }}/{{ service_directory_prefix }}legit-services"
+legit_services_src_path: "{{ legit_services_base_path }}/src"
+legit_services_data_path: "{{ legit_services_base_path }}/data"
+legit_services_radata_path: "{{ legit_services_data_path }}/radata"
+legit_services_redis_path: "{{ legit_services_data_path }}/redis"
+
+legit_services_uid: "{{ sgc_playbook_uid }}"
+legit_services_gid: "{{ sgc_playbook_gid }}"
+
+# Where on the controller (NOT prod) the app source lives. Synced via
+# ansible.posix.synchronize at install time.
+legit_services_source_dir_controller: "/home/oneill/apps/legit.services"
+
+# Public hostname(s). Set in host_vars.
+legit_services_hostname: ""
+legit_services_aliases: []
+
+# Container images. The app image is built on prod from the synced source;
+# self_build prevents the role from trying to pull. Redis is pulled.
+legit_services_app_image: "legit-services:local"
+legit_services_app_image_self_build: true
+legit_services_redis_image: "docker.io/redis:7-alpine"
+
+legit_services_container_stop_grace_time_seconds: 30
+
+# Compose project name (used by `docker compose -p ...`).
+legit_services_compose_project: "{{ legit_services_identifier }}"
+
+# Internal compose network connecting app <-> redis.
+legit_services_internal_network: "{{ legit_services_identifier }}-internal"
+
+# MTU pinned to the dhd0 tunnel (1300) used to reach dex.sgc.ai; avoids
+# large LocalAI responses blackholing on fragmentation.
+legit_services_internal_network_mtu: 1300
+
+# Traefik integration — attaches the app container to the shared traefik
+# network already managed by this host's traefik role.
+legit_services_container_labels_traefik_enabled: "{{ traefik_labels_enabled | default(true) }}"
+legit_services_container_labels_traefik_docker_network: "{{ revproxy_service_networks }}"
+# role-specific:traefik
+legit_services_container_labels_traefik_entrypoints: "{{ traefik_entrypoint_primary }}"
+legit_services_container_labels_traefik_tls_certResolver: "{{ traefik_certResolver_primary }}"
+legit_services_container_labels_traefik_rule: >-
+  Host(`{{ legit_services_hostname }}`){% for a in legit_services_aliases %} || Host(`{{ a }}`){% endfor %}
+# /role-specific:traefik
+
+# App configuration (LocalAI, ntfy). Override per-host.
+legit_services_localai_url: "https://dex.sgc.ai"
+legit_services_localai_model: "qwen3.5-9b-glm5.1-distill-v1"
+legit_services_localai_api_key: ""
+
+legit_services_ntfy_url: "https://ntfy.sgc.ai"
+legit_services_ntfy_topic: "legit-services"
+legit_services_ntfy_token: ""
+
+# Owner console (/owner) — interim gate. Production should swap this for
+# Authentik forward-auth via a Traefik middleware label on the router.
+legit_services_owner_key: ""
+legit_services_public_base_url: "https://{{ legit_services_hostname }}"
+
+# Changedetection.io (owner monitoring panel) — API key extracted from
+# the changedetection datastore on the null.sgc.ai host.
+legit_services_changedetection_url: "https://null.sgc.ai"
+legit_services_changedetection_api_key: ""
+
+# Redis memory cap; audit log uses noeviction so writes fail rather than
+# silently dropping records when full.
+legit_services_redis_maxmemory: "512mb"
+
+# systemd dependency lists (matches SGC convention).
+legit_services_systemd_required_services_list: ["docker.service"]
+legit_services_systemd_wanted_services_list: []

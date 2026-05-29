@@ -1,0 +1,106 @@
+{# Rendered to {{ legit_services_base_path }}/docker-compose.yml.
+   The systemd unit drives this with `docker compose up -d`.
+   SPDX-License-Identifier: AGPL-3.0-or-later #}
+services:
+  app:
+    image: ${APP_IMAGE}
+    container_name: {{ legit_services_identifier }}
+    restart: unless-stopped
+    init: true
+    env_file: env
+    environment:
+      NODE_ENV: production
+    networks:
+      internal:
+        aliases:
+          - {{ legit_services_identifier }}
+      traefik: {}
+    volumes:
+      - {{ legit_services_radata_path }}:/app/radata
+    tmpfs:
+      - /tmp
+    read_only: true
+    security_opt:
+      - no-new-privileges:true
+    cap_drop:
+      - ALL
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://localhost:8080/healthz"]
+      interval: 15s
+      timeout: 5s
+      retries: 5
+      start_period: 20s
+    depends_on:
+      redis:
+        condition: service_healthy
+    deploy:
+      resources:
+        limits:
+          memory: 256M
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"
+    labels:
+{% if legit_services_container_labels_traefik_enabled | bool %}
+      traefik.enable: "true"
+      traefik.docker.network: "{{ legit_services_container_labels_traefik_docker_network }}"
+      traefik.http.routers.{{ legit_services_identifier }}.rule: {{ legit_services_container_labels_traefik_rule | trim | to_json }}
+      traefik.http.routers.{{ legit_services_identifier }}.entrypoints: "{{ legit_services_container_labels_traefik_entrypoints }}"
+      traefik.http.routers.{{ legit_services_identifier }}.tls: "true"
+      traefik.http.routers.{{ legit_services_identifier }}.tls.certResolver: "{{ legit_services_container_labels_traefik_tls_certResolver }}"
+      traefik.http.services.{{ legit_services_identifier }}.loadbalancer.server.port: "8080"
+{% else %}
+      traefik.enable: "false"
+{% endif %}
+
+  redis:
+    image: ${REDIS_IMAGE}
+    container_name: {{ legit_services_identifier }}-redis
+    restart: unless-stopped
+    command:
+      - redis-server
+      - --appendonly
+      - "yes"
+      - --maxmemory
+      - ${REDIS_MAXMEMORY}
+      - --maxmemory-policy
+      - noeviction
+    networks:
+      - internal
+    volumes:
+      - {{ legit_services_redis_path }}:/data
+    security_opt:
+      - no-new-privileges:true
+    cap_drop:
+      - ALL
+    cap_add:
+      - CHOWN
+      - DAC_OVERRIDE
+      - SETUID
+      - SETGID
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 3s
+      retries: 10
+    deploy:
+      resources:
+        limits:
+          memory: 640M
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"
+
+networks:
+  internal:
+    name: ${INTERNAL_NET}
+    driver: bridge
+    driver_opts:
+      com.docker.network.driver.mtu: "${INTERNAL_NET_MTU}"
+  traefik:
+    name: ${TRAEFIK_NET}
+    external: true

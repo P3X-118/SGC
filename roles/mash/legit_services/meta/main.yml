@@ -1,0 +1,15 @@
+---
+galaxy_info:
+  author: P3X-118
+  description: legit.services — marketing site with hybrid AI/owner chat
+  company: SGC
+  license: AGPL-3.0-or-later
+  min_ansible_version: "2.14"
+  platforms:
+    - name: Debian
+      versions:
+        - bookworm
+  categories:
+    - networking
+    - web
+dependencies: []
