@@ -81,6 +81,19 @@ legit_services_public_base_url: "https://{{ legit_services_hostname }}"
 legit_services_changedetection_url: "https://null.sgc.ai"
 legit_services_changedetection_api_key: ""
 
+# Authentik forward-auth gate for /owner*. When enabled, Traefik queries
+# the embedded outpost on the colocated Authentik server. The Node app
+# trusts the X-authentik-* headers Traefik injects on success.
+#
+# Prereq: run scripts/sgc/provision-legit-services-owner.py inside the
+# pds-authentik-server container to create the Application + Provider
+# + group + policy binding. Then add owner users to the
+# `legit-services-owners` group.
+legit_services_authentik_enabled: false
+# The forwardauth.address Traefik hits. Default points at the embedded
+# outpost on the shared SGC Authentik server.
+legit_services_authentik_forwardauth_address: "http://pds-authentik-server:9000/outpost.goauthentik.io/auth/traefik"
+
 # Redis memory cap; audit log uses noeviction so writes fail rather than
 # silently dropping records when full.
 legit_services_redis_maxmemory: "512mb"

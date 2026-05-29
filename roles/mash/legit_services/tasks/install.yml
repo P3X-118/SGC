@@ -5,11 +5,15 @@
       - legit_services_enabled | bool
       - legit_services_hostname | length > 0
       - legit_services_localai_api_key | length > 0
-      - legit_services_owner_key | length >= 16
+      # OWNER_KEY only required when Authentik forward-auth is NOT in
+      # front of /owner. With Authentik enabled, the Traefik middleware
+      # is the gate and the app trusts X-authentik-* headers.
+      - (legit_services_authentik_enabled | bool) or (legit_services_owner_key | length >= 16)
     fail_msg: >-
-      legit_services_enabled, legit_services_hostname, legit_services_localai_api_key,
-      and a strong legit_services_owner_key (>=16 chars) are required. Set them
-      per-host in inventory/host_vars/<host>/vars.yml.
+      legit_services_enabled, legit_services_hostname, legit_services_localai_api_key
+      are required, AND (legit_services_authentik_enabled OR a strong
+      legit_services_owner_key >=16 chars). Set them per-host in
+      inventory/host_vars/<host>/vars.yml.
 
 - name: Create legit-services base directories
   ansible.builtin.file:

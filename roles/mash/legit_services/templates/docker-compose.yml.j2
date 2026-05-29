@@ -46,11 +46,47 @@ services:
 {% if legit_services_container_labels_traefik_enabled | bool %}
       traefik.enable: "true"
       traefik.docker.network: "{{ legit_services_container_labels_traefik_docker_network }}"
+      # Public router: serves everything that's not gated by the owner
+      # router below. Priority kept low so the more-specific owner rule
+      # (PathPrefix) wins when both match.
       traefik.http.routers.{{ legit_services_identifier }}.rule: {{ legit_services_container_labels_traefik_rule | trim | to_json }}
       traefik.http.routers.{{ legit_services_identifier }}.entrypoints: "{{ legit_services_container_labels_traefik_entrypoints }}"
       traefik.http.routers.{{ legit_services_identifier }}.tls: "true"
       traefik.http.routers.{{ legit_services_identifier }}.tls.certResolver: "{{ legit_services_container_labels_traefik_tls_certResolver }}"
+      traefik.http.routers.{{ legit_services_identifier }}.priority: "10"
       traefik.http.services.{{ legit_services_identifier }}.loadbalancer.server.port: "8080"
+{% if legit_services_authentik_enabled | bool %}
+      # ── Authentik forward-auth gate for /owner* ─────────────────────
+      # Middleware queries the embedded outpost on the colocated
+      # Authentik server; on success Traefik injects X-authentik-* headers
+      # which the Node app trusts (the container only accepts traffic
+      # from this Traefik instance over the internal network).
+      traefik.http.middlewares.{{ legit_services_identifier }}-auth.forwardauth.address: "{{ legit_services_authentik_forwardauth_address }}"
+      traefik.http.middlewares.{{ legit_services_identifier }}-auth.forwardauth.trustForwardHeader: "true"
+      traefik.http.middlewares.{{ legit_services_identifier }}-auth.forwardauth.authResponseHeaders: "X-authentik-username,X-authentik-groups,X-authentik-entitlements,X-authentik-email,X-authentik-name,X-authentik-uid,X-authentik-jwt,X-authentik-meta-jwks,X-authentik-meta-outpost,X-authentik-meta-provider,X-authentik-meta-app,X-authentik-meta-version"
+
+      # Owner router: HTML SPA shell at /owner AND its API at /api/owner*.
+      # Priority above the public router so PathPrefix matches first.
+      traefik.http.routers.{{ legit_services_identifier }}-owner.rule: "Host(`{{ legit_services_hostname }}`) && (PathPrefix(`/owner`) || PathPrefix(`/api/owner`))"
+      traefik.http.routers.{{ legit_services_identifier }}-owner.entrypoints: "{{ legit_services_container_labels_traefik_entrypoints }}"
+      traefik.http.routers.{{ legit_services_identifier }}-owner.tls: "true"
+      traefik.http.routers.{{ legit_services_identifier }}-owner.tls.certResolver: "{{ legit_services_container_labels_traefik_tls_certResolver }}"
+      traefik.http.routers.{{ legit_services_identifier }}-owner.middlewares: "{{ legit_services_identifier }}-auth@docker"
+      traefik.http.routers.{{ legit_services_identifier }}-owner.service: "{{ legit_services_identifier }}"
+      traefik.http.routers.{{ legit_services_identifier }}-owner.priority: "20"
+
+      # OIDC callback passthrough: Authentik redirects the browser to
+      # https://legit.services/outpost.goauthentik.io/callback after sign-in.
+      # That path is served by the OUTPOST inside pds-authentik-server, not
+      # by this Node app, so route it to that service directly and skip
+      # the auth middleware (this IS the auth path).
+      traefik.http.routers.{{ legit_services_identifier }}-outpost.rule: "Host(`{{ legit_services_hostname }}`) && PathPrefix(`/outpost.goauthentik.io`)"
+      traefik.http.routers.{{ legit_services_identifier }}-outpost.entrypoints: "{{ legit_services_container_labels_traefik_entrypoints }}"
+      traefik.http.routers.{{ legit_services_identifier }}-outpost.tls: "true"
+      traefik.http.routers.{{ legit_services_identifier }}-outpost.tls.certResolver: "{{ legit_services_container_labels_traefik_tls_certResolver }}"
+      traefik.http.routers.{{ legit_services_identifier }}-outpost.service: "pds-authentik-server@docker"
+      traefik.http.routers.{{ legit_services_identifier }}-outpost.priority: "30"
+{% endif %}
 {% else %}
       traefik.enable: "false"
 {% endif %}
