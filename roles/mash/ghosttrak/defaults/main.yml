@@ -95,6 +95,13 @@ ghosttrak_authentik_hostname: "auth.ghostrak.app"
 # (derived from sgc_pgsk; matches provision-ghostrak-bff-token.py).
 ghosttrak_authentik_api_token: ""
 
+# WRITE-capable Authentik API token for the BFF's player-provisioning flow:
+# when a coach creates a player WITH an email, the BFF creates the Authentik
+# user, adds them to ghostrak-users, and generates a one-time recovery URL
+# (shown as a QR code in the SPA). Matches provision-ghostrak-provision-token.py.
+# Empty = provisioning disabled (player-create with email returns 503).
+ghosttrak_authentik_admin_token: ""
+
 # PeerTube integration for the BFF: it authenticates as the roster service
 # account (ghostrak-roster) to create per-player private channels + upload
 # filming sessions. Reaches PeerTube over the shared traefik network at the

@@ -63,6 +63,7 @@ services:
       DATABASE_URL: "postgres://{{ ghosttrak_pg_user }}:{{ ghosttrak_pg_password }}@{{ ghosttrak_pg_container_name }}:5432/{{ ghosttrak_pg_db }}"
       AUTHENTIK_API_URL: "https://{{ ghosttrak_authentik_hostname }}"
       AUTHENTIK_API_TOKEN: "{{ ghosttrak_authentik_api_token }}"
+      AUTHENTIK_ADMIN_TOKEN: "{{ ghosttrak_authentik_admin_token }}"
       PEERTUBE_INTERNAL_URL: "{{ ghosttrak_peertube_internal_url }}"
       PEERTUBE_PUBLIC_HOST: "{{ ghosttrak_peertube_public_host }}"
       PEERTUBE_ROSTER_USER: "{{ ghosttrak_peertube_roster_user }}"
