@@ -1,0 +1,40 @@
+---
+# authentik_ghostrak — provisions all ghostrak-specific state inside the
+# bskypds.pro Authentik (groups, scopes, service accounts, tokens). Runs ONLY
+# on the host that hosts Authentik; idempotent so re-runs are no-ops once the
+# state matches. Mirrors the existing ad-hoc `~/sgc/apps/authentik/scripts/sgc/
+# provision-ghostrak-*.py` pattern but folded into a role so deploys are
+# repeatable and don't require `docker exec ... ak shell < script.py` by hand.
+#
+# Enable on host_vars/bskypds.pro/vars.yml:
+#   authentik_ghostrak_enabled: true
+# Then: `just install-service authentik_ghostrak --limit bskypds.pro`
+#
+# Each provisioning concern (capability groups, tokens, OIDC providers, etc.)
+# is gated by its own _provision_* flag so individual concerns can be skipped
+# or run independently. As more provisioning logic moves into this role,
+# add another `_provision_<thing>` flag + a corresponding task block.
+
+authentik_ghostrak_enabled: false
+
+# Name of the running authentik-server container on this host. Same one used
+# by the existing ad-hoc provisioning scripts.
+authentik_ghostrak_container_name: pds-authentik-server
+
+# ---------------------------------------------------------------------------
+# Capability groups
+#
+# Coarse role groups that flow into the JWT `groups` claim and gate ghostrak
+# BFF authz at the cheapest possible layer (claim check, no I/O). The fine
+# per-facility/per-player assignments are owned by Odoo (the `ghostrak` Odoo
+# addon), which syncs membership in these groups via the Authentik admin
+# token whenever an assignment changes.
+# ---------------------------------------------------------------------------
+authentik_ghostrak_provision_capability_groups: true
+
+authentik_ghostrak_capability_groups:
+  - ghostrak-admins             # cross-cutting admin (system-level)
+  - ghostrak-facility-owners    # may own one or more facilities
+  - ghostrak-coaches            # coach somewhere (fine scope in Odoo)
+  - ghostrak-recruiters         # recruiter somewhere (fine scope in Odoo)
+  - ghostrak-users              # self-serve users / players with logins

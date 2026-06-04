@@ -791,6 +791,15 @@
       role: mash/pds_signup
     # /role-specific:pds_signup
 
+    # role-specific:authentik_ghostrak
+    # Provisions ghostrak-specific state inside the bskypds Authentik
+    # (capability groups, scope/claim mappings, service-account tokens). Runs
+    # only on the Authentik host. No-op unless authentik_ghostrak_enabled.
+    - when: authentik_ghostrak_enabled | default(false) | bool
+      role: mash/authentik_ghostrak
+      tags: [setup-all, setup-authentik_ghostrak, install-all, install-authentik_ghostrak]
+    # /role-specific:authentik_ghostrak
+
     # role-specific:pds_provisioning_runner
     # Local-only role at roles/mash/pds_provisioning_runner/.
     - when: pds_provisioning_runner_enabled | bool

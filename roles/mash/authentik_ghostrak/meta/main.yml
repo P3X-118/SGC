@@ -1,0 +1,19 @@
+---
+galaxy_info:
+  author: Oneill
+  company: SGC
+  role_name: authentik_ghostrak
+  namespace: SGC
+  description: |
+    Provisions all ghostrak-specific state inside the bskypds Authentik —
+    capability groups (later: scope/claim mappings, service-account tokens,
+    OIDC providers). Folds the existing `~/sgc/apps/authentik/scripts/sgc/
+    provision-ghostrak-*.py` ad-hoc pattern into a repeatable role so the
+    Authentik side of a fresh ghostrak deploy is reproducible end-to-end.
+  license: MIT
+  min_ansible_version: "2.10"
+  platforms:
+    - name: Debian
+      versions: [all]
+    - name: Ubuntu
+      versions: [all]

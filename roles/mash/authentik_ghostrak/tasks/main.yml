@@ -1,0 +1,91 @@
+---
+# authentik_ghostrak — top-level orchestrator. Each provisioning concern is its
+# own task block, gated by a `_provision_<thing>` flag in defaults so concerns
+# can be enabled/disabled independently. All tasks pipe a Python script into
+# the running authentik-server container via `ak shell`, mirroring the manual
+# pattern documented in `~/sgc/apps/authentik/scripts/sgc/`.
+#
+# Conventions:
+#   - Scripts live in this role's files/ (self-contained role).
+#   - Each script is idempotent; re-runs are no-ops.
+#   - `changed_when` on each shell task looks for an "OK ...=[]" marker in
+#     stdout so ansible reports `changed` only when state actually changed.
+#   - tmp path is unique per concern so concurrent runs (unlikely but cheap)
+#     don't clobber each other.
+
+- name: authentik_ghostrak — validate inputs
+  ansible.builtin.assert:
+    that:
+      - authentik_ghostrak_container_name | length > 0
+    fail_msg: "authentik_ghostrak requires authentik_ghostrak_container_name to be set"
+  tags:
+    - setup-all
+    - setup-authentik_ghostrak
+    - install-all
+    - install-authentik_ghostrak
+  when: authentik_ghostrak_enabled | bool
+
+# --- Capability groups ------------------------------------------------------
+
+- name: authentik_ghostrak — copy capability-groups script to host
+  ansible.builtin.copy:
+    src: provision-ghostrak-capability-groups.py
+    dest: /tmp/authentik_ghostrak_capability_groups.py
+    mode: '0644'
+  tags:
+    - setup-all
+    - setup-authentik_ghostrak
+    - install-all
+    - install-authentik_ghostrak
+  when:
+    - authentik_ghostrak_enabled | bool
+    - authentik_ghostrak_provision_capability_groups | bool
+
+- name: authentik_ghostrak — provision capability groups (via ak shell)
+  ansible.builtin.shell:
+    cmd: >
+      docker exec -i
+      -e CAPABILITY_GROUPS={{ authentik_ghostrak_capability_groups | join(',') | quote }}
+      {{ authentik_ghostrak_container_name }}
+      ak shell < /tmp/authentik_ghostrak_capability_groups.py
+  register: authentik_ghostrak_caps
+  # The script prints `OK created=[...] existed=[...] total=N`. We treat the
+  # run as "changed" only when at least one group was actually created.
+  changed_when: "authentik_ghostrak_caps.stdout is search('OK ') and 'created=[]' not in authentik_ghostrak_caps.stdout"
+  failed_when:
+    - authentik_ghostrak_caps.rc != 0
+    - authentik_ghostrak_caps.stdout is not search('OK ')
+  tags:
+    - setup-all
+    - setup-authentik_ghostrak
+    - install-all
+    - install-authentik_ghostrak
+  when:
+    - authentik_ghostrak_enabled | bool
+    - authentik_ghostrak_provision_capability_groups | bool
+
+- name: authentik_ghostrak — report capability-groups result
+  ansible.builtin.debug:
+    msg: "{{ authentik_ghostrak_caps.stdout | default('(skipped)') }}"
+  tags:
+    - setup-all
+    - setup-authentik_ghostrak
+    - install-all
+    - install-authentik_ghostrak
+  when:
+    - authentik_ghostrak_enabled | bool
+    - authentik_ghostrak_provision_capability_groups | bool
+    - authentik_ghostrak_caps is defined
+
+- name: authentik_ghostrak — clean up capability-groups script from host
+  ansible.builtin.file:
+    path: /tmp/authentik_ghostrak_capability_groups.py
+    state: absent
+  tags:
+    - setup-all
+    - setup-authentik_ghostrak
+    - install-all
+    - install-authentik_ghostrak
+  when:
+    - authentik_ghostrak_enabled | bool
+    - authentik_ghostrak_provision_capability_groups | bool
