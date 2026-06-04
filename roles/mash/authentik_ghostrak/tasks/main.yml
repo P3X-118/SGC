@@ -89,3 +89,67 @@
   when:
     - authentik_ghostrak_enabled | bool
     - authentik_ghostrak_provision_capability_groups | bool
+
+# --- OIDC groups-claim scope mapping ---------------------------------------
+
+- name: authentik_ghostrak — copy oidc-groups-scope script to host
+  ansible.builtin.copy:
+    src: provision-ghostrak-oidc-groups-scope.py
+    dest: /tmp/authentik_ghostrak_oidc_groups_scope.py
+    mode: '0644'
+  tags:
+    - setup-all
+    - setup-authentik_ghostrak
+    - install-all
+    - install-authentik_ghostrak
+  when:
+    - authentik_ghostrak_enabled | bool
+    - authentik_ghostrak_provision_oidc_groups_scope | bool
+
+- name: authentik_ghostrak — provision OIDC groups-claim scope (via ak shell)
+  ansible.builtin.shell:
+    cmd: >
+      docker exec -i
+      -e GHOSTRAK_GROUPS_SCOPE_NAME={{ authentik_ghostrak_groups_scope_name | quote }}
+      -e GHOSTRAK_OIDC_PROVIDERS={{ authentik_ghostrak_oidc_providers | join(',') | quote }}
+      {{ authentik_ghostrak_container_name }}
+      ak shell < /tmp/authentik_ghostrak_oidc_groups_scope.py
+  register: authentik_ghostrak_groups_scope
+  changed_when: "authentik_ghostrak_groups_scope.stdout is search('changed=True')"
+  failed_when:
+    - authentik_ghostrak_groups_scope.rc != 0
+    - authentik_ghostrak_groups_scope.stdout is not search('OK ')
+  tags:
+    - setup-all
+    - setup-authentik_ghostrak
+    - install-all
+    - install-authentik_ghostrak
+  when:
+    - authentik_ghostrak_enabled | bool
+    - authentik_ghostrak_provision_oidc_groups_scope | bool
+
+- name: authentik_ghostrak — report OIDC groups-claim result
+  ansible.builtin.debug:
+    msg: "{{ authentik_ghostrak_groups_scope.stdout | default('(skipped)') }}"
+  tags:
+    - setup-all
+    - setup-authentik_ghostrak
+    - install-all
+    - install-authentik_ghostrak
+  when:
+    - authentik_ghostrak_enabled | bool
+    - authentik_ghostrak_provision_oidc_groups_scope | bool
+    - authentik_ghostrak_groups_scope is defined
+
+- name: authentik_ghostrak — clean up oidc-groups-scope script from host
+  ansible.builtin.file:
+    path: /tmp/authentik_ghostrak_oidc_groups_scope.py
+    state: absent
+  tags:
+    - setup-all
+    - setup-authentik_ghostrak
+    - install-all
+    - install-authentik_ghostrak
+  when:
+    - authentik_ghostrak_enabled | bool
+    - authentik_ghostrak_provision_oidc_groups_scope | bool

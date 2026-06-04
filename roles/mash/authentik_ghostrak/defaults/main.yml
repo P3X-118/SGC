@@ -38,3 +38,31 @@ authentik_ghostrak_capability_groups:
   - ghostrak-coaches            # coach somewhere (fine scope in Odoo)
   - ghostrak-recruiters         # recruiter somewhere (fine scope in Odoo)
   - ghostrak-users              # self-serve users / players with logins
+
+
+# ---------------------------------------------------------------------------
+# OIDC `groups` claim mapping
+#
+# Creates a single ScopeMapping (`ghostrak: groups scope`) that emits the
+# user's Authentik group names as a `groups` JWT claim, then attaches it to
+# the named OAuth2 providers. Once attached, a client that requests
+# `openid profile email groups` will see `"groups": ["ghostrak-coaches", ...]`
+# in its token — this is the bridge that makes two-tier authz cheap (cap-group
+# check in JWT, no admin-API call on the hot path).
+#
+# The default expression mirrors Authentik's own group-emit pattern
+# (request.user.ak_groups). To use a different claim name (e.g., `roles`),
+# override authentik_ghostrak_groups_scope_name.
+# ---------------------------------------------------------------------------
+authentik_ghostrak_provision_oidc_groups_scope: true
+
+# OIDC scope name = JWT claim key. Clients request this scope explicitly
+# (e.g. Odoo's auth_oauth provider record's `scope` column needs to include
+# this string for the mapping to engage).
+authentik_ghostrak_groups_scope_name: groups
+
+# OAuth2 providers (by `name` first, then `client_id`) to attach the mapping
+# to. Missing providers are SKIPPED, not errored — re-run after creating them.
+authentik_ghostrak_oidc_providers:
+  - ghostrak    # the ghostrak BFF's OIDC client (provisioned by provision-ghostrak.py)
+  - prime       # Prime Baseball Odoo's OIDC client (provisioned by provision-prime.py)
