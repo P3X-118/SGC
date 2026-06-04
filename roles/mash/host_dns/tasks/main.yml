@@ -1,0 +1,42 @@
+---
+# Upsert the host's primary A record at Cloudflare. solo: true keeps the
+# record set canonical — if a stale duplicate exists for the same name+type,
+# it's replaced by this one. no_log keeps the API token out of run output.
+
+- name: host_dns — validate inputs
+  ansible.builtin.assert:
+    that:
+      - host_dns_cloudflare_token | length > 0
+      - host_dns_zone | length > 0
+      - host_dns_record_name | length > 0
+      - host_dns_record_content | length > 0
+    fail_msg: "host_dns requires host_dns_cloudflare_token, host_dns_zone, host_dns_record_name, host_dns_record_content"
+  tags:
+    - setup-all
+    - setup-host_dns
+    - install-all
+    - install-host_dns
+  when: host_dns_enabled | bool
+
+- name: host_dns — upsert A record at Cloudflare
+  community.general.cloudflare_dns:
+    api_token: "{{ host_dns_cloudflare_token }}"
+    zone: "{{ host_dns_zone }}"
+    type: A
+    record: "{{ host_dns_record_name }}"
+    value: "{{ host_dns_record_content }}"
+    proxied: "{{ host_dns_proxied | bool }}"
+    state: present
+    solo: true
+  delegate_to: "{{ host_dns_delegate_to }}"
+  # The CF API call doesn't need root; this prevents `delegate_to: localhost`
+  # from trying to `sudo` on the controller (which the play-level `become: true`
+  # would otherwise force).
+  become: false
+  no_log: true
+  tags:
+    - setup-all
+    - setup-host_dns
+    - install-all
+    - install-host_dns
+  when: host_dns_enabled | bool

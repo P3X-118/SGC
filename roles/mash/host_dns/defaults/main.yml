@@ -1,0 +1,54 @@
+---
+# host_dns — upsert the host's primary A record at Cloudflare. Generic, not
+# coupled to any service. Idempotent via community.general.cloudflare_dns —
+# reports changed only when the record's content actually differs.
+#
+# Pattern mirrored from ~/sgc/ansible/roles/pds-ar/tasks/dns.yml (the canonical
+# implementation that backs `pds_dns_manage`). Where the pds role manages DNS
+# as a SERVICE-level side effect, this role manages it at the HOST level so a
+# primary alias gets its A record regardless of which services are enabled.
+#
+# Enable per-host in inventory/host_vars/<hostname>/vars.yml:
+#   host_dns_enabled: true
+#   host_dns_zone: "legit.services"
+#   host_dns_record_name: "prime.i.legit.services"   # FQDN — module strips zone
+#   host_dns_record_content: "3.209.234.231"
+#   host_dns_cloudflare_token: "{{ traefik_environment_variables | regex_search('CF_DNS_API_TOKEN=(\\S+)', '\\1') }}"
+#
+# Then `just install-service host_dns --limit <host>` (or any setup-all run).
+
+host_dns_enabled: false
+
+# Cloudflare zone (e.g. "legit.services"). The record name MUST sit under this
+# zone — the module reports an error otherwise.
+host_dns_zone: ""
+
+# The FQDN of the record (e.g. "prime.i.legit.services"). The module strips
+# the zone from the right to derive the short name; passing the FQDN keeps the
+# vars file self-documenting.
+host_dns_record_name: ""
+
+# IPv4 address the record should point at (the host's public IP — Elastic IP
+# in AWS, etc.). Empty = validation fails.
+host_dns_record_content: ""
+
+# DNS-only ("grey cloud") by default: facility hosts terminate TLS at their own
+# Traefik via DNS-01 ACME, so CDN proxying would interfere. Set true only if
+# the host should sit behind CF as a CDN/WAF (separate decision).
+host_dns_proxied: false
+
+# Scoped Cloudflare token (Zone:DNS:Edit on the zone above). By default we
+# re-use whatever's already in traefik_environment_variables on the host —
+# the token already needs that zone's scope for ACME DNS-01. Override if you
+# want to use a separate token (e.g. a host-DNS-only scoped token).
+#
+# NOTE on extraction: Jinja's regex_search with a backref returns a LIST of
+# captures, not a string. Passing that list directly to cloudflare_dns gives
+# "Bearer ['token']" → CF 400. regex_findall + (+ ['']) + first is robust
+# against both "match" and "no match" cases without throwing.
+host_dns_cloudflare_token: "{{ (traefik_environment_variables | default('') | regex_findall('CF_DNS_API_TOKEN=(\\S+)') + ['']) | first }}"
+
+# Where to run the API call. Defaults to the controller because the host
+# itself doesn't need outbound to CF for this purpose (and the token lives in
+# host_vars on the controller).
+host_dns_delegate_to: "localhost"

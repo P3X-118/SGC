@@ -1,0 +1,21 @@
+---
+galaxy_info:
+  author: Oneill
+  company: SGC
+  role_name: host_dns
+  namespace: SGC
+  description: |
+    Idempotently upsert a host's primary A record at Cloudflare. Generic,
+    HOST-level (not coupled to any service). Mirrors pds-ar/dns.yml's
+    canonical pattern; intended for primary-alias hosts whose hostname needs
+    a stable A record but whose DNS isn't auto-managed by a service role.
+  license: MIT
+  min_ansible_version: "2.10"
+  platforms:
+    - name: Debian
+      versions: [all]
+    - name: Ubuntu
+      versions: [all]
+
+collections:
+  - community.general

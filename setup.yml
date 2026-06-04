@@ -89,6 +89,16 @@
     - role: galaxy/postgres
     # /role-specific:postgres
 
+    # role-specific:host_dns
+    # Generic per-host A-record manager (Cloudflare). Runs BEFORE traefik so
+    # ACME DNS-01's TXT records and the host's A record land in the same zone
+    # in the same playbook run. delegate_to: localhost — no on-host action.
+    # No-op unless host_dns_enabled.
+    - when: host_dns_enabled | default(false) | bool
+      role: mash/host_dns
+      tags: [setup-all, setup-host_dns, install-all, install-host_dns]
+    # /role-specific:host_dns
+
     # role-specific:traefik
     - role: galaxy/traefik
     # /role-specific:traefik
