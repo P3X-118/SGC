@@ -149,8 +149,25 @@ versions:
 # Playbook entrypoints
 # -----------------------------
 
-install-all *extra_args: (run-tags "install-all" extra_args)
-setup-all *extra_args: (run-tags "setup-all" extra_args)
+# install-all / setup-all are followed by a separate `start-all` run so
+# freshly-installed services come up automatically (mirrors `install-service`,
+# which adds `start-group`). Without this, an `install-all` on a fresh host
+# installs + enables the systemd units but leaves them inactive — the operator
+# would have to `systemctl start` each unit by hand.
+#
+# We invoke `start-all` as a SEPARATE ansible-playbook run on purpose: combining
+# `--tags=install-all,start-all` (or `setup-all,start-all`) silently fires BOTH
+# `restart_all` AND `stop_all` blocks of galaxy/systemd_service_manager in the
+# same pass, and the services end up stopped. Two runs cost a fast second pass
+# (start-all skips everything that isn't tagged start-all → seconds) but ends
+# with services genuinely active.
+install-all *extra_args:
+    @{{ JUST }} run-tags "install-all" {{ extra_args }}
+    @{{ JUST }} run-tags "start-all" {{ extra_args }}
+
+setup-all *extra_args:
+    @{{ JUST }} run-tags "setup-all" {{ extra_args }}
+    @{{ JUST }} run-tags "start-all" {{ extra_args }}
 
 install-service service *extra_args:
     {{ JUST }} _run-service "install" {{ service }} {{ extra_args }}

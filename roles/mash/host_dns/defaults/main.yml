@@ -13,7 +13,7 @@
 #   host_dns_zone: "legit.services"
 #   host_dns_record_name: "prime.i.legit.services"   # FQDN — module strips zone
 #   host_dns_record_content: "3.209.234.231"
-#   host_dns_cloudflare_token: "{{ traefik_environment_variables | regex_search('CF_DNS_API_TOKEN=(\\S+)', '\\1') }}"
+#   host_dns_cloudflare_token: "{{ (traefik_environment_variables | default('') | regex_findall('CF_DNS_API_TOKEN=(\\S+)') + ['']) | first }}"
 #
 # Then `just install-service host_dns --limit <host>` (or any setup-all run).
 
