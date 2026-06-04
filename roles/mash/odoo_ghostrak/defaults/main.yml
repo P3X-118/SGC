@@ -1,0 +1,51 @@
+---
+# odoo_ghostrak — provisions Odoo-side state needed for ghostrak's two-tier
+# auth: the `groups` OIDC scope on the auth_oauth_provider record (so Odoo
+# asks Authentik for the claim, which the authentik_ghostrak role provisions
+# on the issuer side). Later concerns (when they land) will also live here:
+#   - the custom `ghostrak` Odoo addon's data/UI/sync layer (seam #3),
+#   - the BFF webhook the addon calls on coach-assignment writes.
+#
+# Runs on the host that owns the Odoo deployment (e.g. prime.i.legit.services).
+# Idempotent — re-runs are no-ops once the desired state is in place.
+#
+# Enable per-host in host_vars/<host>/vars.yml:
+#   odoo_ghostrak_enabled: true
+# Then: `just install-service odoo_ghostrak --limit <host>`.
+
+odoo_ghostrak_enabled: false
+
+# Container names. Defaults match the SGC convention for prime
+# (service_id_prefix=prime-); override per host when prefixes differ.
+odoo_ghostrak_postgres_container: prime-postgres
+
+# Postgres role + database owning the Odoo schema. The default galaxy/postgres
+# bootstrap creates a per-service role/db named `<prefix>do` (so on prime
+# both are `prime-do`).
+odoo_ghostrak_database_user: prime-do
+odoo_ghostrak_database_name: prime-do
+
+# ---------------------------------------------------------------------------
+# OIDC groups-scope on auth_oauth_provider
+#
+# Appends `groups` to the scope column of the Authentik provider record in
+# auth_oauth_provider so Odoo's auth_oauth requests the claim at login. The
+# Authentik-side ScopeMapping (`ghostrak: groups scope`) provisioned by
+# mash/authentik_ghostrak emits the claim once it's requested.
+#
+# No Odoo restart required — the auth_oauth module reads provider config on
+# each login flow, so the change takes effect immediately.
+# ---------------------------------------------------------------------------
+odoo_ghostrak_provision_oidc_groups_scope: true
+
+# Match the provider by client_id (the OAuth2 app's id in Authentik, also
+# the client_id Odoo's auth_oauth saved into its DB row). For prime this is
+# `prime` (set by provision-prime.py and visible in auth_oauth_provider).
+odoo_ghostrak_oidc_client_id: prime
+
+# Scopes to ensure are present in the auth_oauth_provider.scope column.
+# `openid` is implicit in auth_oauth's protocol layer; the rest must appear
+# in the column verbatim (space-separated) so Odoo includes them in its
+# authorization request to Authentik.
+odoo_ghostrak_oidc_required_scopes:
+  - groups

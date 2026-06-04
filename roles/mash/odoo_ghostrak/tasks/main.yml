@@ -1,0 +1,111 @@
+---
+# odoo_ghostrak — Odoo-side provisioning for the two-tier ghostrak↔Odoo↔
+# Authentik architecture. Each concern is its own task block, gated by a
+# `_provision_<thing>` flag in defaults so concerns can be enabled/disabled
+# independently. Scripts are piped through `docker exec ... psql` against the
+# Odoo Postgres container. `changed_when` reads the psql "UPDATE N" line so
+# re-runs that match desired state report changed=false.
+
+- name: odoo_ghostrak — validate inputs
+  ansible.builtin.assert:
+    that:
+      - odoo_ghostrak_postgres_container | length > 0
+      - odoo_ghostrak_database_user | length > 0
+      - odoo_ghostrak_database_name | length > 0
+    fail_msg: "odoo_ghostrak requires postgres_container, database_user, and database_name to be set"
+  tags:
+    - setup-all
+    - setup-odoo_ghostrak
+    - install-all
+    - install-odoo_ghostrak
+  when: odoo_ghostrak_enabled | bool
+
+# --- OIDC groups-scope on auth_oauth_provider ------------------------------
+
+- name: odoo_ghostrak — copy oidc-groups-scope SQL to host
+  ansible.builtin.copy:
+    src: oidc-groups-scope.sql
+    dest: /tmp/odoo_ghostrak_oidc_groups_scope.sql
+    mode: '0644'
+  tags:
+    - setup-all
+    - setup-odoo_ghostrak
+    - install-all
+    - install-odoo_ghostrak
+  when:
+    - odoo_ghostrak_enabled | bool
+    - odoo_ghostrak_provision_oidc_groups_scope | bool
+
+# Currently this concern only handles a single scope (`groups`). If the
+# required-scopes list grows, the SQL will need a parametric loop — the
+# assert below guards against silently no-op'ing on a future addition.
+- name: odoo_ghostrak — assert only the `groups` scope is requested for now
+  ansible.builtin.assert:
+    that:
+      - odoo_ghostrak_oidc_required_scopes == ['groups']
+    fail_msg: >
+      odoo_ghostrak currently provisions only the `groups` scope (the SQL is
+      hardcoded to that token). To add another scope, extend the .sql script
+      with a parametric loop and remove this guard.
+  tags:
+    - setup-all
+    - setup-odoo_ghostrak
+    - install-all
+    - install-odoo_ghostrak
+  when:
+    - odoo_ghostrak_enabled | bool
+    - odoo_ghostrak_provision_oidc_groups_scope | bool
+
+- name: odoo_ghostrak — ensure `groups` scope on auth_oauth_provider (via psql)
+  # Single-line shell command (YAML `>-` folds newlines into spaces only when
+  # all lines share the SAME indentation — keep them aligned). SQL is piped
+  # via stdin so the /tmp/... path is read on the HOST (not inside the
+  # postgres container).
+  ansible.builtin.shell: >-
+    docker exec -i
+    {{ odoo_ghostrak_postgres_container }}
+    psql -v ON_ERROR_STOP=1
+    -v client_id={{ odoo_ghostrak_oidc_client_id | quote }}
+    -U {{ odoo_ghostrak_database_user | quote }}
+    -d {{ odoo_ghostrak_database_name | quote }}
+    < /tmp/odoo_ghostrak_oidc_groups_scope.sql
+  register: odoo_ghostrak_groups_scope
+  # psql's affected-row report is on the LAST line as "UPDATE N". N=0 is the
+  # idempotent no-op; N≥1 means the row was actually changed.
+  changed_when: "'UPDATE 0' not in odoo_ghostrak_groups_scope.stdout and (odoo_ghostrak_groups_scope.stdout is search('UPDATE '))"
+  failed_when:
+    - odoo_ghostrak_groups_scope.rc != 0
+  tags:
+    - setup-all
+    - setup-odoo_ghostrak
+    - install-all
+    - install-odoo_ghostrak
+  when:
+    - odoo_ghostrak_enabled | bool
+    - odoo_ghostrak_provision_oidc_groups_scope | bool
+
+- name: odoo_ghostrak — report OIDC groups-scope result
+  ansible.builtin.debug:
+    msg: "{{ odoo_ghostrak_groups_scope.stdout | default('(skipped)') }}"
+  tags:
+    - setup-all
+    - setup-odoo_ghostrak
+    - install-all
+    - install-odoo_ghostrak
+  when:
+    - odoo_ghostrak_enabled | bool
+    - odoo_ghostrak_provision_oidc_groups_scope | bool
+    - odoo_ghostrak_groups_scope is defined
+
+- name: odoo_ghostrak — clean up oidc-groups-scope SQL from host
+  ansible.builtin.file:
+    path: /tmp/odoo_ghostrak_oidc_groups_scope.sql
+    state: absent
+  tags:
+    - setup-all
+    - setup-odoo_ghostrak
+    - install-all
+    - install-odoo_ghostrak
+  when:
+    - odoo_ghostrak_enabled | bool
+    - odoo_ghostrak_provision_oidc_groups_scope | bool

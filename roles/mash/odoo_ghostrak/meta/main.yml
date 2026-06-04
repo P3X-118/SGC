@@ -1,0 +1,20 @@
+---
+galaxy_info:
+  author: Oneill
+  company: SGC
+  role_name: odoo_ghostrak
+  namespace: SGC
+  description: |
+    Provisions Odoo-side state needed for the two-tier ghostrak↔Odoo↔Authentik
+    architecture: starts with the `groups` OIDC scope on auth_oauth_provider
+    so Odoo requests the claim at login (the issuer-side ScopeMapping is
+    provisioned by mash/authentik_ghostrak). As the integration grows, this
+    role will host the custom Odoo addon deployment and the BFF webhook the
+    addon calls on coach-assignment writes.
+  license: MIT
+  min_ansible_version: "2.10"
+  platforms:
+    - name: Debian
+      versions: [all]
+    - name: Ubuntu
+      versions: [all]

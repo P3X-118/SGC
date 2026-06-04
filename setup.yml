@@ -252,6 +252,16 @@
     #- role: galaxy/ddclient
     # /role-specific:ddclient
 
+    # role-specific:odoo_ghostrak
+    # Odoo-side state for the two-tier ghostrak↔Odoo↔Authentik architecture
+    # (groups OIDC scope on auth_oauth_provider today; custom ghostrak addon
+    # + BFF webhook later). Runs after mash/do so Odoo's tables exist.
+    # No-op unless odoo_ghostrak_enabled.
+    - when: odoo_ghostrak_enabled | default(false) | bool
+      role: mash/odoo_ghostrak
+      tags: [setup-all, setup-odoo_ghostrak, install-all, install-odoo_ghostrak]
+    # /role-specific:odoo_ghostrak
+
     # role-specific:docker_registry
     #- role: galaxy/docker_registry
     # /role-specific:docker_registry
