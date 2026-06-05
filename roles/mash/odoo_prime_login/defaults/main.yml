@@ -1,0 +1,42 @@
+---
+# odoo_prime_login — installs the prime_login custom Odoo module on the
+# prime.i.legit.services Odoo. The module ships:
+#   - a single-button "Sign in with Authentik" view replacement,
+#   - a local-admin fallback (for break-glass when SSO breaks),
+#   - the auth_oauth response_type fix that lets Odoo accept Authentik's
+#     implicit-flow access token.
+#
+# Sourced from `~/b2b/primeBaseball/odoo-addons/prime_login/` on the
+# controller; rsynced into the host's do_extra_addons_path and installed via
+# a one-shot `docker run` that mirrors the running prime-do systemd unit's
+# image/mounts/network/add-host. Same idempotency pattern as
+# mash/odoo_ghostrak — a content-hash marker on the host gates whether the
+# stop/install/start cycle fires.
+#
+# Enable per-host (on prime.i.legit.services):
+#   odoo_prime_login_enabled: true
+# Then: `just install-service odoo_prime_login --limit prime.i.legit.services`.
+
+odoo_prime_login_enabled: false
+
+odoo_prime_login_module_name: prime_login
+
+# Absolute path on the CONTROLLER — defaults to the prime engagement
+# workspace (the canonical home for prime-only Odoo modules).
+odoo_prime_login_src_path: "/home/oneill/b2b/primeBaseball/odoo-addons/{{ odoo_prime_login_module_name }}"
+
+# Target on the HOST. Mirrors the do role's do_extra_addons_path layout.
+odoo_prime_login_dst_path: "{{ do_extra_addons_path | default('/' ~ (sgc_playbook_identifier | default('do')) ~ '/' ~ (do_identifier | default('do')) ~ '/extra-addons') }}/{{ odoo_prime_login_module_name }}"
+
+# DB the module installs into. Same default as odoo_ghostrak.
+odoo_prime_login_database_name: "{{ do_identifier | default('do') }}"
+
+# --- Install runtime (mirror prime-do systemd unit) ----------------------
+# Defaults match mash/do's docker create args so the install container runs
+# the same code as the long-running service.
+odoo_prime_login_systemd_service: "{{ (do_identifier | default('do')) ~ '.service' }}"
+odoo_prime_login_install_do_base_path: "{{ do_base_path | default('/' ~ (sgc_playbook_identifier | default('do')) ~ '/' ~ (do_identifier | default('do'))) }}"
+odoo_prime_login_install_do_image: "sgc-do:{{ do_image_version | default('19.0') }}-{{ do_image_release | default('01') }}"
+odoo_prime_login_install_network: "{{ (sgc_playbook_identifier | default('do')) ~ '-postgres' }}"
+odoo_prime_login_install_add_hosts: []
+odoo_prime_login_install_user: "{{ (sgc_playbook_uid | default(999)) ~ ':' ~ (sgc_playbook_gid | default(988)) }}"

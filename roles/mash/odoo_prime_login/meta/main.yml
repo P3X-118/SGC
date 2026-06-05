@@ -1,0 +1,20 @@
+---
+galaxy_info:
+  author: Oneill
+  company: SGC
+  role_name: odoo_prime_login
+  namespace: SGC
+  description: |
+    Installs the prime_login Odoo module (Authentik SSO single-button +
+    local-admin fallback + auth_oauth response_type fix) on the
+    prime.i.legit.services Odoo. Same install pattern as mash/odoo_ghostrak:
+    rsync source from controller, then run a one-shot docker container that
+    mirrors the running systemd unit's mounts/network/add-host to do
+    -i/-u {{ module_name }} --stop-after-init.
+  license: MIT
+  min_ansible_version: "2.10"
+  platforms:
+    - name: Debian
+      versions: [all]
+    - name: Ubuntu
+      versions: [all]

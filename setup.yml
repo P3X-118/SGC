@@ -262,6 +262,17 @@
       tags: [setup-all, setup-odoo_ghostrak, install-all, install-odoo_ghostrak]
     # /role-specific:odoo_ghostrak
 
+    # role-specific:odoo_prime_login
+    # Installs the prime_login custom Odoo module (Authentik single-button
+    # SSO + local-admin fallback + auth_oauth response_type fix). Same install
+    # pattern as mash/odoo_ghostrak; source lives in the prime engagement
+    # workspace (~/b2b/primeBaseball/odoo-addons/prime_login). No-op unless
+    # odoo_prime_login_enabled.
+    - when: odoo_prime_login_enabled | default(false) | bool
+      role: mash/odoo_prime_login
+      tags: [setup-all, setup-odoo_prime_login, install-all, install-odoo_prime_login]
+    # /role-specific:odoo_prime_login
+
     # role-specific:docker_registry
     #- role: galaxy/docker_registry
     # /role-specific:docker_registry
