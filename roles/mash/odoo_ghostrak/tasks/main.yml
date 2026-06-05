@@ -154,6 +154,77 @@
     - odoo_ghostrak_enabled | bool
     - odoo_ghostrak_provision_runtime_settings | bool
 
+# --- Provision the bff-service Odoo user -----------------------------------
+#
+# Done BEFORE the addon install so a fresh deploy gets the user before any
+# BFF traffic could arrive. The shell-based provisioner reads/writes through
+# a regular ORM session so it coexists with the running long-running Odoo —
+# no DB lock, no downtime.
+
+- name: odoo_ghostrak — assert bff-service password resolved
+  ansible.builtin.assert:
+    that:
+      - odoo_ghostrak_bff_service_user_password | length > 32
+    fail_msg: >
+      odoo_ghostrak_bff_service_user_password didn't resolve. Check that
+      sgc_pgsk is set on this host (vault-encrypted in host_vars/<host>/
+      vault.yml as vault_sgc_pgsk).
+  tags:
+    - setup-all
+    - setup-odoo_ghostrak
+    - install-all
+    - install-odoo_ghostrak
+  when:
+    - odoo_ghostrak_enabled | bool
+    - odoo_ghostrak_provision_bff_service_user | bool
+
+- name: odoo_ghostrak — provision bff-service Odoo user (via one-shot odoo shell)
+  ansible.builtin.shell:
+    cmd: >-
+      docker run --rm -i
+      --user={{ odoo_ghostrak_install_user }}
+      --cap-drop=ALL
+      --network={{ odoo_ghostrak_install_network }}
+      -e BFF_SERVICE_PASSWORD={{ odoo_ghostrak_bff_service_user_password | quote }}
+      --mount type=bind,src={{ odoo_ghostrak_install_do_base_path }}/odoo.conf,dst=/etc/odoo/odoo.conf,readonly
+      --mount type=bind,src={{ odoo_ghostrak_install_do_base_path }}/data,dst=/var/lib/odoo
+      --mount type=bind,src={{ odoo_ghostrak_install_do_base_path }}/extra-addons,dst=/mnt/extra-addons,readonly
+      {% for h in odoo_ghostrak_install_add_hosts %}--add-host={{ h }} {% endfor %}
+      {{ odoo_ghostrak_install_do_image }}
+      odoo-bin shell -c /etc/odoo/odoo.conf --no-http -d {{ odoo_ghostrak_database_name }}
+    stdin: "{{ lookup('file', 'provision-bff-service-user.py') }}"
+  register: odoo_ghostrak_bff_user
+  # cmd echoes the password (via -e BFF_SERVICE_PASSWORD=…). Suppress.
+  no_log: true
+  changed_when: "odoo_ghostrak_bff_user.stdout is search('changed=True')"
+  failed_when:
+    - odoo_ghostrak_bff_user.rc != 0
+    - odoo_ghostrak_bff_user.stdout is not search('OK ')
+  tags:
+    - setup-all
+    - setup-odoo_ghostrak
+    - install-all
+    - install-odoo_ghostrak
+  when:
+    - odoo_ghostrak_enabled | bool
+    - odoo_ghostrak_provision_bff_service_user | bool
+
+- name: odoo_ghostrak — report bff-service user result (status only, no secret)
+  # Print only the stdout (the python script's "OK login=... changed=..." line);
+  # the encompassing task's cmd has the password env-var inlined, so don't
+  # debug the entire registered result.
+  ansible.builtin.debug:
+    msg: "{{ odoo_ghostrak_bff_user.stdout | default('(skipped)') }}"
+  tags:
+    - setup-all
+    - setup-odoo_ghostrak
+    - install-all
+    - install-odoo_ghostrak
+  when:
+    - odoo_ghostrak_enabled | bool
+    - odoo_ghostrak_provision_bff_service_user | bool
+    - odoo_ghostrak_bff_user is defined
+
 # --- Install the `ghostrak` custom Odoo addon ------------------------------
 
 - name: odoo_ghostrak — verify addon source exists on controller

@@ -109,6 +109,25 @@ odoo_ghostrak_install_user: "{{ (sgc_playbook_uid | default(999)) ~ ':' ~ (sgc_p
 
 
 # ---------------------------------------------------------------------------
+# bff-service Odoo user — credentials the BFF uses for seam #7 authz queries
+#
+# The ghostrak BFF reads res.partner (and the addon's custom fields) via
+# JSON-RPC as this user. Internal user only; no custom groups (read access
+# to res.partner suffices). Password derived from the same string the BFF
+# host's host_vars uses (cross-host hostvars), so both ends agree without
+# operator hand-off.
+#
+# Provisioned via `odoo shell -d <db> --no-http` in a one-shot docker run
+# (same image/mounts/network as the long-running service; no downtime).
+# Idempotent — re-runs that don't change the source password are no-ops.
+# ---------------------------------------------------------------------------
+odoo_ghostrak_provision_bff_service_user: true
+
+odoo_ghostrak_bff_service_user_login: "bff-service"
+odoo_ghostrak_bff_service_user_password: "{{ ((sgc_pgsk | default('')) ~ '.odoo.bff') | hash('sha256') }}"
+
+
+# ---------------------------------------------------------------------------
 # Runtime settings delivered to Odoo via ir.config_parameter
 #
 # The ghostrak Odoo addon reads these at runtime (in authentik_client.py +

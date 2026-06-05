@@ -108,6 +108,22 @@ ghosttrak_authentik_admin_token: ""
 # ir.config_parameter — see mash/odoo_ghostrak's runtime_settings concern.
 ghosttrak_bff_webhook_secret: ""
 
+# Odoo (BFF authz queries, seam #7). The BFF authenticates as the
+# bff-service Odoo user that mash/odoo_ghostrak's provision_bff_service_user
+# concern creates on prime. All four must be set for `odoo.enabled` to
+# return true in the BFF; empty disables every Odoo round-trip (the new
+# playerAccess path falls back via a feature flag elsewhere).
+#
+# Set in host_vars (cross-host hostvars resolves prime's vault):
+#   ghosttrak_odoo_url:      e.g. https://prime.i.legit.services
+#   ghosttrak_odoo_db:       e.g. prime-do
+#   ghosttrak_odoo_login:    bff-service
+#   ghosttrak_odoo_password: derived from prime's sgc_pgsk + '.odoo.bff'
+ghosttrak_odoo_url: ""
+ghosttrak_odoo_db: ""
+ghosttrak_odoo_login: "bff-service"
+ghosttrak_odoo_password: ""
+
 # PeerTube integration for the BFF: it authenticates as the roster service
 # account (ghostrak-roster) to create per-player private channels + upload
 # filming sessions. Reaches PeerTube over the shared traefik network at the

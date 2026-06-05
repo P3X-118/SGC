@@ -51,6 +51,14 @@ ghosttrak_dev_authentik_mesh_ip: "{{ ghosttrak_authentik_mesh_ip | default('') }
 ghosttrak_dev_authentik_api_token: "{{ ghosttrak_authentik_api_token | default('') }}"
 ghosttrak_dev_authentik_admin_token: "{{ ghosttrak_authentik_admin_token | default('') }}"
 ghosttrak_dev_bff_webhook_secret: "{{ ghosttrak_bff_webhook_secret | default('') }}"
+
+# Odoo (BFF authz queries, seam #7). Same upstream as prod — both BFFs talk
+# to prime's bff-service Odoo user. Cross-host hostvars derives the password
+# from prime's vault.
+ghosttrak_dev_odoo_url: "{{ ghosttrak_odoo_url | default('') }}"
+ghosttrak_dev_odoo_db: "{{ ghosttrak_odoo_db | default('') }}"
+ghosttrak_dev_odoo_login: "{{ ghosttrak_odoo_login | default('bff-service') }}"
+ghosttrak_dev_odoo_password: "{{ ghosttrak_odoo_password | default('') }}"
 ghosttrak_dev_peertube_internal_url: "{{ ghosttrak_peertube_internal_url | default('') }}"
 ghosttrak_dev_peertube_public_host: "{{ ghosttrak_peertube_public_host | default('') }}"
 ghosttrak_dev_peertube_roster_user: "{{ ghosttrak_peertube_roster_user | default('ghostrak-roster') }}"
