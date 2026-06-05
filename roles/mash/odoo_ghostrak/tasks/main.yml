@@ -109,3 +109,134 @@
   when:
     - odoo_ghostrak_enabled | bool
     - odoo_ghostrak_provision_oidc_groups_scope | bool
+
+# --- Install the `ghostrak` custom Odoo addon ------------------------------
+
+- name: odoo_ghostrak — verify addon source exists on controller
+  ansible.builtin.stat:
+    path: "{{ odoo_ghostrak_addon_src_path }}/__manifest__.py"
+  delegate_to: localhost
+  become: false
+  register: odoo_ghostrak_addon_src_stat
+  tags:
+    - setup-all
+    - setup-odoo_ghostrak
+    - install-all
+    - install-odoo_ghostrak
+  when:
+    - odoo_ghostrak_enabled | bool
+    - odoo_ghostrak_install_addon | bool
+
+- name: odoo_ghostrak — assert addon source is present
+  ansible.builtin.assert:
+    that:
+      - odoo_ghostrak_addon_src_stat.stat.exists
+    fail_msg: >
+      odoo_ghostrak_addon_src_path '{{ odoo_ghostrak_addon_src_path }}' has no
+      __manifest__.py on the controller — point this at the directory of the
+      ghostrak Odoo addon (default: ~/apps/ghostrak/odoo-addon/ghostrak).
+  tags:
+    - setup-all
+    - setup-odoo_ghostrak
+    - install-all
+    - install-odoo_ghostrak
+  when:
+    - odoo_ghostrak_enabled | bool
+    - odoo_ghostrak_install_addon | bool
+
+- name: odoo_ghostrak — ensure addon target dir exists on host
+  ansible.builtin.file:
+    path: "{{ odoo_ghostrak_addon_dst_path }}"
+    state: directory
+    owner: "{{ do_user | default(sgc_playbook_user) | default('root') }}"
+    group: "{{ do_group | default(sgc_playbook_group_name) | default('root') }}"
+    mode: '0755'
+  tags:
+    - setup-all
+    - setup-odoo_ghostrak
+    - install-all
+    - install-odoo_ghostrak
+  when:
+    - odoo_ghostrak_enabled | bool
+    - odoo_ghostrak_install_addon | bool
+
+- name: odoo_ghostrak — rsync addon source to host
+  ansible.posix.synchronize:
+    src: "{{ odoo_ghostrak_addon_src_path }}/"
+    dest: "{{ odoo_ghostrak_addon_dst_path }}/"
+    delete: true
+    recursive: true
+    rsync_opts:
+      - "--exclude=__pycache__"
+      - "--exclude=*.pyc"
+      - "--exclude=.git"
+  register: odoo_ghostrak_addon_sync
+  tags:
+    - setup-all
+    - setup-odoo_ghostrak
+    - install-all
+    - install-odoo_ghostrak
+  when:
+    - odoo_ghostrak_enabled | bool
+    - odoo_ghostrak_install_addon | bool
+
+# Module install/upgrade only when sync actually moved files. On a no-op
+# sync the running Odoo stays up untouched. The first run on a fresh host
+# always changes (addon dst is empty) so the install fires.
+- name: odoo_ghostrak — install/upgrade the ghostrak module (brief downtime)
+  block:
+    - name: Stop Odoo to release DB locks
+      ansible.builtin.systemd:
+        name: "{{ odoo_ghostrak_systemd_service }}"
+        state: stopped
+
+    - name: Install/upgrade ghostrak module via one-shot docker run
+      # Mirrors the systemd unit's `docker create` invocation (image, user,
+      # cap-drop, volumes, add-host) but joins only the postgres network
+      # (--no-http means we don't need traefik/main network connectivity).
+      # docker run accepts --add-host repeated, so a Jinja loop emits each.
+      ansible.builtin.command:
+        cmd: >-
+          docker run --rm
+          --user={{ odoo_ghostrak_install_user }}
+          --cap-drop=ALL
+          --network={{ odoo_ghostrak_install_network }}
+          --mount type=bind,src={{ odoo_ghostrak_install_do_base_path }}/odoo.conf,dst=/etc/odoo/odoo.conf,readonly
+          --mount type=bind,src={{ odoo_ghostrak_install_do_base_path }}/data,dst=/var/lib/odoo
+          --mount type=bind,src={{ odoo_ghostrak_install_do_base_path }}/extra-addons,dst=/mnt/extra-addons,readonly
+          {% for h in odoo_ghostrak_install_add_hosts %}--add-host={{ h }} {% endfor %}
+          {{ odoo_ghostrak_install_do_image }}
+          odoo --no-http
+          -d {{ odoo_ghostrak_database_name }}
+          -u {{ odoo_ghostrak_addon_module_name }}
+          -i {{ odoo_ghostrak_addon_module_name }}
+          --stop-after-init --without-demo=all
+      register: odoo_ghostrak_module_install
+      changed_when: true
+      failed_when:
+        - odoo_ghostrak_module_install.rc != 0
+
+    - name: Start Odoo back up
+      ansible.builtin.systemd:
+        name: "{{ odoo_ghostrak_systemd_service }}"
+        state: started
+  rescue:
+    # If install fails, make damn sure the service comes back up before we
+    # propagate the error — leaving prime-do stopped is the bad outcome.
+    - name: (rescue) Start Odoo back up after install failure
+      ansible.builtin.systemd:
+        name: "{{ odoo_ghostrak_systemd_service }}"
+        state: started
+    - name: (rescue) Re-raise the install failure
+      ansible.builtin.fail:
+        msg: "ghostrak module install failed; Odoo restarted. See task output above."
+  tags:
+    - setup-all
+    - setup-odoo_ghostrak
+    - install-all
+    - install-odoo_ghostrak
+  when:
+    - odoo_ghostrak_enabled | bool
+    - odoo_ghostrak_install_addon | bool
+    - odoo_ghostrak_addon_sync is defined
+    - odoo_ghostrak_addon_sync.changed

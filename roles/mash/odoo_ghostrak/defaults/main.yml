@@ -49,3 +49,60 @@ odoo_ghostrak_oidc_client_id: prime
 # authorization request to Authentik.
 odoo_ghostrak_oidc_required_scopes:
   - groups
+
+
+# ---------------------------------------------------------------------------
+# Custom `ghostrak` Odoo addon — installation + sync
+#
+# Rsyncs the addon source from the controller into the host's
+# do_extra_addons_path (mounted into the Odoo container at /mnt/extra-addons),
+# then runs `docker compose run --rm` to install or upgrade the module. The
+# compose-run pattern reuses the deploying Odoo container's image, volumes,
+# env, network, and host overrides — so the install sees the same DB/userinfo
+# routing as the running service without us having to re-encode any of it.
+#
+# Brief downtime: the running prime-do service is stopped for the install
+# (releasing the DB lock); systemctl start brings it back. Skipped when the
+# addon source on the host already matches the controller (rsync changed=0).
+# ---------------------------------------------------------------------------
+odoo_ghostrak_install_addon: true
+
+odoo_ghostrak_addon_module_name: ghostrak
+
+# Absolute path on the CONTROLLER. Default points at the main ghostrak
+# working tree; overridable per host (e.g. point at the ghostrak-prod
+# worktree for prod-pinned deploys).
+odoo_ghostrak_addon_src_path: "/home/oneill/apps/ghostrak/odoo-addon/{{ odoo_ghostrak_addon_module_name }}"
+
+# Target on the HOST. Defaults to {{ do_extra_addons_path }}/{{ module name }}
+# which on the standard do role layout is /<identifier>/<identifier>-do/
+# extra-addons/<module>. mash/do must have do_extra_addons_enabled: true so
+# Odoo picks the dir up via its addons_path.
+odoo_ghostrak_addon_dst_path: "{{ do_extra_addons_path | default('/' ~ (do_identifier | default('do')) ~ '/extra-addons') }}/{{ odoo_ghostrak_addon_module_name }}"
+
+# The systemd unit + paths + docker args used to run the one-shot install.
+# Defaults mirror what the SGC do role's `docker create` invocation puts in
+# /etc/systemd/system/<do_identifier>.service — same image, same mounts,
+# same networks, same hardening. The host runs raw `docker run/create/start`
+# (NOT docker-compose), so we can't use `docker compose run`.
+#
+# Standard SGC layout: do_base_path = /<sgc_playbook_identifier>/<do_identifier>
+# (e.g. /prime/prime-do). do_base_path is set by mash/do role's defaults.
+odoo_ghostrak_systemd_service: "{{ (do_identifier | default('do')) ~ '.service' }}"
+odoo_ghostrak_install_do_base_path: "{{ do_base_path | default('/' ~ (sgc_playbook_identifier | default('do')) ~ '/' ~ (do_identifier | default('do'))) }}"
+
+# Image tag — must match what the systemd unit runs (otherwise the install
+# would run a different code than the long-running service).
+odoo_ghostrak_install_do_image: "sgc-do:{{ do_image_version | default('19.0') }}-{{ do_image_release | default('01') }}"
+
+# For postgres connectivity only — the install short-circuits HTTP with
+# --no-http, so the prime-do main network + traefik aren't needed.
+odoo_ghostrak_install_network: "{{ (sgc_playbook_identifier | default('do')) ~ '-postgres' }}"
+
+# Optional extra-hosts entries (e.g. mesh routing for OIDC). Match
+# do_container_extra_arguments_custom in the host's vars.yml. Empty = none.
+odoo_ghostrak_install_add_hosts: []
+
+# Container UID:GID — should match what mash/do uses. The do role default
+# resolves to sgc_playbook_uid:sgc_playbook_gid (999:988 on prime).
+odoo_ghostrak_install_user: "{{ (sgc_playbook_uid | default(999)) ~ ':' ~ (sgc_playbook_gid | default(988)) }}"

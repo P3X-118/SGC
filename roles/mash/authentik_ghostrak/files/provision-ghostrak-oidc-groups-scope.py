@@ -1,14 +1,25 @@
 # SGC: OIDC `groups` claim mapping for ghostrak-consuming OAuth2 providers.
 #
-# Creates (or updates in place) a single Authentik ScopeMapping that emits the
-# user's Authentik group names as a `groups` JWT claim, then attaches it to
-# each of the named OAuth2Providers. After this runs, any OIDC client that
-# requests `groups` in its scope parameter will see the claim in its token —
-# which is the foundation that makes the ghostrak BFF + Odoo two-tier authz
-# work without ever calling the Authentik admin API on the hot path.
+# Ensures the named OAuth2Providers (ghostrak, prime, …) carry a `groups` JWT
+# claim of the user's Authentik group names — the foundation that makes the
+# ghostrak BFF + Odoo two-tier authz work without hitting the admin API on the
+# hot path.
 #
-# Idempotent. Re-runs report `mapping=unchanged attached=[] changed=False`
-# (the ansible role's changed_when reads `changed=True/False` from this line).
+# CONVERGES ON THE SHARED MAPPING. Authentik does not make scope_name unique,
+# so this role previously maintained its OWN row ("ghostrak: groups scope")
+# with scope_name="groups" — while every per-app provisioner (provision-<app>.py)
+# maintains a *different* row named "oidc groups", also scope_name="groups".
+# Two rows with the same scope_name made `update_or_create(scope_name="groups")`
+# in every per-app script raise MultipleObjectsReturned (a production-blocking
+# provisioning crash). So this role now ATTACHES the shared "oidc groups" mapping
+# instead of creating a competing one. It is attach-only: the mapping's
+# expression/description are owned by the per-app provisioners, so we never
+# rewrite them (that would fight those scripts and churn `changed`). We create
+# the shared row — matching the per-app definition exactly — only if no per-app
+# script has run yet.
+#
+# Idempotent. Re-runs on a steady state report `mapping=unchanged attached=[]
+# changed=False` (the ansible role's changed_when reads `changed=True/False`).
 #
 # Run via mash/authentik_ghostrak role — sets GHOSTRAK_GROUPS_SCOPE_NAME +
 # GHOSTRAK_OIDC_PROVIDERS, pipes this script through `docker exec ... ak shell`.
@@ -18,47 +29,33 @@ import os
 from authentik.providers.oauth2.models import OAuth2Provider, ScopeMapping
 
 SCOPE_NAME = os.environ.get("GHOSTRAK_GROUPS_SCOPE_NAME", "groups").strip() or "groups"
-MAPPING_NAME = "ghostrak: groups scope"
-DESCRIPTION = (
-    "ghostrak: emit Authentik group names as the OIDC `groups` claim. "
-    "Provisioned by mash/authentik_ghostrak."
-)
-EXPRESSION = (
-    "# Emit the user's Authentik group names as a `groups` claim.\n"
-    "# Managed by mash/authentik_ghostrak (provision-ghostrak-oidc-groups-scope.py).\n"
-    "return {\"groups\": [group.name for group in request.user.ak_groups.all()]}\n"
-)
+
+# The shared mapping owned by the per-app provisioners. Name + definition MUST
+# match provision-<app>.py so a create-if-missing here is indistinguishable from
+# one they would make (no churn when they later run).
+SHARED_NAME = "oidc groups"
+SHARED_DESCRIPTION = "group names for OIDC clients (shared SGC RBAC)"
+SHARED_EXPRESSION = "return {'groups': [g.name for g in request.user.ak_groups.all()]}"
+
 PROVIDERS = [
     p.strip()
     for p in os.environ.get("GHOSTRAK_OIDC_PROVIDERS", "ghostrak,prime").split(",")
     if p.strip()
 ]
 
-# Create-or-update the mapping. Track whether anything actually changed so the
-# ansible role can report changed=False on a no-op run.
-existing = ScopeMapping.objects.filter(name=MAPPING_NAME).first()
-if existing is None:
+# Find the shared mapping by its (scope_name, name) identity. Attach-only when it
+# exists; create it (matching the per-app definition) only if nothing has yet.
+mapping = ScopeMapping.objects.filter(scope_name=SCOPE_NAME, name=SHARED_NAME).first()
+if mapping is None:
     mapping = ScopeMapping.objects.create(
-        name=MAPPING_NAME,
+        name=SHARED_NAME,
         scope_name=SCOPE_NAME,
-        description=DESCRIPTION,
-        expression=EXPRESSION,
+        description=SHARED_DESCRIPTION,
+        expression=SHARED_EXPRESSION,
     )
     mapping_status = "created"
-elif (
-    existing.scope_name != SCOPE_NAME
-    or existing.description != DESCRIPTION
-    or existing.expression != EXPRESSION
-):
-    existing.scope_name = SCOPE_NAME
-    existing.description = DESCRIPTION
-    existing.expression = EXPRESSION
-    existing.save()
-    mapping = existing
-    mapping_status = "updated"
 else:
-    mapping = existing
-    mapping_status = "unchanged"
+    mapping_status = "unchanged"  # shared row; owned by the per-app provisioners
 
 # Attach to each named provider, tolerating providers that don't exist yet
 # (the role might run before all OIDC providers are provisioned).
@@ -81,6 +78,6 @@ for name in PROVIDERS:
 
 changed = mapping_status != "unchanged" or bool(attached)
 print(
-    f"OK mapping={mapping_status} scope_name={SCOPE_NAME} "
+    f"OK mapping={mapping_status} name={SHARED_NAME!r} scope_name={SCOPE_NAME} "
     f"attached={attached} already={already} missing={missing} changed={changed}"
 )
