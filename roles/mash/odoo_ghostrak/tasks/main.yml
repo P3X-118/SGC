@@ -160,17 +160,82 @@
     - odoo_ghostrak_enabled | bool
     - odoo_ghostrak_install_addon | bool
 
-- name: odoo_ghostrak — rsync addon source to host
+# Idempotency gate. ansible.posix.synchronize always reports changed=true
+# because it stat-updates the destination (perms/timestamps) even when file
+# content matches — that triggered ~30s of Odoo downtime on every role run.
+# We hash the source tree on the controller, compare against the marker on
+# the host, and only sync+install when the hashes differ. Marker is written
+# AFTER the install succeeds, so an interrupted run re-installs next time.
+- name: odoo_ghostrak — compute addon source hash (controller)
+  ansible.builtin.shell:
+    cmd: >-
+      find {{ odoo_ghostrak_addon_src_path | quote }} -type f
+      -not -path '*__pycache__*' -not -name '*.pyc' -not -path '*/.git/*'
+      -print0 | LC_ALL=C sort -z | xargs -0 sha256sum | sha256sum | cut -d' ' -f1
+  register: odoo_ghostrak_addon_src_hash
+  delegate_to: localhost
+  become: false
+  changed_when: false
+  tags:
+    - setup-all
+    - setup-odoo_ghostrak
+    - install-all
+    - install-odoo_ghostrak
+  when:
+    - odoo_ghostrak_enabled | bool
+    - odoo_ghostrak_install_addon | bool
+
+- name: odoo_ghostrak — read previous hash marker on host
+  ansible.builtin.slurp:
+    src: "{{ odoo_ghostrak_addon_dst_path }}/.odoo_ghostrak_addon_hash"
+  register: odoo_ghostrak_addon_dst_hash_raw
+  failed_when: false
+  changed_when: false
+  tags:
+    - setup-all
+    - setup-odoo_ghostrak
+    - install-all
+    - install-odoo_ghostrak
+  when:
+    - odoo_ghostrak_enabled | bool
+    - odoo_ghostrak_install_addon | bool
+
+- name: odoo_ghostrak — decide whether addon source has changed
+  ansible.builtin.set_fact:
+    odoo_ghostrak_addon_changed: >-
+      {{ (odoo_ghostrak_addon_dst_hash_raw.content | default('') | b64decode | trim)
+         != (odoo_ghostrak_addon_src_hash.stdout | trim) }}
+  tags:
+    - setup-all
+    - setup-odoo_ghostrak
+    - install-all
+    - install-odoo_ghostrak
+  when:
+    - odoo_ghostrak_enabled | bool
+    - odoo_ghostrak_install_addon | bool
+
+- name: odoo_ghostrak — rsync addon source to host (only when content changed)
   ansible.posix.synchronize:
     src: "{{ odoo_ghostrak_addon_src_path }}/"
     dest: "{{ odoo_ghostrak_addon_dst_path }}/"
     delete: true
     recursive: true
+    checksum: true
     rsync_opts:
       - "--exclude=__pycache__"
       - "--exclude=*.pyc"
       - "--exclude=.git"
+      - "--exclude=.odoo_ghostrak_addon_hash"
   register: odoo_ghostrak_addon_sync
+  tags:
+    - setup-all
+    - setup-odoo_ghostrak
+    - install-all
+    - install-odoo_ghostrak
+  when:
+    - odoo_ghostrak_enabled | bool
+    - odoo_ghostrak_install_addon | bool
+    - odoo_ghostrak_addon_changed | bool
   tags:
     - setup-all
     - setup-odoo_ghostrak
@@ -238,5 +303,25 @@
   when:
     - odoo_ghostrak_enabled | bool
     - odoo_ghostrak_install_addon | bool
-    - odoo_ghostrak_addon_sync is defined
-    - odoo_ghostrak_addon_sync.changed
+    - odoo_ghostrak_addon_changed | default(false) | bool
+
+# Write the hash marker only AFTER a successful install — an interrupted run
+# leaves the marker stale (matching nothing), forcing the next run to redo
+# install. This is the safe failure mode (slower retry vs. silent skip of
+# a broken state).
+- name: odoo_ghostrak — write addon hash marker on host
+  ansible.builtin.copy:
+    content: "{{ odoo_ghostrak_addon_src_hash.stdout | trim }}\n"
+    dest: "{{ odoo_ghostrak_addon_dst_path }}/.odoo_ghostrak_addon_hash"
+    owner: "{{ do_user | default(sgc_playbook_user) | default('root') }}"
+    group: "{{ do_group | default(sgc_playbook_group_name) | default('root') }}"
+    mode: '0644'
+  tags:
+    - setup-all
+    - setup-odoo_ghostrak
+    - install-all
+    - install-odoo_ghostrak
+  when:
+    - odoo_ghostrak_enabled | bool
+    - odoo_ghostrak_install_addon | bool
+    - odoo_ghostrak_addon_changed | default(false) | bool
