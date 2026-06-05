@@ -109,27 +109,33 @@ odoo_ghostrak_install_user: "{{ (sgc_playbook_uid | default(999)) ~ ':' ~ (sgc_p
 
 
 # ---------------------------------------------------------------------------
-# Authentik settings delivered to Odoo via ir.config_parameter
+# Runtime settings delivered to Odoo via ir.config_parameter
 #
-# The ghostrak Odoo addon reads these at runtime (in models/authentik_client.py)
-# to talk back to Authentik on res.partner ghostrak_role writes. Values are
+# The ghostrak Odoo addon reads these at runtime (in authentik_client.py +
+# bff_client.py) to call upstream services on res.partner writes. Values are
 # UPSERTed idempotently; the role only reports `changed` when a row's value
-# actually differs from what's already in the DB.
+# actually differs from what's in the DB.
 #
-# Token VALUE derivation matches mash/authentik_ghostrak's odoo write-token
-# default — both sides hash (sgc_pgsk ~ '.authentik.odoo') → same string.
+# Token + secret derivations match the consuming role's default — both sides
+# hash the same string so no operator hand-off is needed:
+#   Authentik token   : (sgc_pgsk ~ '.authentik.odoo') | sha256
+#                       matches mash/authentik_ghostrak's odoo write-token.
+#   BFF webhook secret: (sgc_pgsk ~ '.bff.webhook')    | sha256
+#                       matches mash/ghosttrak{,_dev}'s BFF_INTERNAL_WEBHOOK_SECRET
+#                       (resolved on the BFF host via cross-host hostvars).
 # ---------------------------------------------------------------------------
-odoo_ghostrak_provision_authentik_settings: true
+odoo_ghostrak_provision_runtime_settings: true
 
-# Authentik base URL the Odoo container resolves to. For prime, this is the
-# mesh-routed host (set via --add-host on the do container — see
-# do_container_extra_arguments_custom). Override per host for other facilities.
+# Upstream URLs (override per facility if the deploy topology differs):
+# - Authentik: mesh-routed for prime (via --add-host on the do container).
+# - BFF: the public prod alias; the addon only writes a stale-cache hint, no
+#   sensitive payload, so going through the public host is fine.
 odoo_ghostrak_authentik_url: "https://prime.eagledrive.live"
+odoo_ghostrak_bff_url: "https://go.ghostrak.pro"
 
-# The dict of ir.config_parameter rows to UPSERT. The keys are stable —
-# changing them is a coordinated migration with the addon code that reads
-# them. Adding a new role↔group mapping is just a one-line edit.
-odoo_ghostrak_authentik_settings:
+# The dict of ir.config_parameter rows to UPSERT. Keys are stable — changing
+# them is a coordinated migration with the addon code that reads them.
+odoo_ghostrak_runtime_settings:
   "ghostrak.authentik.url": "{{ odoo_ghostrak_authentik_url }}"
   "ghostrak.authentik.token": "{{ ((sgc_pgsk | default('')) ~ '.authentik.odoo') | hash('sha256') }}"
   "ghostrak.authentik.group.admin": "ghostrak-admins"
@@ -137,3 +143,5 @@ odoo_ghostrak_authentik_settings:
   "ghostrak.authentik.group.coach": "ghostrak-coaches"
   "ghostrak.authentik.group.recruiter": "ghostrak-recruiters"
   "ghostrak.authentik.group.player": "ghostrak-users"
+  "ghostrak.bff.url": "{{ odoo_ghostrak_bff_url }}"
+  "ghostrak.bff.webhook_secret": "{{ ((sgc_pgsk | default('')) ~ '.bff.webhook') | hash('sha256') }}"

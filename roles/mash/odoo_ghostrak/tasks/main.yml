@@ -97,7 +97,7 @@
     - odoo_ghostrak_enabled | bool
     - odoo_ghostrak_provision_oidc_groups_scope | bool
 
-# --- Authentik settings delivered to Odoo via ir.config_parameter ----------
+# --- Runtime settings delivered to Odoo via ir.config_parameter ------------
 
 - name: odoo_ghostrak — copy set-config-parameter SQL to host
   ansible.builtin.copy:
@@ -111,9 +111,9 @@
     - install-odoo_ghostrak
   when:
     - odoo_ghostrak_enabled | bool
-    - odoo_ghostrak_provision_authentik_settings | bool
+    - odoo_ghostrak_provision_runtime_settings | bool
 
-- name: odoo_ghostrak — upsert each Authentik setting into ir_config_parameter
+- name: odoo_ghostrak — upsert each runtime setting into ir_config_parameter
   # One psql invocation per key. The SQL only updates when the value is
   # genuinely different; psql's `INSERT 0 0` line gates changed_when.
   ansible.builtin.shell: >-
@@ -125,13 +125,13 @@
     -U {{ odoo_ghostrak_database_user | quote }}
     -d {{ odoo_ghostrak_database_name | quote }}
     < /tmp/odoo_ghostrak_set_config_parameter.sql
-  loop: "{{ odoo_ghostrak_authentik_settings | dict2items }}"
+  loop: "{{ odoo_ghostrak_runtime_settings | dict2items }}"
   loop_control:
     label: "{{ item.key }}"
-  register: odoo_ghostrak_authentik_settings_result
-  # Omit the value from logs — `token` would otherwise echo in stdout/cmd.
+  register: odoo_ghostrak_runtime_settings_result
+  # Omit the value from logs — token + webhook_secret would otherwise echo.
   no_log: true
-  changed_when: "odoo_ghostrak_authentik_settings_result.stdout is search('INSERT 0 1')"
+  changed_when: "odoo_ghostrak_runtime_settings_result.stdout is search('INSERT 0 1')"
   tags:
     - setup-all
     - setup-odoo_ghostrak
@@ -139,7 +139,7 @@
     - install-odoo_ghostrak
   when:
     - odoo_ghostrak_enabled | bool
-    - odoo_ghostrak_provision_authentik_settings | bool
+    - odoo_ghostrak_provision_runtime_settings | bool
 
 - name: odoo_ghostrak — clean up set-config-parameter SQL from host
   ansible.builtin.file:
@@ -152,7 +152,7 @@
     - install-odoo_ghostrak
   when:
     - odoo_ghostrak_enabled | bool
-    - odoo_ghostrak_provision_authentik_settings | bool
+    - odoo_ghostrak_provision_runtime_settings | bool
 
 # --- Install the `ghostrak` custom Odoo addon ------------------------------
 

@@ -50,6 +50,7 @@ ghosttrak_dev_authentik_hostname: "{{ ghosttrak_authentik_hostname | default('au
 ghosttrak_dev_authentik_mesh_ip: "{{ ghosttrak_authentik_mesh_ip | default('') }}"
 ghosttrak_dev_authentik_api_token: "{{ ghosttrak_authentik_api_token | default('') }}"
 ghosttrak_dev_authentik_admin_token: "{{ ghosttrak_authentik_admin_token | default('') }}"
+ghosttrak_dev_bff_webhook_secret: "{{ ghosttrak_bff_webhook_secret | default('') }}"
 ghosttrak_dev_peertube_internal_url: "{{ ghosttrak_peertube_internal_url | default('') }}"
 ghosttrak_dev_peertube_public_host: "{{ ghosttrak_peertube_public_host | default('') }}"
 ghosttrak_dev_peertube_roster_user: "{{ ghosttrak_peertube_roster_user | default('ghostrak-roster') }}"

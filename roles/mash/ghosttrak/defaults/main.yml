@@ -102,6 +102,12 @@ ghosttrak_authentik_api_token: ""
 # Empty = provisioning disabled (player-create with email returns 503).
 ghosttrak_authentik_admin_token: ""
 
+# Shared secret for the BFF's internal cache-invalidation webhook (called by
+# the ghostrak Odoo addon on res.partner writes). Empty = endpoint disabled
+# (returns 404). The Odoo addon side sets the same string in its own
+# ir.config_parameter — see mash/odoo_ghostrak's runtime_settings concern.
+ghosttrak_bff_webhook_secret: ""
+
 # PeerTube integration for the BFF: it authenticates as the roster service
 # account (ghostrak-roster) to create per-player private channels + upload
 # filming sessions. Reaches PeerTube over the shared traefik network at the
