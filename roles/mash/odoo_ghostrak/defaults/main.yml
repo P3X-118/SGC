@@ -106,3 +106,34 @@ odoo_ghostrak_install_add_hosts: []
 # Container UID:GID — should match what mash/do uses. The do role default
 # resolves to sgc_playbook_uid:sgc_playbook_gid (999:988 on prime).
 odoo_ghostrak_install_user: "{{ (sgc_playbook_uid | default(999)) ~ ':' ~ (sgc_playbook_gid | default(988)) }}"
+
+
+# ---------------------------------------------------------------------------
+# Authentik settings delivered to Odoo via ir.config_parameter
+#
+# The ghostrak Odoo addon reads these at runtime (in models/authentik_client.py)
+# to talk back to Authentik on res.partner ghostrak_role writes. Values are
+# UPSERTed idempotently; the role only reports `changed` when a row's value
+# actually differs from what's already in the DB.
+#
+# Token VALUE derivation matches mash/authentik_ghostrak's odoo write-token
+# default — both sides hash (sgc_pgsk ~ '.authentik.odoo') → same string.
+# ---------------------------------------------------------------------------
+odoo_ghostrak_provision_authentik_settings: true
+
+# Authentik base URL the Odoo container resolves to. For prime, this is the
+# mesh-routed host (set via --add-host on the do container — see
+# do_container_extra_arguments_custom). Override per host for other facilities.
+odoo_ghostrak_authentik_url: "https://prime.eagledrive.live"
+
+# The dict of ir.config_parameter rows to UPSERT. The keys are stable —
+# changing them is a coordinated migration with the addon code that reads
+# them. Adding a new role↔group mapping is just a one-line edit.
+odoo_ghostrak_authentik_settings:
+  "ghostrak.authentik.url": "{{ odoo_ghostrak_authentik_url }}"
+  "ghostrak.authentik.token": "{{ ((sgc_pgsk | default('')) ~ '.authentik.odoo') | hash('sha256') }}"
+  "ghostrak.authentik.group.admin": "ghostrak-admins"
+  "ghostrak.authentik.group.facility_owner": "ghostrak-facility-owners"
+  "ghostrak.authentik.group.coach": "ghostrak-coaches"
+  "ghostrak.authentik.group.recruiter": "ghostrak-recruiters"
+  "ghostrak.authentik.group.player": "ghostrak-users"

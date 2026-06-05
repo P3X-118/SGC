@@ -153,3 +153,84 @@
   when:
     - authentik_ghostrak_enabled | bool
     - authentik_ghostrak_provision_oidc_groups_scope | bool
+
+# --- Odoo write-token (svc-ghostrak-odoo) ----------------------------------
+
+- name: authentik_ghostrak — assert Odoo write-token resolved
+  ansible.builtin.assert:
+    that:
+      - authentik_ghostrak_odoo_write_token | length > 32
+    fail_msg: >
+      authentik_ghostrak_odoo_write_token didn't resolve to a usable value.
+      Check that hostvars['{{ authentik_ghostrak_odoo_consumer_host }}'][
+      'sgc_pgsk'] is set in that host's host_vars/vars.yml.
+  tags:
+    - setup-all
+    - setup-authentik_ghostrak
+    - install-all
+    - install-authentik_ghostrak
+  when:
+    - authentik_ghostrak_enabled | bool
+    - authentik_ghostrak_provision_odoo_write_token | bool
+
+- name: authentik_ghostrak — copy odoo-token script to host
+  ansible.builtin.copy:
+    src: provision-ghostrak-odoo-token.py
+    dest: /tmp/authentik_ghostrak_odoo_token.py
+    mode: '0644'
+  tags:
+    - setup-all
+    - setup-authentik_ghostrak
+    - install-all
+    - install-authentik_ghostrak
+  when:
+    - authentik_ghostrak_enabled | bool
+    - authentik_ghostrak_provision_odoo_write_token | bool
+
+- name: authentik_ghostrak — provision Odoo write-token (via ak shell)
+  ansible.builtin.shell:
+    cmd: >-
+      docker exec -i
+      -e GHOSTRAK_ODOO_TOKEN={{ authentik_ghostrak_odoo_write_token | quote }}
+      {{ authentik_ghostrak_container_name }}
+      ak shell < /tmp/authentik_ghostrak_odoo_token.py
+  register: authentik_ghostrak_odoo_token
+  no_log: true   # token value would otherwise echo in stdout/cmd
+  changed_when: "authentik_ghostrak_odoo_token.stdout is search('changed=True')"
+  failed_when:
+    - authentik_ghostrak_odoo_token.rc != 0
+    - authentik_ghostrak_odoo_token.stdout is not search('OK ')
+  tags:
+    - setup-all
+    - setup-authentik_ghostrak
+    - install-all
+    - install-authentik_ghostrak
+  when:
+    - authentik_ghostrak_enabled | bool
+    - authentik_ghostrak_provision_odoo_write_token | bool
+
+- name: authentik_ghostrak — report Odoo write-token result (token value omitted)
+  ansible.builtin.debug:
+    msg: "{{ authentik_ghostrak_odoo_token.stdout | default('(skipped)') | regex_replace('key_len=[0-9]+', 'key_len=<hidden>') }}"
+  tags:
+    - setup-all
+    - setup-authentik_ghostrak
+    - install-all
+    - install-authentik_ghostrak
+  when:
+    - authentik_ghostrak_enabled | bool
+    - authentik_ghostrak_provision_odoo_write_token | bool
+    - authentik_ghostrak_odoo_token is defined
+
+- name: authentik_ghostrak — clean up odoo-token script from host
+  ansible.builtin.file:
+    path: /tmp/authentik_ghostrak_odoo_token.py
+    state: absent
+  tags:
+    - setup-all
+    - setup-authentik_ghostrak
+    - install-all
+    - install-authentik_ghostrak
+  when:
+    - authentik_ghostrak_enabled | bool
+    - authentik_ghostrak_provision_odoo_write_token | bool

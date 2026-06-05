@@ -66,3 +66,29 @@ authentik_ghostrak_groups_scope_name: groups
 authentik_ghostrak_oidc_providers:
   - ghostrak    # the ghostrak BFF's OIDC client (provisioned by provision-ghostrak.py)
   - prime       # Prime Baseball Odoo's OIDC client (provisioned by provision-prime.py)
+
+
+# ---------------------------------------------------------------------------
+# Odoo write-token
+#
+# Provisions svc-ghostrak-odoo (a service account with permission to add/
+# remove users from groups, but NOT to create/modify users) and a token the
+# ghostrak Odoo addon uses to call Authentik admin API on res.partner role
+# changes. Closes seam #3.
+#
+# The token VALUE is derived from the consumer host's sgc_pgsk so both sides
+# (Authentik provisioning here, Odoo addon delivery in mash/odoo_ghostrak's
+# matching concern) compute the same string without operator hand-off.
+# Cross-host: when this role runs (limited to bskypds.pro), inventory still
+# parses host_vars for every host, so hostvars[<consumer>]['sgc_pgsk']
+# resolves.
+# ---------------------------------------------------------------------------
+authentik_ghostrak_provision_odoo_write_token: true
+
+# Host whose sgc_pgsk drives the token derivation. The consumer's
+# mash/odoo_ghostrak role on this host writes the same value to Odoo's
+# ir.config_parameter.
+authentik_ghostrak_odoo_consumer_host: "prime.i.legit.services"
+
+# Same string is hashed on both sides:
+authentik_ghostrak_odoo_write_token: "{{ ((hostvars[authentik_ghostrak_odoo_consumer_host]['sgc_pgsk'] | default('')) ~ '.authentik.odoo') | hash('sha256') }}"

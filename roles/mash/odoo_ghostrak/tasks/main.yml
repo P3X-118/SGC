@@ -97,6 +97,63 @@
     - odoo_ghostrak_enabled | bool
     - odoo_ghostrak_provision_oidc_groups_scope | bool
 
+# --- Authentik settings delivered to Odoo via ir.config_parameter ----------
+
+- name: odoo_ghostrak — copy set-config-parameter SQL to host
+  ansible.builtin.copy:
+    src: set-config-parameter.sql
+    dest: /tmp/odoo_ghostrak_set_config_parameter.sql
+    mode: '0644'
+  tags:
+    - setup-all
+    - setup-odoo_ghostrak
+    - install-all
+    - install-odoo_ghostrak
+  when:
+    - odoo_ghostrak_enabled | bool
+    - odoo_ghostrak_provision_authentik_settings | bool
+
+- name: odoo_ghostrak — upsert each Authentik setting into ir_config_parameter
+  # One psql invocation per key. The SQL only updates when the value is
+  # genuinely different; psql's `INSERT 0 0` line gates changed_when.
+  ansible.builtin.shell: >-
+    docker exec -i
+    {{ odoo_ghostrak_postgres_container }}
+    psql -v ON_ERROR_STOP=1
+    -v param_key={{ item.key | quote }}
+    -v param_value={{ item.value | quote }}
+    -U {{ odoo_ghostrak_database_user | quote }}
+    -d {{ odoo_ghostrak_database_name | quote }}
+    < /tmp/odoo_ghostrak_set_config_parameter.sql
+  loop: "{{ odoo_ghostrak_authentik_settings | dict2items }}"
+  loop_control:
+    label: "{{ item.key }}"
+  register: odoo_ghostrak_authentik_settings_result
+  # Omit the value from logs — `token` would otherwise echo in stdout/cmd.
+  no_log: true
+  changed_when: "odoo_ghostrak_authentik_settings_result.stdout is search('INSERT 0 1')"
+  tags:
+    - setup-all
+    - setup-odoo_ghostrak
+    - install-all
+    - install-odoo_ghostrak
+  when:
+    - odoo_ghostrak_enabled | bool
+    - odoo_ghostrak_provision_authentik_settings | bool
+
+- name: odoo_ghostrak — clean up set-config-parameter SQL from host
+  ansible.builtin.file:
+    path: /tmp/odoo_ghostrak_set_config_parameter.sql
+    state: absent
+  tags:
+    - setup-all
+    - setup-odoo_ghostrak
+    - install-all
+    - install-odoo_ghostrak
+  when:
+    - odoo_ghostrak_enabled | bool
+    - odoo_ghostrak_provision_authentik_settings | bool
+
 # --- Install the `ghostrak` custom Odoo addon ------------------------------
 
 - name: odoo_ghostrak — verify addon source exists on controller
