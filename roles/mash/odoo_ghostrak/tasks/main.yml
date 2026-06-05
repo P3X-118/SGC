@@ -36,39 +36,22 @@
     - odoo_ghostrak_enabled | bool
     - odoo_ghostrak_provision_oidc_groups_scope | bool
 
-# Currently this concern only handles a single scope (`groups`). If the
-# required-scopes list grows, the SQL will need a parametric loop — the
-# assert below guards against silently no-op'ing on a future addition.
-- name: odoo_ghostrak — assert only the `groups` scope is requested for now
-  ansible.builtin.assert:
-    that:
-      - odoo_ghostrak_oidc_required_scopes == ['groups']
-    fail_msg: >
-      odoo_ghostrak currently provisions only the `groups` scope (the SQL is
-      hardcoded to that token). To add another scope, extend the .sql script
-      with a parametric loop and remove this guard.
-  tags:
-    - setup-all
-    - setup-odoo_ghostrak
-    - install-all
-    - install-odoo_ghostrak
-  when:
-    - odoo_ghostrak_enabled | bool
-    - odoo_ghostrak_provision_oidc_groups_scope | bool
-
-- name: odoo_ghostrak — ensure `groups` scope on auth_oauth_provider (via psql)
-  # Single-line shell command (YAML `>-` folds newlines into spaces only when
-  # all lines share the SAME indentation — keep them aligned). SQL is piped
-  # via stdin so the /tmp/... path is read on the HOST (not inside the
-  # postgres container).
+- name: odoo_ghostrak — ensure each required OIDC scope is present on auth_oauth_provider
+  # One psql invocation per scope. The SQL takes :scope as a psql variable
+  # and appends it idempotently (word-boundary regex skips already-present).
+  # `changed_when` checks each iteration's output for "UPDATE 1".
   ansible.builtin.shell: >-
     docker exec -i
     {{ odoo_ghostrak_postgres_container }}
     psql -v ON_ERROR_STOP=1
     -v client_id={{ odoo_ghostrak_oidc_client_id | quote }}
+    -v scope={{ item | quote }}
     -U {{ odoo_ghostrak_database_user | quote }}
     -d {{ odoo_ghostrak_database_name | quote }}
     < /tmp/odoo_ghostrak_oidc_groups_scope.sql
+  loop: "{{ odoo_ghostrak_oidc_required_scopes }}"
+  loop_control:
+    label: "{{ item }}"
   register: odoo_ghostrak_groups_scope
   # psql's affected-row report is on the LAST line as "UPDATE N". N=0 is the
   # idempotent no-op; N≥1 means the row was actually changed.
@@ -84,9 +67,12 @@
     - odoo_ghostrak_enabled | bool
     - odoo_ghostrak_provision_oidc_groups_scope | bool
 
-- name: odoo_ghostrak — report OIDC groups-scope result
+- name: odoo_ghostrak — report OIDC scope results (one line per scope)
   ansible.builtin.debug:
-    msg: "{{ odoo_ghostrak_groups_scope.stdout | default('(skipped)') }}"
+    msg: "scope={{ item.item }} → {{ (item.stdout_lines | last) | default('(no output)') }}"
+  loop: "{{ odoo_ghostrak_groups_scope.results | default([]) }}"
+  loop_control:
+    label: "{{ item.item | default('?') }}"
   tags:
     - setup-all
     - setup-odoo_ghostrak
@@ -96,6 +82,7 @@
     - odoo_ghostrak_enabled | bool
     - odoo_ghostrak_provision_oidc_groups_scope | bool
     - odoo_ghostrak_groups_scope is defined
+    - odoo_ghostrak_groups_scope.results is defined
 
 - name: odoo_ghostrak — clean up oidc-groups-scope SQL from host
   ansible.builtin.file:
