@@ -225,6 +225,71 @@
     - odoo_ghostrak_provision_bff_service_user | bool
     - odoo_ghostrak_bff_user is defined
 
+# --- auth_oauth_provider hostname (SSO cookie unification) -----------------
+
+- name: odoo_ghostrak — copy oidc-provider-hostname SQL to host
+  ansible.builtin.copy:
+    src: oidc-provider-hostname.sql
+    dest: /tmp/odoo_ghostrak_oidc_provider_hostname.sql
+    mode: '0644'
+  tags:
+    - setup-all
+    - setup-odoo_ghostrak
+    - install-all
+    - install-odoo_ghostrak
+  when:
+    - odoo_ghostrak_enabled | bool
+    - odoo_ghostrak_provision_oidc_provider_hostname | bool
+
+- name: odoo_ghostrak — re-point Odoo's Authentik OIDC provider at the unified SSO hostname
+  ansible.builtin.shell: >-
+    docker exec -i
+    {{ odoo_ghostrak_postgres_container }}
+    psql -v ON_ERROR_STOP=1
+    -v client_id={{ odoo_ghostrak_oidc_client_id | quote }}
+    -v hostname={{ odoo_ghostrak_oidc_provider_hostname | quote }}
+    -U {{ odoo_ghostrak_database_user | quote }}
+    -d {{ odoo_ghostrak_database_name | quote }}
+    < /tmp/odoo_ghostrak_oidc_provider_hostname.sql
+  register: odoo_ghostrak_oidc_hostname
+  changed_when: "'UPDATE 0' not in odoo_ghostrak_oidc_hostname.stdout and (odoo_ghostrak_oidc_hostname.stdout is search('UPDATE '))"
+  failed_when:
+    - odoo_ghostrak_oidc_hostname.rc != 0
+  tags:
+    - setup-all
+    - setup-odoo_ghostrak
+    - install-all
+    - install-odoo_ghostrak
+  when:
+    - odoo_ghostrak_enabled | bool
+    - odoo_ghostrak_provision_oidc_provider_hostname | bool
+
+- name: odoo_ghostrak — report OIDC provider hostname result
+  ansible.builtin.debug:
+    msg: "provider hostname={{ odoo_ghostrak_oidc_provider_hostname }} → {{ (odoo_ghostrak_oidc_hostname.stdout_lines | last) | default('(skipped)') }}"
+  tags:
+    - setup-all
+    - setup-odoo_ghostrak
+    - install-all
+    - install-odoo_ghostrak
+  when:
+    - odoo_ghostrak_enabled | bool
+    - odoo_ghostrak_provision_oidc_provider_hostname | bool
+    - odoo_ghostrak_oidc_hostname is defined
+
+- name: odoo_ghostrak — clean up oidc-provider-hostname SQL from host
+  ansible.builtin.file:
+    path: /tmp/odoo_ghostrak_oidc_provider_hostname.sql
+    state: absent
+  tags:
+    - setup-all
+    - setup-odoo_ghostrak
+    - install-all
+    - install-odoo_ghostrak
+  when:
+    - odoo_ghostrak_enabled | bool
+    - odoo_ghostrak_provision_oidc_provider_hostname | bool
+
 # --- One-shot BFF→Odoo data migration (seam #7 phase 4a) -------------------
 #
 # Run only when explicitly enabled in host_vars. Marker in

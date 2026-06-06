@@ -128,6 +128,31 @@ odoo_ghostrak_bff_service_user_password: "{{ ((sgc_pgsk | default('')) ~ '.odoo.
 
 
 # ---------------------------------------------------------------------------
+# auth_oauth_provider hostname (SSO cookie unification)
+#
+# Re-points Odoo's existing Authentik OIDC provider row at the canonical
+# ghostrak SSO hostname (auth.ghostrak.app by default). The row itself was
+# created ad-hoc during the prime engagement setup and has no ir_model_data
+# xmlid; we only rewrite the auth_endpoint + validation_endpoint here so
+# the body jsonb / css_class / name stay as the operator left them.
+#
+# The reason the hostname matters: browsers scope session cookies to the
+# Authentik hostname they were issued from. The ghostrak BFF authenticates
+# against auth.ghostrak.app, so when Odoo redirected to the legacy
+# prime.eagledrive.live alias of the *same* Authentik backend, the browser
+# had no cookie there and Authentik forced a fresh login. Unifying both
+# clients on auth.ghostrak.app makes the SSO seamless.
+#
+# Idempotent (changed_when reads the psql "UPDATE N" line; N=0 is a no-op
+# re-run). Match key is client_id, which matches the Authentik application
+# slug the provider row holds.
+# ---------------------------------------------------------------------------
+odoo_ghostrak_provision_oidc_provider_hostname: true
+
+odoo_ghostrak_oidc_provider_hostname: "auth.ghostrak.app"
+
+
+# ---------------------------------------------------------------------------
 # Pre-seam-#7 BFF Postgres → Odoo data migration (seam #7 phase 4a)
 #
 # One-shot. Idempotent — the script stamps ir.config_parameter
