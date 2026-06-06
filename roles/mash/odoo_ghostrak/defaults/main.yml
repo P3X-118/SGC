@@ -128,6 +128,23 @@ odoo_ghostrak_bff_service_user_password: "{{ ((sgc_pgsk | default('')) ~ '.odoo.
 
 
 # ---------------------------------------------------------------------------
+# Pre-seam-#7 BFF Postgres → Odoo data migration (seam #7 phase 4a)
+#
+# One-shot. Idempotent — the script stamps ir.config_parameter
+# `ghostrak.migration.bff_to_odoo_v1=done` once successful, and short-
+# circuits on subsequent runs. Default OFF; set the flag true in host_vars
+# to fire it for a controlled cutover.
+#
+# This is the migration of pre-Odoo BFF state: facilities, players, and
+# their PeerTube channel mapping. After it runs Odoo is the source of
+# truth for facility/player identity; the corresponding BFF tables are
+# dropped in a later phase. The script's data is hardcoded (3 records;
+# captured prod state on 2026-06-06) — see the script for the snapshot.
+# ---------------------------------------------------------------------------
+odoo_ghostrak_run_migration_bff_to_odoo_v1: false
+
+
+# ---------------------------------------------------------------------------
 # Runtime settings delivered to Odoo via ir.config_parameter
 #
 # The ghostrak Odoo addon reads these at runtime (in authentik_client.py +

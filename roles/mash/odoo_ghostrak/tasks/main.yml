@@ -225,6 +225,54 @@
     - odoo_ghostrak_provision_bff_service_user | bool
     - odoo_ghostrak_bff_user is defined
 
+# --- One-shot BFF→Odoo data migration (seam #7 phase 4a) -------------------
+#
+# Run only when explicitly enabled in host_vars. Marker in
+# ir.config_parameter gates re-runs. Same docker-run pattern as the
+# bff-service provisioner (one-shot odoo shell on the same image/mounts/
+# network; no downtime).
+
+- name: odoo_ghostrak — run pre-seam-#7 BFF→Odoo data migration (one-shot)
+  ansible.builtin.shell:
+    cmd: >-
+      docker run --rm -i
+      --user={{ odoo_ghostrak_install_user }}
+      --cap-drop=ALL
+      --network={{ odoo_ghostrak_install_network }}
+      --mount type=bind,src={{ odoo_ghostrak_install_do_base_path }}/odoo.conf,dst=/etc/odoo/odoo.conf,readonly
+      --mount type=bind,src={{ odoo_ghostrak_install_do_base_path }}/data,dst=/var/lib/odoo
+      --mount type=bind,src={{ odoo_ghostrak_install_do_base_path }}/extra-addons,dst=/mnt/extra-addons,readonly
+      {% for h in odoo_ghostrak_install_add_hosts %}--add-host={{ h }} {% endfor %}
+      {{ odoo_ghostrak_install_do_image }}
+      odoo-bin shell -c /etc/odoo/odoo.conf --no-http -d {{ odoo_ghostrak_database_name }}
+    stdin: "{{ lookup('file', 'migrate-bff-to-odoo-v1.py') }}"
+  register: odoo_ghostrak_migration_v1
+  changed_when: "odoo_ghostrak_migration_v1.stdout is search('changed=True')"
+  failed_when:
+    - odoo_ghostrak_migration_v1.rc != 0
+    - odoo_ghostrak_migration_v1.stdout is not search('OK ')
+  tags:
+    - setup-all
+    - setup-odoo_ghostrak
+    - install-all
+    - install-odoo_ghostrak
+  when:
+    - odoo_ghostrak_enabled | bool
+    - odoo_ghostrak_run_migration_bff_to_odoo_v1 | bool
+
+- name: odoo_ghostrak — report migration result
+  ansible.builtin.debug:
+    msg: "{{ odoo_ghostrak_migration_v1.stdout | default('(skipped — migration flag off)') }}"
+  tags:
+    - setup-all
+    - setup-odoo_ghostrak
+    - install-all
+    - install-odoo_ghostrak
+  when:
+    - odoo_ghostrak_enabled | bool
+    - odoo_ghostrak_run_migration_bff_to_odoo_v1 | bool
+    - odoo_ghostrak_migration_v1 is defined
+
 # --- Install the `ghostrak` custom Odoo addon ------------------------------
 
 - name: odoo_ghostrak — verify addon source exists on controller
