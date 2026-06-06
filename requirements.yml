@@ -73,6 +73,13 @@
   version: 1.0.0-6
   name: auxiliary
   activation_prefix: aux_
+# role-specific:azuracast
+- src: git+https://github.com/P3X-118/azuracast-ar.git
+  version: v0.1.0-0
+  name: azuracast
+  activation_prefix: azuracast_
+# /role-specific:azuracast
+
 #- src: git+https://github.com/P3X-118/backup_borg-ar.git
 #  version: 1.4.3-2.1.1-2
 #  name: backup

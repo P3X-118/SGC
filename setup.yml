@@ -168,6 +168,11 @@
     - role: galaxy/awx
     # /role-specific:awx
 
+    # role-specific:azuracast
+    - when: azuracast_enabled | bool
+      role: galaxy/azuracast
+    # /role-specific:azuracast
+
     # role-specific:backup
     #- role: galaxy/backup
     # /role-specific:backup

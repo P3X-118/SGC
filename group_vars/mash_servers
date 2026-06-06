@@ -174,6 +174,11 @@ sgc_sysd_srvc_list_auto_itemized:
     {{ ({'name': (awx_receptor_identifier + '.service'), 'priority': 2000, 'groups': ['sgc', 'awx']} if awx_enabled and awx_receptor_enabled else omit) }}
   # /role-specific:awx
 
+  # role-specific:azuracast
+  - |-
+    {{ ({'name': (azuracast_identifier + '.service'), 'priority': 2000, 'groups': ['sgc', 'azuracast']} if azuracast_enabled else omit) }}
+  # /role-specific:azuracast
+
   # role-specific:backup_borg
   - |-
     {{ ({'name': (backup_borg_identifier + '.timer'), 'priority': 5000, 'groups': ['sgc', 'backup', 'borg']} if backup_borg_enabled else omit) }}
@@ -3528,6 +3533,38 @@ backup_borg_postgresql_databases_auto: "{{ postgres_managed_databases | map(attr
 # /role-specific:backup_borg
 
 
+
+# role-specific:azuracast
+########################################################################
+#                                                                      #
+# azuracast                                                            #
+#                                                                      #
+########################################################################
+
+azuracast_enabled: false
+azuracast_identifier: "{{ service_id_prefix }}azuracast"
+azuracast_base_path: "{{ sgc_playbook_base_path }}/{{ service_directory_prefix }}azuracast"
+azuracast_uid: "{{ sgc_playbook_uid }}"
+azuracast_gid: "{{ sgc_playbook_gid }}"
+
+azuracast_container_additional_networks_auto: |
+  {{
+    ([revproxy_service_networks] if (azuracast_container_labels_traefik_enabled | bool) and revproxy_service_networks | default('') else [])
+  }}
+
+azuracast_container_labels_traefik_docker_network: "{{ revproxy_service_networks }}"
+
+# role-specific:traefik
+azuracast_container_labels_traefik_entrypoints: "{{ traefik_entrypoint_primary }}"
+azuracast_container_labels_traefik_tls_certResolver: "{{ traefik_certResolver_primary }}"
+# /role-specific:traefik
+
+########################################################################
+#                                                                      #
+# /azuracast                                                           #
+#                                                                      #
+########################################################################
+# /role-specific:azuracast
 
 # role-specific:barassistant
 ########################################################################
