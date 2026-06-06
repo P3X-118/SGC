@@ -119,7 +119,23 @@ The live station is fronted by **sonic's host Caddy** (`spin.yeet.fm` and
 state in the `azuracast_*` named volumes (`COMPOSE_PROJECT_NAME=azuracast`).
 Migrate carefully:
 
-1. **Back up first**: `cd /home/oneill/Azura && ./docker.sh backup`.
+> ### 🛑 HARD GATE — no downtime without verified config-backup parity
+> **Do NOT `./docker.sh down` the live station until we are certain that, on
+> bring-up, it returns with the *identical* configuration.** AzuraCast keeps
+> nearly all configuration in its database (stations, mount points, playlists,
+> streamers/DJs, users, API keys, settings) inside the `azuracast_db_data`
+> volume, plus the `azuracast.env`/`.env` runtime settings. Before any cutover:
+> 1. Take a full backup and **verify it is complete and restorable**:
+>    `./docker.sh backup /path/backup-$(date +%F).tar.gz` (exports DB + config + media).
+> 2. Snapshot/copy the `azuracast_*` named volumes (esp. `azuracast_db_data`) and
+>    the `.env` + `azuracast.env` files so the exact prior config can be restored.
+> 3. Record the live settings the role must reproduce (ports 2001/4443/2022,
+>    station ports, station mount points, base URL/branding) and confirm they are
+>    reflected in `host_vars/spin.yeet.fm` + the role's env template.
+> 4. Only proceed when a dry restore of the backup has been validated and we can
+>    bring the station back up to the same state on rollback.
+
+1. **Back up first**: `cd /home/oneill/Azura && ./docker.sh backup` — and complete the HARD GATE above.
 2. **Publish the role**: create `P3X-118/azuracast-ar` (3-branch model), tag a
    release on `sgc`, then apply integration steps 1–2 and run `just roles`.
 3. **Secrets**: vault the live DB credentials from `azuracast.env` as
