@@ -1,0 +1,47 @@
+---
+# Scope: this role owns ONLY {{ learningwell_compose_path }}/.env.
+# The compose files, Caddy vhost, and app source are owned by the app's own
+# deploy tool (~/b2b/learningWell/bin/deploy.sh, which tars the repo over
+# {{ learningwell_base_path }} and EXCLUDES .env). The two don't fight:
+# deploy.sh ships code + compose + builds the image; this role ships the .env.
+
+- name: Ensure compose directory exists
+  ansible.builtin.file:
+    path: "{{ learningwell_compose_path }}"
+    state: directory
+    mode: "0755"
+
+- name: Render .env
+  ansible.builtin.template:
+    src: env.j2
+    dest: "{{ learningwell_compose_path }}/.env"
+    mode: "0600"
+    backup: true
+  register: learningwell_env_rendered
+
+# Only (re)start to apply a changed .env; images are built by deploy.sh, never
+# here (build: never). Skip gracefully when the code/compose isn't on the host
+# yet, so enabling this role can't break an unrelated setup-all on this host.
+- name: Check whether the compose file has been deployed
+  ansible.builtin.stat:
+    path: "{{ learningwell_compose_path }}/docker-compose.yml"
+  register: learningwell_compose_stat
+
+- name: (Re)start the learningwell stack to apply .env
+  community.docker.docker_compose_v2:
+    project_src: "{{ learningwell_compose_path }}"
+    files: "{{ learningwell_compose_files }}"
+    state: present
+    build: never
+    pull: missing
+  when:
+    - learningwell_compose_stat.stat.exists
+    - learningwell_env_rendered.changed
+
+- name: Note when compose has not been deployed yet
+  ansible.builtin.debug:
+    msg: >-
+      {{ learningwell_compose_path }}/docker-compose.yml not found — run
+      bin/deploy.sh from the Learning Well repo to ship code and build the
+      image, then re-run this role to apply the .env.
+  when: not learningwell_compose_stat.stat.exists

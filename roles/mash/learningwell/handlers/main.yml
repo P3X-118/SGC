@@ -1,0 +1,7 @@
+---
+# No systemd unit is owned by this role — the compose stack is restarted via
+# docker_compose_v2 in tasks/install.yml when .env changes. Handler kept for
+# parity with sibling roles in case a future task needs a notify target.
+- name: noop learningwell
+  ansible.builtin.debug:
+    msg: "learningwell: handler placeholder"

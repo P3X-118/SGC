@@ -1,0 +1,15 @@
+---
+galaxy_info:
+  author: oneill
+  description: learningwell — The Learning Well prepackaged school-supply store (Next.js + Stripe), .env-managed compose stack sharing the host's Caddy
+  company: SGC
+  license: AGPL-3.0-or-later
+  min_ansible_version: "2.14"
+  platforms:
+    - name: Ubuntu
+      versions:
+        - jammy
+        - noble
+  categories:
+    - web
+dependencies: []

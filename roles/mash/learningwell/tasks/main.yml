@@ -1,0 +1,22 @@
+---
+- name: Perform learningwell installation tasks
+  when: learningwell_enabled | bool
+  tags:
+    - setup-all
+    - setup-learningwell
+    - install-all
+    - install-learningwell
+  block:
+    - name: Validate learningwell configuration
+      ansible.builtin.include_tasks: "{{ role_path }}/tasks/validate_config.yml"
+    - name: Install learningwell
+      ansible.builtin.include_tasks: "{{ role_path }}/tasks/install.yml"
+
+- name: Perform learningwell uninstallation tasks
+  when: not learningwell_enabled | bool
+  tags:
+    - setup-all
+    - setup-learningwell
+  block:
+    - name: Uninstall learningwell
+      ansible.builtin.include_tasks: "{{ role_path }}/tasks/uninstall.yml"

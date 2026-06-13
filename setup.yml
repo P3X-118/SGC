@@ -562,6 +562,15 @@
     #- role: galaxy/languagetool
     # /role-specific:languagetool
 
+    # role-specific:learningwell
+    # Local-only role at roles/mash/learningwell/.
+    # Owns the .env for The Learning Well (thelearningwell.eagledrive.live), a
+    # Next.js + Stripe school-supply store deployed beside texasmodern_signup on
+    # the same EC2; compose/source are shipped by ~/b2b/learningWell/bin/deploy.sh.
+    - when: learningwell_enabled | bool
+      role: mash/learningwell
+    # /role-specific:learningwell
+
     # role-specific:legit_services
     # Local-only role (no GitHub fetch). Lives at roles/mash/legit_services/.
     - when: legit_services_enabled | bool

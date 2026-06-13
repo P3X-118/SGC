@@ -1,0 +1,12 @@
+---
+- name: Validate required learningwell variables
+  ansible.builtin.assert:
+    that:
+      - learningwell_hostname | length > 0
+      - learningwell_site_url | length > 0
+      - learningwell_caddy_network | length > 0
+    fail_msg: >-
+      learningwell requires: hostname, site_url, and caddy_network (the host's
+      Caddy docker network for shared-edge mode — verify with `docker network
+      ls`). STRIPE_SECRET_KEY is optional (checkout returns 503 until set);
+      compose/source are shipped by the app's own bin/deploy.sh, not this role.

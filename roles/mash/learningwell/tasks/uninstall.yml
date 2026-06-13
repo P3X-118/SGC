@@ -1,0 +1,7 @@
+---
+- name: Stop and remove the learningwell stack
+  community.docker.docker_compose_v2:
+    project_src: "{{ learningwell_compose_path }}"
+    files: "{{ learningwell_compose_files }}"
+    state: absent
+  failed_when: false

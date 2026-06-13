@@ -1,0 +1,50 @@
+---
+# SGC role: learningwell
+#
+# Manages ONLY the .env (secrets/config) for The Learning Well stack at
+# {{ learningwell_compose_path }}/.env, then (re)starts the compose project so a
+# changed value takes effect.
+#
+# Scope is deliberately .env-only — mirroring the sibling texasmodern_signup
+# role. The docker-compose files, Caddy vhost, and all application source are
+# owned by the app's own deploy tool (~/b2b/learningWell/bin/deploy.sh), which
+# tars the repo over {{ learningwell_base_path }} on each deploy and EXCLUDES
+# .env. So the two systems coexist: deploy.sh ships code + compose + builds the
+# image; this role ships the .env deploy.sh can't see. (texasmodern_signup once
+# rendered compose too and FOUGHT its deploy tool — don't repeat that here.)
+#
+# NOTE on build-time vs runtime: NEXT_PUBLIC_SITE_URL and AMAZON_AFFILIATE_TAG
+# are baked into the statically-rendered pages at image BUILD time (deploy.sh).
+# Rotating them needs a deploy.sh rebuild, not just this role's restart.
+# STRIPE_SECRET_KEY is read at runtime, so this role's restart applies it.
+
+learningwell_enabled: false
+
+# Filesystem layout (deploy.sh tars the repo here; compose lives under infra/).
+learningwell_base_path: /opt/learningwell
+learningwell_compose_path: "{{ learningwell_base_path }}/infra"
+
+# Compose files to apply, relative to learningwell_compose_path. Shared-edge
+# mode (reuse the host's existing Caddy) is the default; swap the override for
+# docker-compose.standalone.yml on a host where we own :80/:443.
+learningwell_compose_files:
+  - docker-compose.yml
+  - docker-compose.shared.yml
+
+# Public-facing hostname.
+learningwell_hostname: "thelearningwell.eagledrive.live"
+
+# Baked at build time (canonical/OG URLs + affiliate links).
+learningwell_site_url: "https://{{ learningwell_hostname }}"
+learningwell_amazon_affiliate_tag: ""
+
+# Read at runtime. Bundle checkout returns 503 until this is set. Provide via vault.
+learningwell_stripe_secret_key: ""
+
+# Shared-edge mode: the docker network of the host's Caddy project so it can
+# reverse_proxy learningwell-web:3000. Verify on the host: `docker network ls`.
+learningwell_caddy_network: "tmw-prod_default"
+
+# Standalone mode only (our own Caddy). Unused in shared mode.
+learningwell_caddy_email: ""
+learningwell_cloudflare_api_token: ""
