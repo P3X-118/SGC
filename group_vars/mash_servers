@@ -1184,8 +1184,10 @@ sgc_sysd_srvc_list_auto_itemized:
     {{ ({'name': (stoked_rabbitmq_identifier + '.service'), 'priority': 1000, 'groups': ['sgc', 'stoked']} if stoked_enabled and stoked_rabbitmq_enabled else omit) }}
   - |-
     {{ ({'name': (stoked_minio_identifier + '.service'), 'priority': 1000, 'groups': ['sgc', 'stoked']} if stoked_enabled and stoked_minio_enabled else omit) }}
-  - |-
-    {{ ({'name': (stoked_createbuckets_identifier + '.service'), 'priority': 1100, 'groups': ['sgc', 'stoked']} if stoked_enabled and stoked_minio_enabled else omit) }}
+  # stoked-createbuckets is a Type=oneshot init unit (active/exited, never
+  # "running"), so it is intentionally NOT registered here — the
+  # systemd_service_manager up-verify would false-fail it. It is pulled in on
+  # demand via autumn's Requires=/After= (stoked_autumn_systemd_required_services_list_default).
   - |-
     {{ ({'name': (stoked_api_identifier + '.service'), 'priority': 2000, 'groups': ['sgc', 'stoked']} if stoked_enabled and stoked_api_enabled else omit) }}
   - |-
