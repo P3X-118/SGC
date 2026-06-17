@@ -1,0 +1,83 @@
+{# Templated Authentik provisioner: idempotent create/update of the
+   Application + ProxyProvider + Group + PolicyBinding + Outpost membership
+   for one okast's admin SSO. Driven by role vars; piped into `ak shell`
+   inside the pds-authentik-server container by tasks/main.yml.
+   Re-runnable: uses update_or_create / get_or_create everywhere. #}
+from authentik.core.models import Application, User, Group
+from authentik.providers.proxy.models import ProxyProvider, ProxyMode
+from authentik.policies.models import PolicyBinding
+from authentik.outposts.models import Outpost
+from authentik.flows.models import Flow
+
+APP_SLUG = "{{ okast_admin_sso_app_slug }}"
+APP_NAME = "{{ okast_admin_sso_app_name }}"
+GROUP_NAME = "{{ okast_admin_sso_group_name }}"
+EXTERNAL_HOST = "{{ okast_admin_sso_external_host }}"
+INTERNAL_HOST = "{{ okast_admin_sso_internal_host }}"
+OUTPOST_NAME = "{{ okast_admin_sso_outpost_name }}"
+INITIAL_MEMBERS = {{ okast_admin_sso_initial_members | to_json }}
+
+# Authorization + invalidation flows (same defaults as the chat OIDC clients).
+auth_flow = Flow.objects.get(slug="default-provider-authorization-explicit-consent")
+inval_flow = Flow.objects.filter(slug="default-provider-invalidation-flow").first()
+
+# 1. Group (members of this group pass the policy gate).
+group, g_created = Group.objects.update_or_create(
+    name=GROUP_NAME, defaults=dict(is_superuser=False)
+)
+for username in INITIAL_MEMBERS:
+    user = User.objects.filter(username=username).first()
+    if user and not group.users.filter(pk=user.pk).exists():
+        group.users.add(user)
+group.save()
+
+# 2. Proxy Provider (forward_single mode -- Caddy's forward_auth is what
+#    actually proxies; this provider is consulted via the outpost).
+defaults = dict(
+    authorization_flow=auth_flow,
+    mode=ProxyMode.FORWARD_SINGLE,
+    external_host=EXTERNAL_HOST,
+    internal_host=INTERNAL_HOST,
+    internal_host_ssl_validation=False,
+)
+if inval_flow is not None:
+    defaults["invalidation_flow"] = inval_flow
+
+provider, p_created = ProxyProvider.objects.update_or_create(
+    name=APP_SLUG, defaults=defaults
+)
+
+# 3. Application (carries the provider; user-facing slug/name).
+app, a_created = Application.objects.update_or_create(
+    slug=APP_SLUG,
+    defaults=dict(
+        name=APP_NAME,
+        provider=provider,
+        meta_launch_url=EXTERNAL_HOST,
+        meta_description="okast /admin SSO gate",
+    ),
+)
+
+# 4. Policy binding: app accessible to group members only.
+binding, b_created = PolicyBinding.objects.update_or_create(
+    target=app,
+    group=group,
+    defaults=dict(enabled=True, order=0),
+)
+
+# 5. Attach the provider to the shared outpost so the outpost's forward-auth
+#    endpoint knows about it.
+outpost = Outpost.objects.get(name=OUTPOST_NAME)
+if not outpost.providers.filter(pk=provider.pk).exists():
+    outpost.providers.add(provider)
+    outpost.save()
+
+print(
+    "OK"
+    f" app={app.slug} ({'created' if a_created else 'updated'})"
+    f" provider={provider.name}({provider.pk})"
+    f" group={group.name}({group.pk})({'created' if g_created else 'updated'})"
+    f" binding={binding.pk}({'created' if b_created else 'updated'})"
+    f" outpost={outpost.name}"
+    f" members={list(group.users.all().values_list('username', flat=True))}"
+)

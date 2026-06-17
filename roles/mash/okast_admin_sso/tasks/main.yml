@@ -1,0 +1,58 @@
+---
+# okast_admin_sso: wire one okast into the shared Authentik admin SSO gate.
+# Provisions Authentik objects (delegated to bskypds.pro / prod), then renders
+# a marker-bound block into sonic's Caddyfile. Idempotent.
+
+- name: "okast_admin_sso[{{ okast_admin_sso_app_slug }}]: sanity-check required vars"
+  ansible.builtin.assert:
+    that:
+      - okast_admin_sso_app_slug | length > 0
+      - okast_admin_sso_app_name | length > 0
+      - okast_admin_sso_group_name | length > 0
+      - okast_admin_sso_external_host | length > 0
+      - okast_admin_sso_hostname | length > 0
+      - okast_admin_sso_origin_port | length > 0
+      - okast_admin_sso_basic_password | length > 0
+    fail_msg: "okast_admin_sso requires all of *_app_slug, *_app_name, *_group_name, *_external_host, *_hostname, *_origin_port, *_basic_password"
+  when: okast_admin_sso_enabled | bool
+
+# --- Authentik side (run on bskypds.pro / prod) ---
+
+- name: "okast_admin_sso[{{ okast_admin_sso_app_slug }}]: render provisioner script to {{ okast_admin_sso_authentik_host }}"
+  ansible.builtin.template:
+    src: provision.py.j2
+    dest: "/tmp/provision-okast-admin-{{ okast_admin_sso_app_slug }}.py"
+    mode: '0600'
+  delegate_to: "{{ okast_admin_sso_authentik_host }}"
+  when: okast_admin_sso_enabled | bool
+
+- name: "okast_admin_sso[{{ okast_admin_sso_app_slug }}]: run provisioner inside pds-authentik-server"
+  ansible.builtin.shell:
+    cmd: >-
+      docker exec -i pds-authentik-server ak shell
+      < /tmp/provision-okast-admin-{{ okast_admin_sso_app_slug }}.py
+  delegate_to: "{{ okast_admin_sso_authentik_host }}"
+  register: okast_admin_sso_provision_result
+  changed_when: '"OK " in okast_admin_sso_provision_result.stdout'
+  failed_when: '"OK " not in okast_admin_sso_provision_result.stdout'
+  when: okast_admin_sso_enabled | bool
+
+- name: "okast_admin_sso[{{ okast_admin_sso_app_slug }}]: clean up provisioner script"
+  ansible.builtin.file:
+    path: "/tmp/provision-okast-admin-{{ okast_admin_sso_app_slug }}.py"
+    state: absent
+  delegate_to: "{{ okast_admin_sso_authentik_host }}"
+  when: okast_admin_sso_enabled | bool
+
+# --- sonic Caddy side ---
+
+- name: "okast_admin_sso[{{ okast_admin_sso_app_slug }}]: render Caddy block into sonic Caddyfile"
+  ansible.builtin.blockinfile:
+    path: /etc/caddy/Caddyfile
+    marker: "# {mark} okast_admin_sso:{{ okast_admin_sso_app_slug }}"
+    block: "{{ lookup('template', 'caddy-block.j2') }}"
+    backup: true
+  delegate_to: "{{ okast_admin_sso_caddy_host }}"
+  become: true
+  when: okast_admin_sso_enabled | bool
+  notify: validate and reload caddy on sonic

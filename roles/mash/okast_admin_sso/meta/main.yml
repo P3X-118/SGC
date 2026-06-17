@@ -1,0 +1,15 @@
+---
+galaxy_info:
+  author: SGC
+  description: |
+    okast /admin* SSO gating via the shared bskypds.pro Authentik (proxy
+    provider + forward-auth at sonic Caddy edge). Mirrors the working
+    radio.cooey.club pattern; declared per okast in host_vars.
+  license: AGPL-3.0-or-later
+  min_ansible_version: '2.12'
+  platforms:
+    - name: Debian
+      versions: [bookworm, trixie]
+    - name: Ubuntu
+      versions: [jammy, noble]
+dependencies: []

@@ -1,0 +1,13 @@
+---
+- name: validate and reload caddy on sonic
+  delegate_to: "{{ okast_admin_sso_caddy_host }}"
+  become: true
+  block:
+    - name: caddy validate
+      ansible.builtin.command:
+        cmd: caddy validate --config /etc/caddy/Caddyfile --adapter caddyfile
+      changed_when: false
+    - name: caddy reload
+      ansible.builtin.systemd:
+        name: caddy
+        state: reloaded

@@ -257,6 +257,18 @@
     #- role: galaxy/ddclient
     # /role-specific:ddclient
 
+    # role-specific:do
+    # Local-only role (no GitHub fetch; P3X-118/do-ar unpublished).
+    # Lives at roles/mash/do/, synced from ~/sgc/ansible/roles/do-ar/.
+    - when: do_enabled | bool
+      role: mash/do
+      tags:
+        - setup-all
+        - setup-do
+        - install-all
+        - install-do
+    # /role-specific:do
+
     # role-specific:odoo_ghostrak
     # Odoo-side state for the two-tier ghostrak↔Odoo↔Authentik architecture
     # (groups OIDC scope on auth_oauth_provider today; custom ghostrak addon
@@ -277,6 +289,79 @@
       role: mash/odoo_prime_login
       tags: [setup-all, setup-odoo_prime_login, install-all, install-odoo_prime_login]
     # /role-specific:odoo_prime_login
+
+    # role-specific:odoo_sgc_login
+    # Installs the SHARED sgc_login addon (generic Authentik OIDC: login
+    # group-gate on SGC_DO_REQUIRED_GROUP + authoritative admin-group ->
+    # Odoo base.group_system from SGC_DO_ADMIN_GROUP). Same install pattern as
+    # mash/odoo_prime_login; source is the shared workspace
+    # (~/sgc/apps/odoo-addons/sgc_login). Group names come from the do container
+    # env. No-op unless odoo_sgc_login_enabled.
+    - when: odoo_sgc_login_enabled | default(false) | bool
+      role: mash/odoo_sgc_login
+      tags: [setup-all, setup-odoo_sgc_login, install-all, install-odoo_sgc_login]
+    # /role-specific:odoo_sgc_login
+
+    # role-specific:odoo_learningwell
+    # Provisions The Learning Well's company (+ optionally its School Supply
+    # Bundle product + learningwell-service JSON-RPC user) in the do.sgc.ai
+    # multi-company Odoo. One-shot odoo-bin shell; idempotent. No-op unless
+    # odoo_learningwell_enabled.
+    - when: odoo_learningwell_enabled | default(false) | bool
+      role: mash/odoo_learningwell
+      tags: [setup-all, setup-odoo_learningwell, install-all, install-odoo_learningwell]
+    # /role-specific:odoo_learningwell
+
+    # role-specific:odoo_sgc_companies
+    # Ensures the SGC operator/home company + the independent companies SGC
+    # MANAGES (top-level, not branches) + per-user multi-company access on the
+    # do.sgc.ai Odoo (list-driven, idempotent; adopts live companies, self-heals
+    # any to flat). No-op unless odoo_sgc_companies_enabled.
+    - when: odoo_sgc_companies_enabled | default(false) | bool
+      role: mash/odoo_sgc_companies
+      tags: [setup-all, setup-odoo_sgc_companies, install-all, install-odoo_sgc_companies]
+    # /role-specific:odoo_sgc_companies
+
+    # role-specific:odoo_sgc_branding
+    # Per-company document/email colors on the do.sgc.ai multi-company Odoo,
+    # sourced from the Authentik brand identities. Idempotent one-shot odoo-bin
+    # shell. No-op unless odoo_sgc_branding_enabled.
+    - when: odoo_sgc_branding_enabled | default(false) | bool
+      role: mash/odoo_sgc_branding
+      tags: [setup-all, setup-odoo_sgc_branding, install-all, install-odoo_sgc_branding]
+    # /role-specific:odoo_sgc_branding
+
+    # role-specific:odoo_sgc_theme
+    # The SGC "Stargate Command" backend skin (asset-only sgc_theme addon) on the
+    # do.sgc.ai multi-company Odoo. Rsync + one-shot -u/-i install (regenerates
+    # the asset bundles). No-op unless odoo_sgc_theme_enabled.
+    - when: odoo_sgc_theme_enabled | default(false) | bool
+      role: mash/odoo_sgc_theme
+      tags: [setup-all, setup-odoo_sgc_theme, install-all, install-odoo_sgc_theme]
+    # /role-specific:odoo_sgc_theme
+
+    # role-specific:odoo_prime_website
+    # Installs the prime_website Odoo module — the public Prime Baseball
+    # marketing website (brand theme + native-snippet pages + nav/footer +
+    # program pages + store products + host-aware "/" controller). Same install
+    # pattern as mash/odoo_prime_login; source in the prime engagement workspace
+    # (~/b2b/primeBaseball/odoo-addons/prime_website). No-op unless
+    # odoo_prime_website_enabled.
+    - when: odoo_prime_website_enabled | default(false) | bool
+      role: mash/odoo_prime_website
+      tags: [setup-all, setup-odoo_prime_website, install-all, install-odoo_prime_website]
+    # /role-specific:odoo_prime_website
+
+    # role-specific:odoo_prime_recruiting
+    # Installs the prime_recruiting Odoo module — the sports-agent athlete
+    # recruiting pipeline on CRM (Recruiting team + stages + recruit-profile
+    # fields on opportunities). Same install pattern as mash/odoo_prime_website;
+    # source in ~/b2b/primeBaseball/odoo-addons/prime_recruiting. No-op unless
+    # odoo_prime_recruiting_enabled.
+    - when: odoo_prime_recruiting_enabled | default(false) | bool
+      role: mash/odoo_prime_recruiting
+      tags: [setup-all, setup-odoo_prime_recruiting, install-all, install-odoo_prime_recruiting]
+    # /role-specific:odoo_prime_recruiting
 
     # role-specific:docker_registry
     #- role: galaxy/docker_registry
@@ -784,6 +869,19 @@
     - role: galaxy/owncast
     # /role-specific:owncast
 
+    # role-specific:rtmp_relay
+    - when: rtmp_relay_enabled | bool
+      role: mash/rtmp_relay
+    # /role-specific:rtmp_relay
+
+    # role-specific:okast_admin_sso
+    # Wires this okast's /admin* through the shared bskypds.pro Authentik
+    # (proxy provider + forward-auth at sonic Caddy edge). Mirrors the
+    # working radio.cooey.club pattern; idempotent / re-runnable.
+    - when: okast_admin_sso_enabled | bool
+      role: mash/okast_admin_sso
+    # /role-specific:okast_admin_sso
+
     # role-specific:oxitraffic
     #- role: galaxy/oxitraffic
     # /role-specific:oxitraffic
@@ -1093,7 +1191,7 @@
     # /role-specific:syncstorage_rs_docker
 
     # role-specific:syncthing
-    #- role: galaxy/syncthing
+    - role: galaxy/syncthing
     # /role-specific:syncthing
 
     # role-specific:tandoor

@@ -1,0 +1,24 @@
+{# sonic Caddy block for one okast with SSO-gated /admin*. Rendered into the
+   blockinfile-managed marker region in /etc/caddy/Caddyfile on sonic. CF
+   Universal SSL handles the browser cert (radio.eagledrive.live / live.yeet.fm
+   are proxied through Cloudflare); sonic serves a self-signed (`tls internal`)
+   to CF in Full mode. forward_auth talks to the shared `radio` outpost on
+   localhost:9000. On success the @admin reverse_proxy injects HTTP Basic
+   creds matching the okast's --adminpassword. The /outpost.goauthentik.io
+   passthrough at the top lets the outpost serve its own /auth/caddy etc.
+   under this hostname (required by Authentik's proxy outpost). #}
+{{ okast_admin_sso_hostname }} {
+	tls internal
+	@admin path /admin /admin/* /api/admin /api/admin/*
+	route {
+		reverse_proxy /outpost.goauthentik.io/* 127.0.0.1:9000
+		forward_auth @admin 127.0.0.1:9000 {
+			uri /outpost.goauthentik.io/auth/caddy
+			copy_headers X-Authentik-Username X-Authentik-Groups X-Authentik-Email X-Authentik-Name X-Authentik-Uid X-Authentik-Jwt X-Authentik-Meta-Provider X-Authentik-Meta-App X-Authentik-Meta-Version
+		}
+		reverse_proxy @admin {{ okast_admin_sso_origin_mesh }}:{{ okast_admin_sso_origin_port }} {
+			header_up Authorization "Basic {{ (okast_admin_sso_basic_username + ':' + okast_admin_sso_basic_password) | b64encode }}"
+		}
+		reverse_proxy {{ okast_admin_sso_origin_mesh }}:{{ okast_admin_sso_origin_port }}
+	}
+}

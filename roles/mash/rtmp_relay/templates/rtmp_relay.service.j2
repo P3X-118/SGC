@@ -1,0 +1,27 @@
+{# rtmp_relay systemd unit. ffmpeg stream-copies one RTMP source to one
+   destination. `$` in URLs (stream keys like bigWilly$tyl3) is doubled here
+   so systemd doesn't try to expand $tyl3 as an environment variable. #}
+[Unit]
+Description=RTMP stream-copy relay ({{ rtmp_relay_identifier }})
+After=docker.service{% for s in rtmp_relay_systemd_required_services_list_auto + rtmp_relay_systemd_wanted_services_list_auto %} {{ s }}{% endfor %}
+
+{% if rtmp_relay_systemd_required_services_list_auto -%}
+Requires={{ rtmp_relay_systemd_required_services_list_auto | join(' ') }}
+{% endif -%}
+{% if rtmp_relay_systemd_wanted_services_list_auto -%}
+Wants={{ rtmp_relay_systemd_wanted_services_list_auto | join(' ') }}
+{% endif %}
+[Service]
+Type=simple
+# -c copy = demux + remux, no re-encode. Negligible CPU on the relay; the
+# destination okast does its own transcode -> HLS independently.
+ExecStart=/usr/bin/ffmpeg -hide_banner -loglevel warning \
+    -reconnect 1 -reconnect_streamed 1 -reconnect_delay_max 5 \
+    -i {{ rtmp_relay_source_url | replace('$', '$$') }} \
+    -c copy -f flv {{ rtmp_relay_destination_url | replace('$', '$$') }}
+Restart=always
+RestartSec={{ rtmp_relay_restart_sec }}
+SyslogIdentifier={{ rtmp_relay_identifier }}
+
+[Install]
+WantedBy=multi-user.target

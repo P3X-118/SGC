@@ -1,0 +1,56 @@
+---
+# okast_admin_sso -- repeatable pattern for gating an okast's /admin* via the
+# shared bskypds.pro Authentik (proxy provider + forward-auth at the sonic
+# Caddy edge), with Caddy injecting HTTP Basic creds that match the okast's
+# adminpassword on successful forward-auth.
+#
+# Mirrors the working radio.cooey.club pattern (Application `radio-admin` +
+# group `cooey-radio-admins` + proxy provider attached to the `radio` Outpost
+# running on sonic at 127.0.0.1:9000). Each new okast gets its own
+# Application + Group + ProxyProvider (so per-okast policy + audit), all
+# riding the same shared outpost.
+#
+# Runs PER OKAST inventory host (e.g. live.yeet.fm, radio.eagledrive.live).
+# Authentik objects are delegated to bskypds.pro; sonic's Caddyfile block is
+# delegated to sonic.
+
+okast_admin_sso_enabled: false
+
+# Authentik objects. APP_SLUG is the Application slug AND the Proxy Provider
+# name; GROUP_NAME is the policy-binding group (members get admin). NAME is
+# the friendly display name.
+okast_admin_sso_app_slug: ""           # e.g. live-yeet-admin
+okast_admin_sso_app_name: ""           # e.g. live.yeet.fm (Owncast admin)
+okast_admin_sso_group_name: ""         # e.g. live-yeet-admins
+
+# Proxy Provider external_host = the public URL of the okast (browser-side).
+# internal_host is required by the model but unused in forward-auth mode --
+# the Caddy block is what actually proxies to okast. Leave at the default.
+okast_admin_sso_external_host: ""      # e.g. https://live.yeet.fm
+okast_admin_sso_internal_host: "http://localhost:80"
+
+# Shared outpost on sonic. cooey set this up; subsequent okasts ride it.
+okast_admin_sso_outpost_name: "radio"
+
+# Initial members of the group on first provision. Set [] to skip; the role
+# uses set_or_add semantics so re-runs preserve any later manual additions.
+# (Reconciliation: when sgc_pgsk lands + admin groups become canonical, drive
+# membership from a single source list.)
+okast_admin_sso_initial_members: []
+
+# sonic Caddy block parameters. The role REPLACES the existing block for
+# `okast_admin_sso_hostname` with the marker-bound SSO-enabled block.
+okast_admin_sso_hostname: ""           # e.g. live.yeet.fm
+okast_admin_sso_origin_mesh: "169.254.0.98"  # epona
+okast_admin_sso_origin_port: ""        # e.g. 8085
+
+# Basic-auth creds Caddy injects on a successful forward-auth pass. The
+# password MUST match the okast's adminpassword (currently a literal in
+# host_vars while sgc_pgsk is missing -- reconciliation debt). Default
+# username `admin` matches Owncast's expectation.
+okast_admin_sso_basic_username: "admin"
+okast_admin_sso_basic_password: ""
+
+# Inventory aliases for the Authentik + Caddy hosts (delegate targets).
+okast_admin_sso_authentik_host: "bskypds.pro"
+okast_admin_sso_caddy_host: "sonic"

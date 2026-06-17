@@ -1,0 +1,43 @@
+---
+# rtmp_relay -- install + manage one ffmpeg RTMP stream-copy relay unit.
+
+- name: Ensure ffmpeg is available
+  ansible.builtin.command: /usr/bin/ffmpeg -version
+  register: rtmp_relay_ffmpeg_check
+  changed_when: false
+  failed_when: rtmp_relay_ffmpeg_check.rc != 0
+  when: rtmp_relay_enabled | bool
+
+- name: Render the systemd unit
+  ansible.builtin.template:
+    src: rtmp_relay.service.j2
+    dest: "/etc/systemd/system/{{ rtmp_relay_identifier }}.service"
+    owner: root
+    group: root
+    mode: '0644'
+  when: rtmp_relay_enabled | bool
+  notify: reload systemd
+
+- name: Ensure the relay is enabled and running
+  ansible.builtin.systemd:
+    name: "{{ rtmp_relay_identifier }}.service"
+    state: started
+    enabled: true
+    daemon_reload: true
+  when: rtmp_relay_enabled | bool
+
+- name: Remove the systemd unit when disabled
+  ansible.builtin.file:
+    path: "/etc/systemd/system/{{ rtmp_relay_identifier }}.service"
+    state: absent
+  when: not (rtmp_relay_enabled | bool)
+  notify: reload systemd
+
+- name: Stop the relay when disabled
+  ansible.builtin.systemd:
+    name: "{{ rtmp_relay_identifier }}.service"
+    state: stopped
+    enabled: false
+    daemon_reload: true
+  failed_when: false
+  when: not (rtmp_relay_enabled | bool)

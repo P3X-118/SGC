@@ -1,0 +1,40 @@
+---
+# rtmp_relay -- ffmpeg-based RTMP stream-copy relay deployed as a systemd unit.
+#
+# Pulls RTMP from one URL and re-publishes (-c copy, no re-encode) to another.
+# Used on epona to fan out a single OBS push (radio-okast) to additional okast
+# instances (live-okast, eagle-okast, ...) so all three broadcast the same
+# content without re-encode cost on the relay itself. Each destination okast
+# still runs its own transcode -> HLS pipeline with its own chat / viewers /
+# federation / P2P swarm.
+#
+# Idle behavior: when the source RTMP is offline, ffmpeg fails fast (exits with
+# I/O error) and systemd restarts the unit every `rtmp_relay_restart_sec`
+# seconds. Noisy in the journal during idle but harmless; ffmpeg reconnects
+# within seconds when OBS goes live. Tune `rtmp_relay_restart_sec` upward to
+# reduce journal chatter.
+
+rtmp_relay_enabled: false
+
+# Identifier suffix for the systemd unit. Final unit name is
+# `{{ rtmp_relay_identifier }}.service`. Must be unique per host.
+rtmp_relay_identifier: "rtmp-relay"
+
+# RTMP source URL, e.g. rtmp://127.0.0.1:1935/live/<key>. The stream key must
+# be configured on the source RTMP server (typically a radio-okast Stream
+# Keys entry).
+rtmp_relay_source_url: ""
+
+# RTMP destination URL, e.g. rtmp://127.0.0.1:1937/live/<key>. The stream key
+# must be configured on the destination okast.
+rtmp_relay_destination_url: ""
+
+# Restart interval while the source is offline. 5s = fast reconnect, more
+# journal noise. 30s = quieter, slower to come up when OBS starts.
+rtmp_relay_restart_sec: 5
+
+# Optional ordering / dependencies. Useful to wait for the source okast unit
+# to be up before starting the relay (otherwise the first few restart cycles
+# fail before the source is ready).
+rtmp_relay_systemd_required_services_list_auto: []
+rtmp_relay_systemd_wanted_services_list_auto: []

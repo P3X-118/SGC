@@ -1,0 +1,12 @@
+---
+galaxy_info:
+  author: SGC
+  description: ffmpeg-based RTMP stream-copy relay deployed as a systemd unit
+  license: AGPL-3.0-or-later
+  min_ansible_version: '2.10'
+  platforms:
+    - name: Debian
+      versions: [bookworm, trixie]
+    - name: Ubuntu
+      versions: [jammy, noble]
+dependencies: []
