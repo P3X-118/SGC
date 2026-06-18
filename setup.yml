@@ -870,9 +870,21 @@
     # /role-specific:owncast
 
     # role-specific:rtmp_relay
+    # Generic ffmpeg RTMP-pull -> RTMP-push relay. Does NOT work with okast
+    # as the source (okast RTMP only accepts publishes, not plays). For
+    # okast-source fan-out use mash/hls_relay below instead.
     - when: rtmp_relay_enabled | bool
       role: mash/rtmp_relay
     # /role-specific:rtmp_relay
+
+    # role-specific:hls_relay
+    # ffmpeg HLS-pull -> RTMP-push relay. The okast-friendly fan-out: pulls
+    # the source okast's HTTP HLS (no auth) and pushes RTMP into a
+    # destination okast on the same host. Uses -re to pace input, avoiding
+    # the broken-pipe loop the bare RTMP-pull relay hits with okast.
+    - when: hls_relay_enabled | bool
+      role: mash/hls_relay
+    # /role-specific:hls_relay
 
     # role-specific:okast_admin_sso
     # Wires this okast's /admin* through the shared bskypds.pro Authentik

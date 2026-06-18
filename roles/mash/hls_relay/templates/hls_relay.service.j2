@@ -1,0 +1,28 @@
+{# hls_relay systemd unit. ffmpeg pulls a live HLS playlist, paces at native
+   frame rate (-re prevents bursting the catch-up into the destination's RTMP
+   buffer -> broken pipe -> reconnect loop), and re-publishes -c copy to a
+   destination RTMP. `$` in the destination URL (stream keys like
+   `bigWilly$tyl3`) is doubled here so systemd doesn't try to expand `$tyl3`
+   as an env variable. #}
+[Unit]
+Description=HLS-to-RTMP relay ({{ hls_relay_identifier }})
+After=docker.service{% for s in hls_relay_systemd_required_services_list_auto + hls_relay_systemd_wanted_services_list_auto %} {{ s }}{% endfor %}
+
+{% if hls_relay_systemd_required_services_list_auto -%}
+Requires={{ hls_relay_systemd_required_services_list_auto | join(' ') }}
+{% endif -%}
+{% if hls_relay_systemd_wanted_services_list_auto -%}
+Wants={{ hls_relay_systemd_wanted_services_list_auto | join(' ') }}
+{% endif %}
+[Service]
+Type=simple
+ExecStart=/usr/bin/ffmpeg -hide_banner -loglevel warning \
+    -re -live_start_index -1 \
+    -i {{ hls_relay_source_url | replace('$', '$$') }} \
+    -c copy -rtmp_live live -f flv {{ hls_relay_destination_url | replace('$', '$$') }}
+Restart=always
+RestartSec={{ hls_relay_restart_sec }}
+SyslogIdentifier={{ hls_relay_identifier }}
+
+[Install]
+WantedBy=multi-user.target

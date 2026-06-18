@@ -1,0 +1,52 @@
+---
+# hls_relay -- ffmpeg HLS-pull -> RTMP-push relay deployed as a systemd unit.
+#
+# Pulls a live HLS playlist (typically Owncast's own /hls/stream.m3u8, which it
+# serves to anyone) and re-publishes it to a destination RTMP server. Used to
+# fan out one okast's broadcast into one or more secondary okasts on the same
+# host, so each downstream okast gets a fresh publish event and runs its own
+# transcode/HLS/chat/federation/P2P swarm independently.
+#
+# WHY HLS-PULL INSTEAD OF RTMP-PULL: Owncast's RTMP server only accepts
+# publishes (writes), not plays (reads) -- confirmed empirically. The sibling
+# `mash/rtmp_relay` role's ffmpeg RTMP-pull design therefore does NOT work
+# with okast as the source. Owncast happily serves its own HLS output over
+# HTTP though, with no auth, so this role pulls from there instead.
+#
+# COST: one extra ffmpeg process per relayed destination (~50-150 MiB RSS),
+# and ~one HLS segment of extra latency on the destination's broadcast
+# (default okast HLS segments are 4-20s depending on latency level).
+#
+# CRITICAL ffmpeg flags (don't omit):
+#   -re                : pace input at native frame rate. Without -re, ffmpeg
+#                        bursts the whole playlist into the destination RTMP
+#                        server, which broken-pipes after ~11s -> reconnect
+#                        loop, never goes online.
+#   -live_start_index -1 : start at the most recent segment (live edge).
+#   -c copy            : no re-encode on the relay; the destination okast
+#                        still runs its own transcode pipeline.
+#   -rtmp_live live    : tag the push as a live broadcast explicitly.
+
+hls_relay_enabled: false
+
+# Identifier suffix for the systemd unit. Final unit name is
+# `{{ hls_relay_identifier }}.service`. Must be unique per host.
+hls_relay_identifier: "hls-relay"
+
+# Source HLS playlist (typically the source okast's HTTP /hls/stream.m3u8 on
+# the SAME host -- okast serves HLS to anyone without auth).
+hls_relay_source_url: ""
+
+# Destination RTMP URL. The stream key must be configured on the destination
+# okast's Stream Keys (admin -> Configuration -> Stream Keys).
+hls_relay_destination_url: ""
+
+# Restart interval. HLS isn't ready until the source okast has been
+# transcoding for some seconds after a publish; faster restarts would just
+# thrash the journal during idle.
+hls_relay_restart_sec: 10
+
+# Optional ordering / dependencies. Set to the source + destination okast
+# unit names so the relay waits for both before starting.
+hls_relay_systemd_required_services_list_auto: []
+hls_relay_systemd_wanted_services_list_auto: []

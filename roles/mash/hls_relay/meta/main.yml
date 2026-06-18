@@ -1,0 +1,17 @@
+---
+galaxy_info:
+  author: SGC
+  description: |
+    HLS-pull -> RTMP-push relay via ffmpeg, deployed as a systemd unit.
+    Use to fan out one Owncast/okast broadcast to additional okast instances
+    on the same host (works around the fact that Owncast's RTMP server only
+    accepts publishes, not plays -- see sibling mash/rtmp_relay for the
+    RTMP-pull design that does NOT work with okast).
+  license: AGPL-3.0-or-later
+  min_ansible_version: '2.12'
+  platforms:
+    - name: Debian
+      versions: [bookworm, trixie]
+    - name: Ubuntu
+      versions: [jammy, noble]
+dependencies: []
