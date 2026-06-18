@@ -5,6 +5,11 @@ services:
   app:
     image: ${APP_IMAGE}
     container_name: {{ legit_services_identifier }}
+    # Run as the SGC service uid so the bind-mounted radata dir (created by the
+    # role under this uid) is writable for Gun. The image's default user is `node`
+    # (uid 1000), which doesn't match — and with read_only rootfs the app can only
+    # write radata + tmpfs, so the uid must line up or Gun fails with EACCES.
+    user: "{{ legit_services_uid }}:{{ legit_services_gid }}"
     restart: unless-stopped
     init: true
     env_file: env
