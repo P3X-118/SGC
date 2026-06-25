@@ -1,0 +1,6 @@
+---
+galaxy_info:
+  role_name: flaresolverr_watchdog
+  description: Restarts a FlareSolverr instance whose headless browser has wedged.
+  standalone: true
+dependencies: []

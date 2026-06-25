@@ -1,0 +1,47 @@
+---
+- name: flaresolverr_watchdog — install watchdog script
+  ansible.builtin.template:
+    src: flaresolverr-watchdog.sh.j2
+    dest: /usr/local/bin/flaresolverr-watchdog.sh
+    owner: root
+    group: root
+    mode: "0755"
+  when: flaresolverr_watchdog_enabled | bool
+
+- name: flaresolverr_watchdog — install systemd service + timer
+  ansible.builtin.template:
+    src: "{{ item }}.j2"
+    dest: "/etc/systemd/system/{{ item }}"
+    owner: root
+    group: root
+    mode: "0644"
+  loop:
+    - flaresolverr-watchdog.service
+    - flaresolverr-watchdog.timer
+  when: flaresolverr_watchdog_enabled | bool
+
+- name: flaresolverr_watchdog — enable + start timer
+  ansible.builtin.systemd:
+    name: flaresolverr-watchdog.timer
+    enabled: true
+    state: started
+    daemon_reload: true
+  when: flaresolverr_watchdog_enabled | bool
+
+- name: flaresolverr_watchdog — remove when disabled
+  when: not (flaresolverr_watchdog_enabled | bool)
+  block:
+    - name: flaresolverr_watchdog — stop + disable timer
+      ansible.builtin.systemd:
+        name: flaresolverr-watchdog.timer
+        enabled: false
+        state: stopped
+      failed_when: false
+    - name: flaresolverr_watchdog — remove unit + script files
+      ansible.builtin.file:
+        path: "{{ item }}"
+        state: absent
+      loop:
+        - /etc/systemd/system/flaresolverr-watchdog.timer
+        - /etc/systemd/system/flaresolverr-watchdog.service
+        - /usr/local/bin/flaresolverr-watchdog.sh

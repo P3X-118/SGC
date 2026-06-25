@@ -1,0 +1,12 @@
+---
+# FlareSolverr watchdog — periodically probes the instance with a REAL
+# request.get and restarts the service if the headless browser has wedged
+# (the API stays up while every real fetch fails, so naive checks miss it).
+flaresolverr_watchdog_enabled: true
+
+# FlareSolverr API on the host (the role publishes the bind port to localhost).
+flaresolverr_watchdog_url: "http://localhost:{{ flaresolverr_container_http_bind_port | default('8191') }}/v1"
+
+# How often to probe. The degradation builds over hours, so this is mostly a
+# safety net; kept loose to avoid colliding with an in-flight scrape.
+flaresolverr_watchdog_interval: "15min"

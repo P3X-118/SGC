@@ -1,0 +1,10 @@
+[Unit]
+Description=Run the FlareSolverr watchdog periodically
+
+[Timer]
+OnBootSec=5min
+OnUnitActiveSec={{ flaresolverr_watchdog_interval }}
+AccuracySec=1min
+
+[Install]
+WantedBy=timers.target

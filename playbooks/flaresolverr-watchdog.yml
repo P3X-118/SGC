@@ -1,0 +1,10 @@
+---
+# Deploy the FlareSolverr watchdog (probe-with-a-real-request + restart-on-wedge)
+# to every FlareSolverr host. Run:
+#   ansible-playbook playbooks/flaresolverr-watchdog.yml
+- name: FlareSolverr watchdog
+  hosts: beege-flaresolverr:flareface
+  become: true
+  gather_facts: true
+  roles:
+    - role: mash/flaresolverr_watchdog
