@@ -41,6 +41,50 @@ learningwell_amazon_affiliate_tag: ""
 # Read at runtime. Bundle checkout returns 503 until this is set. Provide via vault.
 learningwell_stripe_secret_key: ""
 
+# Stripe webhook signing secret — paid orders → Odoo sale.order. Empty = the
+# /api/stripe/webhook endpoint stays inert (503). Provide via vault.
+learningwell_stripe_webhook_secret: ""
+
+# --- Payments: Authorize.Net (runtime) -------------------------------------
+# Sandbox until production creds are provided. Empty API login/transaction key =
+# /checkout places orders WITHOUT charging. Transaction key is a secret (vault);
+# API Login ID + Client Key are publishable (Accept.js uses them in the browser).
+learningwell_authorizenet_env: "sandbox"
+learningwell_authorizenet_api_login_id: ""
+learningwell_authorizenet_transaction_key: ""
+learningwell_authorizenet_client_key: ""
+
+# --- Email: transactional mail via the mailcow inbox (runtime) --------------
+# Order confirmations + quote/subscribe lead delivery. Port 465 (implicit TLS) —
+# the EC2 can reach 465 but NOT 587/25. Empty SMTP_PASS = senders no-op (logged);
+# provide SMTP_PASS via vault.
+learningwell_smtp_host: "mail.yeet.fm"
+learningwell_smtp_port: "465"
+learningwell_smtp_user: "learningwell@eagledrive.live"
+learningwell_smtp_pass: ""
+learningwell_mail_from: "The Learning Well <learningwell@eagledrive.live>"
+learningwell_mail_internal_to: ""
+
+# --- Odoo (do.sgc.ai): orders → sale.order, leads → crm.lead --------------
+# The company, bundle product, and learningwell-service user are provisioned on
+# the odoo host by the odoo_learningwell role; this only renders the app's
+# connection env. Empty learningwell_odoo_url = the app's Odoo client is inert.
+# Reachability: this EC2 is on the SGC Nebula mesh (169.254.0.130) and do.sgc.ai
+# is mesh-only (169.254.0.133) — the container needs an extra_hosts mapping +
+# a route to the mesh (handled in the learningwell compose, verified at cutover).
+learningwell_odoo_url: ""  # set to https://do.sgc.ai in host_vars to enable
+# Pull the real DB name from the odoo host (derives to `sgc-do`); override if `\l` differs.
+learningwell_odoo_db: "{{ hostvars['odoo'].do_database_name | default('sgc-do') }}"
+learningwell_odoo_user: "learningwell-service"
+# Re-derive the service-user password from the ODOO host's sgc_pgsk — the
+# odoo_learningwell role sets the same value Odoo-side (cross-host hostvars,
+# no hand-off). Mirrors the odoo_ghostrak bff-service derivation.
+learningwell_odoo_api_key: "{{ ((hostvars['odoo'].sgc_pgsk | default('')) ~ '.odoo.learningwell') | hash('sha256') }}"
+# Stable lookups (migration-safe): the app resolves these to ids at runtime, so
+# numeric ids never have to cross hosts. Must match the odoo_learningwell role.
+learningwell_odoo_company_name: "The Learning Well"
+learningwell_odoo_bundle_product_code: "TLW-BUNDLE"
+
 # Shared-edge mode: the docker network of the host's Caddy project so it can
 # reverse_proxy learningwell-web:3000. Verify on the host: `docker network ls`.
 learningwell_caddy_network: "tmw-prod_default"
