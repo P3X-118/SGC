@@ -1,0 +1,32 @@
+---
+- name: Ensure wger Redis path exists
+  ansible.builtin.file:
+    path: "{{ item }}"
+    state: directory
+    mode: "0750"
+    owner: "{{ wger_uid }}"
+    group: "{{ wger_gid }}"
+  with_items:
+    - "{{ wger_base_path }}"
+
+- name: Ensure wger Redis container image is pulled
+  community.docker.docker_image:
+    name: "{{ wger_redis_container_image }}"
+    source: "{{ 'pull' if ansible_version.major > 2 or ansible_version.minor > 7 else omit }}"
+  register: wger_redis_container_image_pull_result
+  retries: "{{ container_retry }}"
+  delay: "{{ container_retry_delay }}"
+  until: wger_redis_container_image_pull_result is not failed
+
+- name: Ensure wger Redis container network is created
+  community.docker.docker_network:
+    name: "{{ wger_redis_container_network }}"
+    driver: bridge
+  register: wger_redis_network_creation_result
+
+- name: Ensure wger Redis systemd service is present
+  ansible.builtin.template:
+    src: "{{ role_path }}/templates/systemd/wger-redis.service.j2"
+    dest: "{{ sysd_docker_service_path }}/{{ wger_redis_identifier }}.service"
+    mode: "0644"
+  register: wger_redis_systemd_service_result

@@ -1,0 +1,25 @@
+---
+- name: Perform wger installation tasks
+  when: wger_enabled | bool
+  tags:
+    - setup-all
+    - setup-wger
+    - install-all
+    - install-wger
+  block:
+    - name: Validate wger configuration
+      ansible.builtin.include_tasks: "{{ role_path }}/tasks/validate_config.yml"
+    - name: Install wger Redis
+      ansible.builtin.include_tasks: "{{ role_path }}/tasks/install_redis.yml"
+      when: wger_redis_enabled | bool
+    - name: Install wger
+      ansible.builtin.include_tasks: "{{ role_path }}/tasks/install.yml"
+
+- name: Perform wger uninstallation tasks
+  when: not wger_enabled | bool
+  tags:
+    - setup-all
+    - setup-wger
+  block:
+    - name: Uninstall wger
+      ansible.builtin.include_tasks: "{{ role_path }}/tasks/uninstall.yml"

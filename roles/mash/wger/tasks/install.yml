@@ -1,0 +1,179 @@
+---
+- name: Configure wger postgres database
+  ansible.builtin.set_fact:
+    postgres_managed_databases_additional: "{{ postgres_managed_databases_additional | default([]) + wger_postgres_managed_databases }}"
+
+- name: Ensure wger paths exist
+  ansible.builtin.file:
+    path: "{{ item }}"
+    state: directory
+    mode: "0750"
+    owner: "{{ wger_uid }}"
+    group: "{{ wger_gid }}"
+  with_items:
+    - "{{ wger_base_path }}"
+    - "{{ wger_media_path }}"
+    - "{{ wger_static_path }}"
+    - "{{ wger_beat_path }}"
+
+- name: Generate wger secret key
+  when: wger_secret_key | default('') | length == 0
+  ansible.builtin.set_fact:
+    wger_generated_secret_key: "{{ lookup('community.general.random_string', length=50, special=false) }}"
+
+- name: Write wger secret key to file
+  when: wger_secret_key | default('') | length == 0
+  ansible.builtin.copy:
+    dest: "{{ wger_secret_key_file }}"
+    content: "{{ wger_secret_key | default(wger_generated_secret_key) }}"
+    mode: "0640"
+    owner: "{{ wger_uid }}"
+    group: "{{ wger_gid }}"
+
+- name: Set wger secret key fact
+  ansible.builtin.set_fact:
+    wger_effective_secret_key: "{{ wger_secret_key if wger_secret_key | default('') | length > 0 else wger_generated_secret_key }}"
+
+- name: Ensure wger environment file is present
+  ansible.builtin.template:
+    src: "{{ role_path }}/templates/env.j2"
+    dest: "{{ wger_base_path }}/env"
+    mode: "0640"
+    owner: "{{ wger_uid }}"
+    group: "{{ wger_gid }}"
+  register: wger_support_files_result
+
+- name: Ensure wger container image is pulled via community.docker.docker_image
+  when: sysd_docker_image_pull_method == 'ansible-module'
+  community.docker.docker_image:
+    name: "{{ wger_container_image }}"
+    source: "{{ 'pull' if ansible_version.major > 2 or ansible_version.minor > 7 else omit }}"
+    force_source: "{{ wger_container_image_force_pull if ansible_version.major > 2 or ansible_version.minor >= 8 else omit }}"
+  register: wger_container_image_pull_result
+  retries: "{{ container_retry }}"
+  delay: "{{ container_retry_delay }}"
+  until: wger_container_image_pull_result is not failed
+
+- name: Ensure wger container image is pulled via ansible.builtin.command
+  when: sysd_docker_image_pull_method == 'command'
+  ansible.builtin.command:
+    cmd: "{{ sysd_docker_host_command }} pull {{ wger_container_image }}"
+  register: wger_container_image_pull_result
+  retries: "{{ container_retry }}"
+  delay: "{{ container_retry_delay }}"
+  until: wger_container_image_pull_result is not failed
+  changed_when: "'Downloaded newer image' in wger_container_image_pull_result.stdout"
+
+- name: Ensure wger container network is created via community.docker.docker_network
+  when: sysd_docker_net_creation_method == 'ansible-module'
+  community.docker.docker_network:
+    enable_ipv6: "{{ sysd_docker_ipv6_enabled }}"
+    name: "{{ wger_container_network }}"
+    driver: bridge
+    driver_options: "{{ sysd_docker_net_driver_opts }}"
+  register: wger_network_creation_result
+
+- name: Ensure wger container network is created via ansible.builtin.command
+  when: sysd_docker_net_creation_method == 'command'
+  ansible.builtin.command:
+    cmd: >-
+      {{ sysd_docker_host_command }} network create
+      {% if sysd_docker_ipv6_enabled %}--ipv6{% endif %}
+      {{ sysd_docker_net_driver_opts_string }}
+      {{ wger_container_network }}
+  register: wger_network_creation_result
+  changed_when: wger_network_creation_result.rc == 0
+  failed_when: wger_network_creation_result.rc != 0 and 'already exists' not in wger_network_creation_result.stderr
+
+- name: Ensure wger labels file is present
+  ansible.builtin.template:
+    src: "{{ role_path }}/templates/labels.j2"
+    dest: "{{ wger_base_path }}/labels"
+    mode: "0640"
+    owner: "{{ wger_uid }}"
+    group: "{{ wger_gid }}"
+  register: wger_labels_result
+
+- name: Ensure wger systemd service is present
+  ansible.builtin.template:
+    src: "{{ role_path }}/templates/systemd/wger.service.j2"
+    dest: "{{ sysd_docker_service_path }}/{{ wger_identifier }}.service"
+    mode: "0644"
+  register: wger_systemd_service_result
+
+- name: Ensure wger Celery worker systemd service is present
+  when: wger_celery_enabled | bool
+  ansible.builtin.template:
+    src: "{{ role_path }}/templates/systemd/wger-worker.service.j2"
+    dest: "{{ sysd_docker_service_path }}/{{ wger_worker_identifier }}.service"
+    mode: "0644"
+  register: wger_worker_systemd_service_result
+
+- name: Ensure wger Celery beat systemd service is present
+  when: wger_celery_enabled | bool
+  ansible.builtin.template:
+    src: "{{ role_path }}/templates/systemd/wger-beat.service.j2"
+    dest: "{{ sysd_docker_service_path }}/{{ wger_beat_identifier }}.service"
+    mode: "0644"
+  register: wger_beat_systemd_service_result
+
+- name: Ensure wger Celery worker systemd service is absent when Celery is disabled
+  when: not wger_celery_enabled | bool
+  ansible.builtin.file:
+    path: "{{ sysd_docker_service_path }}/{{ wger_worker_identifier }}.service"
+    state: absent
+
+- name: Ensure wger Celery beat systemd service is absent when Celery is disabled
+  when: not wger_celery_enabled | bool
+  ansible.builtin.file:
+    path: "{{ sysd_docker_service_path }}/{{ wger_beat_identifier }}.service"
+    state: absent
+
+- name: Ensure wger nginx config is present
+  when: wger_nginx_enabled | bool
+  ansible.builtin.template:
+    src: "{{ role_path }}/templates/nginx.conf.j2"
+    dest: "{{ wger_nginx_config_path }}"
+    mode: "0644"
+    owner: "{{ wger_nginx_uid }}"
+    group: "{{ wger_nginx_gid }}"
+  register: wger_nginx_config_result
+
+- name: Ensure wger nginx container image is pulled
+  when: wger_nginx_enabled | bool
+  community.docker.docker_image:
+    name: "{{ wger_nginx_container_image }}"
+    source: "{{ 'pull' if ansible_version.major > 2 or ansible_version.minor > 7 else omit }}"
+  register: wger_nginx_image_pull_result
+  retries: "{{ container_retry }}"
+  delay: "{{ container_retry_delay }}"
+  until: wger_nginx_image_pull_result is not failed
+
+- name: Ensure wger nginx systemd service is present
+  when: wger_nginx_enabled | bool
+  ansible.builtin.template:
+    src: "{{ role_path }}/templates/systemd/wger-nginx.service.j2"
+    dest: "{{ sysd_docker_service_path }}/{{ wger_nginx_identifier }}.service"
+    mode: "0644"
+  register: wger_nginx_systemd_service_result
+
+- name: Ensure wger nginx systemd service is absent when nginx is disabled
+  when: not wger_nginx_enabled | bool
+  ansible.builtin.file:
+    path: "{{ sysd_docker_service_path }}/{{ wger_nginx_identifier }}.service"
+    state: absent
+
+- name: Determine whether wger needs a restart
+  ansible.builtin.set_fact:
+    wger_restart_necessary: >-
+      {{
+        wger_support_files_result.changed | default(false)
+        or wger_labels_result.changed | default(false)
+        or wger_systemd_service_result.changed | default(false)
+        or wger_worker_systemd_service_result.changed | default(false)
+        or wger_beat_systemd_service_result.changed | default(false)
+        or wger_nginx_config_result.changed | default(false)
+        or wger_nginx_systemd_service_result.changed | default(false)
+        or wger_nginx_image_pull_result.changed | default(false)
+        or wger_container_image_pull_result.changed | default(false)
+      }}

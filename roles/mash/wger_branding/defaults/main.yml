@@ -1,0 +1,51 @@
+---
+# wger_branding — deploys per-host branding assets (logo, favicon, custom CSS)
+# into the wger media dir, which nginx serves at /media/branding/. The base wger
+# role points BRAND_LOGO_URL / BRAND_FAVICON_URL / CUSTOM_CSS_URL at these paths.
+#
+# Mirrors peertube_branding / odoo_sgc_branding: the base wger role stays a
+# pristine, brand-neutral deployer; this layered role carries the tenant skin.
+# Media is NOT touched by collectstatic (--clear only wipes STATIC_ROOT), so the
+# assets persist across container restarts and need no image rebuild.
+
+wger_branding_enabled: false
+
+# Where to drop assets (served by nginx at /media/branding/...). Defaults to the
+# base wger role's media path + /branding.
+wger_branding_media_path: "{{ wger_media_path }}/branding"
+wger_branding_uid: "{{ wger_uid | default('1000') }}"
+wger_branding_gid: "{{ wger_gid | default('1000') }}"
+
+# Controller-side source files (empty => skip that asset, keep the stock one).
+wger_branding_logo_src: ""       # navbar lockup PNG (light-on-transparent for a dark navbar)
+wger_branding_favicon_src: ""    # favicon PNG
+
+# Render the dark-skin override CSS from templates/prime-dark.css.j2.
+wger_branding_render_css: true
+
+# Warm-grey + red palette (feeds prime-dark.css.j2). Defaults = Prime Baseball.
+wger_branding_palette:
+  shell: "#1f1c1c"          # app background
+  shell_rgb: "31,28,28"
+  surface: "#262222"        # working surface
+  raised: "#2e2929"         # cards / modals / dropdowns
+  raised_cap: "#332e2e"     # card headers
+  input: "#383232"          # form controls / table headers
+  border: "#3d3737"
+  text: "#ece6e2"           # body text
+  text_rgb: "236,230,226"
+  muted: "#a89f9f"          # secondary text
+  muted_rgb: "168,159,159"
+  primary: "#dd1717"        # brand red
+  primary_rgb: "221,23,23"
+  primary_hover: "#ff4040"
+  primary_active: "#b71212"
+  accent: "#ff8044"         # orange accent (links)
+  accent_rgb: "255,128,68"
+  link_hover: "#ff9b66"
+  chart_axis: "#5a5252"
+
+# Webfonts. Empty wger_branding_font_import disables the @import line.
+wger_branding_font_import: "https://fonts.googleapis.com/css2?family=Montserrat:wght@500;600;700&family=Poppins:wght@300;400;500;600&display=swap"
+wger_branding_font_body: "'Poppins', system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif"
+wger_branding_font_heading: "'Montserrat', system-ui, sans-serif"

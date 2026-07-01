@@ -1274,6 +1274,19 @@
     #- role: galaxy/wg_easy
     # /role-specific:wg_easy
 
+    # role-specific:wger
+    # Local-only role (no GitHub fetch). Lives at roles/mash/wger/.
+    - when: wger_enabled | bool
+      role: mash/wger
+    # /role-specific:wger
+
+    # role-specific:wger_branding
+    # Local-only role (no GitHub fetch). Lives at roles/mash/wger_branding/.
+    # No-op unless wger_branding_enabled. Runs after mash/wger so the media dir exists.
+    - when: wger_branding_enabled | default(false) | bool
+      role: mash/wger_branding
+    # /role-specific:wger_branding
+
     # role-specific:wikimore
     #- role: galaxy/wikimore
     # /role-specific:wikimore

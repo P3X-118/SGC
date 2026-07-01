@@ -1,0 +1,99 @@
+---
+- name: Check existence of wger systemd service
+  ansible.builtin.stat:
+    path: "{{ sysd_docker_service_path }}/{{ wger_identifier }}.service"
+  register: wger_service_stat
+
+- name: Check existence of wger Celery worker systemd service
+  ansible.builtin.stat:
+    path: "{{ sysd_docker_service_path }}/{{ wger_worker_identifier }}.service"
+  register: wger_worker_service_stat
+
+- name: Check existence of wger Celery beat systemd service
+  ansible.builtin.stat:
+    path: "{{ sysd_docker_service_path }}/{{ wger_beat_identifier }}.service"
+  register: wger_beat_service_stat
+
+- name: Check existence of wger Redis systemd service
+  ansible.builtin.stat:
+    path: "{{ sysd_docker_service_path }}/{{ wger_redis_identifier }}.service"
+  register: wger_redis_service_stat
+
+- name: Check existence of wger nginx systemd service
+  ansible.builtin.stat:
+    path: "{{ sysd_docker_service_path }}/{{ wger_nginx_identifier }}.service"
+  register: wger_nginx_service_stat
+
+- name: Uninstall wger systemd services and files
+  when: wger_service_stat.stat.exists | bool
+  block:
+    - name: Ensure wger nginx systemd service is stopped
+      when: wger_nginx_service_stat.stat.exists | bool
+      ansible.builtin.service:
+        name: "{{ wger_nginx_identifier }}"
+        state: stopped
+        enabled: false
+        daemon_reload: true
+
+    - name: Ensure wger systemd service is stopped
+      ansible.builtin.service:
+        name: "{{ wger_identifier }}"
+        state: stopped
+        enabled: false
+        daemon_reload: true
+
+    - name: Ensure wger Celery worker systemd service is stopped
+      when: wger_worker_service_stat.stat.exists | bool
+      ansible.builtin.service:
+        name: "{{ wger_worker_identifier }}"
+        state: stopped
+        enabled: false
+        daemon_reload: true
+
+    - name: Ensure wger Celery beat systemd service is stopped
+      when: wger_beat_service_stat.stat.exists | bool
+      ansible.builtin.service:
+        name: "{{ wger_beat_identifier }}"
+        state: stopped
+        enabled: false
+        daemon_reload: true
+
+    - name: Ensure wger systemd services do not exist
+      ansible.builtin.file:
+        path: "{{ sysd_docker_service_path }}/{{ item }}.service"
+        state: absent
+      with_items:
+        - "{{ wger_identifier }}"
+        - "{{ wger_nginx_identifier }}"
+        - "{{ wger_worker_identifier }}"
+        - "{{ wger_beat_identifier }}"
+
+    - name: Ensure wger container network does not exist
+      community.docker.docker_network:
+        name: "{{ wger_container_network }}"
+        state: absent
+
+    - name: Ensure wger path does not exist
+      ansible.builtin.file:
+        path: "{{ wger_base_path }}"
+        state: absent
+
+- name: Uninstall wger Redis systemd service
+  when: wger_redis_service_stat.stat.exists | bool
+  block:
+    - name: Ensure wger Redis systemd service is stopped
+      ansible.builtin.service:
+        name: "{{ wger_redis_identifier }}"
+        state: stopped
+        enabled: false
+        daemon_reload: true
+
+    - name: Ensure wger Redis systemd service does not exist
+      ansible.builtin.file:
+        path: "{{ sysd_docker_service_path }}/{{ wger_redis_identifier }}.service"
+        state: absent
+
+    - name: Ensure wger Redis container network does not exist
+      community.docker.docker_network:
+        name: "{{ wger_redis_container_network }}"
+        state: absent

@@ -1,0 +1,43 @@
+[Unit]
+Description=wger Celery beat ({{ wger_beat_identifier }})
+{% for service in wger_systemd_required_services_list %}
+Requires={{ service }}
+After={{ service }}
+{% endfor %}
+Wants={{ wger_identifier }}.service
+After={{ wger_identifier }}.service
+DefaultDependencies=no
+
+[Service]
+Type=simple
+Environment="HOME={{ sysd_docker_unit_home_path }}"
+ExecStartPre=-{{ sysd_docker_host_sh }} -c '{{ sysd_docker_host_command }} stop -t {{ sysd_docker_stop_grace }} {{ wger_beat_identifier }} 2>/dev/null || true'
+ExecStartPre=-{{ sysd_docker_host_sh }} -c '{{ sysd_docker_host_command }} rm {{ wger_beat_identifier }} 2>/dev/null || true'
+
+ExecStartPre={{ sysd_docker_host_command }} create \
+      --rm \
+      --name={{ wger_beat_identifier }} \
+      --user={{ wger_uid }}:{{ wger_gid }} \
+      --cap-drop=ALL \
+      --security-opt=no-new-privileges:true \
+      --network={{ wger_container_network }} \
+      --env-file={{ wger_base_path }}/env \
+      --volume={{ wger_beat_path }}:/home/wger/beat:rw \
+      {{ wger_container_image }} \
+      /start-beat
+
+{% for network in wger_container_additional_networks %}
+ExecStartPre={{ sysd_docker_host_command }} network connect {{ network }} {{ wger_beat_identifier }}
+{% endfor %}
+
+ExecStart={{ sysd_docker_host_command }} start --attach {{ wger_beat_identifier }}
+
+ExecStop=-{{ sysd_docker_host_sh }} -c '{{ sysd_docker_host_command }} stop -t {{ sysd_docker_stop_grace }} {{ wger_beat_identifier }} 2>/dev/null || true'
+ExecStop=-{{ sysd_docker_host_sh }} -c '{{ sysd_docker_host_command }} rm {{ wger_beat_identifier }} 2>/dev/null || true'
+
+Restart=always
+RestartSec=30
+SyslogIdentifier={{ wger_beat_identifier }}
+
+[Install]
+WantedBy=multi-user.target

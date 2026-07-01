@@ -1,0 +1,46 @@
+---
+# Drop the tenant branding assets into the wger media dir (served by nginx at
+# /media/branding/). No container restart needed — nginx serves /media live and
+# collectstatic never touches it. Idempotent (copy/template checksum).
+- name: Deploy wger branding assets
+  when: wger_branding_enabled | bool
+  tags:
+    - setup-all
+    - setup-wger_branding
+    - install-all
+    - install-wger_branding
+  block:
+    - name: Ensure the wger branding media dir exists
+      ansible.builtin.file:
+        path: "{{ wger_branding_media_path }}"
+        state: directory
+        mode: "0755"
+        owner: "{{ wger_branding_uid }}"
+        group: "{{ wger_branding_gid }}"
+
+    - name: Deploy the brand logo (navbar lockup)
+      ansible.builtin.copy:
+        src: "{{ wger_branding_logo_src }}"
+        dest: "{{ wger_branding_media_path }}/logo.png"
+        mode: "0644"
+        owner: "{{ wger_branding_uid }}"
+        group: "{{ wger_branding_gid }}"
+      when: wger_branding_logo_src | length > 0
+
+    - name: Deploy the brand favicon
+      ansible.builtin.copy:
+        src: "{{ wger_branding_favicon_src }}"
+        dest: "{{ wger_branding_media_path }}/favicon.png"
+        mode: "0644"
+        owner: "{{ wger_branding_uid }}"
+        group: "{{ wger_branding_gid }}"
+      when: wger_branding_favicon_src | length > 0
+
+    - name: Render the dark-skin override CSS
+      ansible.builtin.template:
+        src: prime-dark.css.j2
+        dest: "{{ wger_branding_media_path }}/prime-dark.css"
+        mode: "0644"
+        owner: "{{ wger_branding_uid }}"
+        group: "{{ wger_branding_gid }}"
+      when: wger_branding_render_css | bool

@@ -1,0 +1,25 @@
+---
+- name: Fail if required wger settings are not defined
+  ansible.builtin.fail:
+    msg: >-
+      You need to define a required configuration setting (`{{ item }}`).
+  when: "lookup('vars', item, default='') | string | length == 0"
+  with_items:
+    - wger_uid
+    - wger_gid
+    - wger_container_network
+    - wger_database_hostname
+    - wger_database_name
+    - wger_database_username
+    - wger_database_password
+
+- name: Run if Traefik is enabled
+  when: wger_container_labels_traefik_enabled | bool
+  block:
+    - name: Fail if Traefik settings required for wger are not defined
+      ansible.builtin.fail:
+        msg: >-
+          You need to define a required configuration setting (`{{ item }}`).
+      when: "lookup('vars', item, default='') | string | length == 0"
+      with_items:
+        - wger_container_labels_traefik_hostname

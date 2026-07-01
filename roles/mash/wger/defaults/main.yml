@@ -1,0 +1,270 @@
+---
+wger_enabled: true
+
+wger_identifier: wger
+wger_base_path: "/{{ wger_identifier }}"
+
+# SGC release tag of the legitservices/wger image (upstream version + -N suffix).
+wger_version: "2.6.0-0"
+
+# The image's `wger` user is uid/gid 1000 (see extras/docker/base/Dockerfile).
+wger_uid: "1000"
+wger_gid: "1000"
+
+wger_scheme: https
+wger_hostname: ""
+wger_path_prefix: /
+
+wger_container_image: "{{ wger_container_image_registry_prefix }}legitservices/wger:{{ wger_container_image_tag }}"
+wger_container_image_tag: "{{ wger_version }}"
+wger_container_image_registry_prefix: "{{ wger_container_image_registry_prefix_upstream }}"
+wger_container_image_registry_prefix_upstream: "{{ wger_container_image_registry_prefix_upstream_default }}"
+wger_container_image_registry_prefix_upstream_default: docker.io/
+wger_container_image_force_pull: "{{ wger_container_image.endswith(':latest') }}"
+
+wger_container_network: "{{ wger_identifier }}"
+wger_container_network_deletion_enabled: true
+
+wger_container_http_host_bind_port: ""
+wger_container_http_port: 8000
+
+wger_container_additional_networks: "{{ wger_container_additional_networks_auto + wger_container_additional_networks_custom }}"
+wger_container_additional_networks_auto: []
+wger_container_additional_networks_custom: []
+
+wger_container_additional_volumes: "{{ wger_container_additional_volumes_auto + wger_container_additional_volumes_custom }}"
+wger_container_additional_volumes_auto: []
+wger_container_additional_volumes_custom: []
+
+# ---------------------------------------------------------------------------
+# Traefik reverse-proxy labels (rendered to {{ wger_base_path }}/labels)
+# ---------------------------------------------------------------------------
+wger_container_labels_traefik_enabled: false
+wger_container_labels_traefik_docker_network: "{{ wger_container_network }}"
+wger_container_labels_traefik_hostname: "{{ wger_hostname }}"
+wger_container_labels_traefik_path_prefix: "{{ wger_path_prefix }}"
+wger_container_labels_traefik_rule: "Host(`{{ wger_container_labels_traefik_hostname }}`){% if wger_container_labels_traefik_path_prefix != '/' %} && PathPrefix(`{{ wger_container_labels_traefik_path_prefix }}`){% endif %}"
+wger_container_labels_traefik_priority: 0
+wger_container_labels_traefik_entrypoints: web-secure
+wger_container_labels_traefik_tls: "{{ wger_container_labels_traefik_entrypoints != 'web' }}"
+wger_container_labels_traefik_tls_certResolver: default
+wger_container_labels_traefik_additional_request_headers: "{{ wger_container_labels_traefik_additional_request_headers_auto | combine(wger_container_labels_traefik_additional_request_headers_custom) }}"
+wger_container_labels_traefik_additional_request_headers_auto: {}
+wger_container_labels_traefik_additional_request_headers_custom: {}
+wger_container_labels_traefik_additional_response_headers: "{{ wger_container_labels_traefik_additional_response_headers_auto | combine(wger_container_labels_traefik_additional_response_headers_custom) }}"
+wger_container_labels_traefik_additional_response_headers_auto: |
+  {{
+    {}
+    | combine ({'X-XSS-Protection': wger_http_header_xss_protection} if wger_http_header_xss_protection else {})
+    | combine ({'X-Content-Type-Options': wger_http_header_content_type_options} if wger_http_header_content_type_options else {})
+    | combine ({'X-Frame-Options': wger_http_header_x_frame_options} if wger_http_header_x_frame_options else {})
+    | combine ({'Content-Security-Policy': wger_http_header_content_security_policy} if wger_http_header_content_security_policy else {})
+    | combine ({'Strict-Transport-Security': wger_http_header_strict_transport_security} if wger_http_header_strict_transport_security and wger_container_labels_traefik_tls else {})
+  }}
+wger_container_labels_traefik_additional_response_headers_custom: {}
+
+wger_container_labels_additional_labels: "{{ wger_container_labels_additional_labels_auto + wger_container_labels_additional_labels_custom }}"
+wger_container_labels_additional_labels_auto: []
+wger_container_labels_additional_labels_custom: []
+
+wger_container_extra_arguments: "{{ wger_container_extra_arguments_auto + wger_container_extra_arguments_custom }}"
+wger_container_extra_arguments_auto: []
+wger_container_extra_arguments_custom: []
+
+# Security response headers are left to wger's own Django middleware by default.
+# Set these to have Traefik inject them instead (see *_response_headers_auto).
+wger_http_header_xss_protection: ""
+wger_http_header_content_type_options: ""
+wger_http_header_x_frame_options: ""
+wger_http_header_content_security_policy: ""
+wger_http_header_strict_transport_security: ""
+
+# ---------------------------------------------------------------------------
+# systemd dependencies
+# ---------------------------------------------------------------------------
+wger_systemd_required_services_list: "{{ wger_systemd_required_services_list_default + wger_systemd_required_services_list_auto + wger_systemd_required_services_list_custom }}"
+wger_systemd_required_services_list_default: "{{ [sysd_docker_service] if sysd_docker_service else [] }}"
+wger_systemd_required_services_list_auto: []
+wger_systemd_required_services_list_custom: []
+
+wger_systemd_wanted_services_list: "{{ wger_systemd_wanted_services_list_default + wger_systemd_wanted_services_list_auto + wger_systemd_wanted_services_list_custom }}"
+wger_systemd_wanted_services_list_default: []
+wger_systemd_wanted_services_list_auto: []
+wger_systemd_wanted_services_list_custom: []
+
+# ---------------------------------------------------------------------------
+# Application config (rendered to {{ wger_base_path }}/env, consumed by
+# settings.main via django-environ)
+# ---------------------------------------------------------------------------
+wger_django_debug: "False"
+
+# Django SECRET_KEY. Leave empty to let the role generate + persist one
+# (the SGC group_vars derives it deterministically from sgc_pgsk instead).
+wger_secret_key: ""
+wger_secret_key_file: "{{ wger_base_path }}/secret_key"
+
+# RS256 keypair for JWT / mobile-app auth. OPTIONAL: web, session and Token
+# auth work without it. Generate with `./manage.py generate-jwt-keys` and
+# paste the two base64 values here.
+wger_jwt_private_key: ""
+wger_jwt_public_key: ""
+
+wger_site_url: "{{ wger_scheme }}://{{ wger_hostname }}"
+wger_time_zone: UTC
+wger_csrf_trusted_origins: "{{ wger_scheme }}://{{ wger_hostname }}"
+# Trust the proxy's X-Forwarded-Proto header (TLS terminates at Traefik).
+wger_behind_reverse_proxy: true
+
+wger_use_gunicorn: "True"
+wger_perform_migrations: "True"
+wger_collectstatic_on_startup: "True"
+
+wger_allow_registration: "True"
+wger_allow_guest_users: "True"
+
+# Free-form extra lines appended verbatim to the env file (KEY=value per line).
+wger_environment_variables_additional_variables: ""
+
+# ---------------------------------------------------------------------------
+# Database (external PostgreSQL; see the SGC postgres role)
+# ---------------------------------------------------------------------------
+wger_database_engine: "django.db.backends.postgresql"
+wger_database_hostname: ""
+wger_database_port: "5432"
+wger_database_name: "wger"
+wger_database_username: "wger"
+wger_database_password: ""
+
+# ---------------------------------------------------------------------------
+# Redis sidecar (Django cache + Celery broker/backend)
+# ---------------------------------------------------------------------------
+wger_redis_enabled: true
+wger_redis_identifier: "{{ wger_identifier }}-redis"
+wger_redis_container_image: "{{ wger_container_image_registry_prefix }}redis:{{ wger_redis_version }}"
+wger_redis_version: "8.4.0"
+wger_redis_container_network: "{{ wger_identifier }}-redis"
+wger_redis_host: "{{ wger_redis_identifier }}"
+wger_redis_port: 6379
+wger_cache_location: "redis://{{ wger_redis_host }}:{{ wger_redis_port }}/1"
+
+# Container memory limits (defense-in-depth on a shared host). Empty = no limit.
+# gunicorn gets a hard --memory cap (+ --memory-swap headroom so a collectstatic/
+# bootstrap spike swaps instead of being OOM-killed); redis self-caps its cache
+# via maxmemory (LRU eviction) rather than risking a cgroup OOM kill.
+wger_container_memory: ""
+wger_container_memory_swap: ""
+wger_redis_maxmemory: ""
+wger_redis_container_memory: ""
+
+# ---------------------------------------------------------------------------
+# Celery (worker + beat). Requires Redis. Off by default; the web service
+# self-bootstraps (migrations/fixtures) regardless of this toggle.
+# ---------------------------------------------------------------------------
+wger_celery_enabled: false
+wger_worker_identifier: "{{ wger_identifier }}-worker"
+wger_beat_identifier: "{{ wger_identifier }}-beat"
+wger_celery_broker: "redis://{{ wger_redis_host }}:{{ wger_redis_port }}/2"
+wger_celery_backend: "redis://{{ wger_redis_host }}:{{ wger_redis_port }}/2"
+wger_celery_worker_concurrency: 1
+
+# ---------------------------------------------------------------------------
+# Email relay (optional; wire to the SGC exim relay in group_vars)
+# ---------------------------------------------------------------------------
+wger_email_enabled: false
+wger_email_host: ""
+wger_email_port: 587
+wger_email_host_user: ""
+wger_email_host_password: ""
+wger_email_use_tls: "True"
+# Port 465 (implicit TLS / SMTPS) needs USE_SSL=True + USE_TLS=False; port 587
+# (STARTTLS) is the inverse. AWS boxes typically reach 465 but not 587/25.
+wger_email_use_ssl: "False"
+wger_from_email: "wger <wger@{{ wger_hostname }}>"
+
+# ---------------------------------------------------------------------------
+# SSO via an external OpenID Connect provider (e.g. Authentik) through
+# django-allauth. Off by default. When enabled, 'openid_connect' is added to
+# WGER_SOCIAL_PROVIDERS and the provider is configured from these vars (the
+# image's settings/main.py reads OIDC_* and renders a "Sign in" button).
+# The OIDC client_secret should be derived from sgc_pgsk in host_vars, and must
+# match the value provisioned into Authentik (provision-wger.py / WGER_OIDC_SECRET).
+# ---------------------------------------------------------------------------
+wger_oidc_enabled: false
+wger_oidc_provider_id: "authentik"
+wger_oidc_provider_name: "Authentik"
+wger_oidc_client_id: "wger"
+wger_oidc_client_secret: ""
+# Issuer / discovery base (allauth appends /.well-known/openid-configuration),
+# e.g. https://auth.example.com/application/o/wger/
+wger_oidc_server_url: ""
+# Comma-separated group names (from the OIDC 'groups' claim) -> wger staff+superuser.
+wger_oidc_admin_groups: "ghostrak-admins"
+# SSO-first: auto-redirect the login page straight to the IdP (falls back to the
+# local form when the IdP is unreachable, or with ?local=1). Set "False" to keep
+# the normal login page with an SSO button.
+wger_oidc_login_autoredirect: "True"
+# RP-initiated logout: end the IdP session on wger logout. Empty end-session URL
+# => the image discovers it from the OIDC discovery doc at runtime.
+wger_oidc_end_session_url: ""
+wger_oidc_post_logout_redirect_path: "/user/login?local=1"
+# Extra allauth social providers (comma-separated), layered in alongside OIDC.
+wger_social_providers: ""
+
+# ---------------------------------------------------------------------------
+# Branding seam (per-host; consumed by the image's env-driven branding hook).
+# All empty => stock wger chrome, so the shared image stays brand-neutral.
+# Deploy the referenced assets (logo/favicon/CSS) via the wger_branding role.
+# ---------------------------------------------------------------------------
+wger_site_name: ""
+wger_brand_logo_url: ""
+wger_brand_favicon_url: ""
+wger_custom_css_url: ""
+wger_brand_color_mode: ""            # "", "dark" or "light" -> <html data-bs-theme=...>
+# New SSO users' default weight unit ("", "kg" or "lb"); "" keeps wger's default (kg).
+wger_sso_default_weight_unit: ""
+
+# ---------------------------------------------------------------------------
+# Host-side persistent storage (bind-mounted into the container)
+# ---------------------------------------------------------------------------
+wger_media_path: "{{ wger_base_path }}/media"
+wger_static_path: "{{ wger_base_path }}/static"
+wger_beat_path: "{{ wger_base_path }}/beat"
+
+wger_restart_necessary: false
+
+# Postgres integration: the SGC postgres role auto-creates this database.
+wger_postgres_identifier: "{{ postgres_identifier | default('postgres') }}"
+wger_postgres_managed_databases:
+  - name: "{{ wger_database_name }}"
+    username: "{{ wger_database_username }}"
+    password: "{{ wger_database_password }}"
+
+# ---------------------------------------------------------------------------
+# nginx sidecar — serves /static and /media and reverse-proxies the app.
+# wger's gunicorn image does NOT serve static/media in production (no
+# WhiteNoise, and urls.py only serves media under DEBUG), so this nginx is
+# REQUIRED and becomes the Traefik-facing service (gunicorn stays internal).
+# Mirrors wger's official docker compose, which fronts gunicorn with nginx.
+# ---------------------------------------------------------------------------
+wger_nginx_enabled: true
+wger_nginx_identifier: "{{ wger_identifier }}-nginx"
+wger_nginx_container_image: "{{ wger_container_image_registry_prefix }}nginx:{{ wger_nginx_version }}"
+wger_nginx_version: "1.27-alpine"
+wger_nginx_http_port: 8080
+# nginx runs as the wger user (uid/gid 1000) so it can read the static/media
+# bind mounts without loosening their perms; all writable scratch (pid, proxy
+# temp dirs) lives on a tmpfs mounted at /tmp.
+wger_nginx_uid: "{{ wger_uid }}"
+wger_nginx_gid: "{{ wger_gid }}"
+wger_nginx_config_path: "{{ wger_base_path }}/nginx.conf"
+# Upstream the proxy talks to (the gunicorn container, on the wger network).
+wger_nginx_upstream_host: "{{ wger_identifier }}"
+wger_nginx_upstream_port: "{{ wger_container_http_port }}"
+wger_nginx_client_max_body_size: "100M"
+wger_nginx_container_additional_networks_auto: "{{ ([revproxy_service_networks] if revproxy_service_networks | default('') else []) }}"
+wger_nginx_container_additional_networks_custom: []
+wger_nginx_container_additional_networks: "{{ wger_nginx_container_additional_networks_auto + wger_nginx_container_additional_networks_custom }}"
+
+# Traefik load-balances to nginx (the front) when nginx is enabled, else to
+# gunicorn directly. Consumed by templates/labels.j2.
+wger_traefik_loadbalancer_port: "{{ wger_nginx_http_port if wger_nginx_enabled | bool else wger_container_http_port }}"

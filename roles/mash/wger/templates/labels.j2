@@ -1,0 +1,43 @@
+{% if wger_container_labels_traefik_enabled %}
+traefik.enable=true
+
+{% if wger_container_labels_traefik_docker_network %}
+traefik.docker.network={{ wger_container_labels_traefik_docker_network }}
+{% endif %}
+
+{% set middlewares = [] %}
+
+{% if wger_container_labels_traefik_additional_request_headers.keys() | length > 0 %}
+{% for name, value in wger_container_labels_traefik_additional_request_headers.items() %}
+traefik.http.middlewares.{{ wger_identifier }}-add-request-headers.headers.customrequestheaders.{{ name }}={{ value }}
+{% endfor %}
+{% set middlewares = middlewares + [wger_identifier + '-add-request-headers'] %}
+{% endif %}
+
+{% if wger_container_labels_traefik_additional_response_headers.keys() | length > 0 %}
+{% for name, value in wger_container_labels_traefik_additional_response_headers.items() %}
+traefik.http.middlewares.{{ wger_identifier }}-add-response-headers.headers.customresponseheaders.{{ name }}={{ value }}
+{% endfor %}
+{% set middlewares = middlewares + [wger_identifier + '-add-response-headers'] %}
+{% endif %}
+
+traefik.http.routers.{{ wger_identifier }}.rule={{ wger_container_labels_traefik_rule }}
+{% if wger_container_labels_traefik_priority | int > 0 %}
+traefik.http.routers.{{ wger_identifier }}.priority={{ wger_container_labels_traefik_priority }}
+{% endif %}
+traefik.http.routers.{{ wger_identifier }}.service={{ wger_identifier }}
+{% if middlewares | length > 0 %}
+traefik.http.routers.{{ wger_identifier }}.middlewares={{ middlewares | join(',') }}
+{% endif %}
+traefik.http.routers.{{ wger_identifier }}.entrypoints={{ wger_container_labels_traefik_entrypoints }}
+traefik.http.routers.{{ wger_identifier }}.tls={{ wger_container_labels_traefik_tls | to_json }}
+{% if wger_container_labels_traefik_tls %}
+traefik.http.routers.{{ wger_identifier }}.tls.certResolver={{ wger_container_labels_traefik_tls_certResolver }}
+{% endif %}
+
+traefik.http.services.{{ wger_identifier }}.loadbalancer.server.port={{ wger_traefik_loadbalancer_port }}
+{% endif %}
+
+{% for label in wger_container_labels_additional_labels %}
+{{ label }}
+{% endfor %}

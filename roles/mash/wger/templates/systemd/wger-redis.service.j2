@@ -1,0 +1,36 @@
+[Unit]
+Description=wger Redis ({{ wger_redis_identifier }})
+Requires={{ sysd_docker_service }}
+After={{ sysd_docker_service }}
+DefaultDependencies=no
+
+[Service]
+Type=simple
+Environment="HOME={{ sysd_docker_unit_home_path }}"
+ExecStartPre=-{{ sysd_docker_host_sh }} -c '{{ sysd_docker_host_command }} stop -t {{ sysd_docker_stop_grace }} {{ wger_redis_identifier }} 2>/dev/null || true'
+ExecStartPre=-{{ sysd_docker_host_sh }} -c '{{ sysd_docker_host_command }} rm {{ wger_redis_identifier }} 2>/dev/null || true'
+
+ExecStartPre={{ sysd_docker_host_command }} create \
+      --rm \
+      --name={{ wger_redis_identifier }} \
+      --log-driver=none \
+      --user=redis:redis \
+      --cap-drop=ALL \
+      --security-opt=no-new-privileges:true \
+      --network={{ wger_redis_container_network }} \
+      {% if wger_redis_container_memory %}
+      --memory={{ wger_redis_container_memory }} \
+      {% endif %}
+      {{ wger_redis_container_image }}{% if wger_redis_maxmemory %} redis-server --maxmemory {{ wger_redis_maxmemory }} --maxmemory-policy allkeys-lru{% endif %}
+
+ExecStart={{ sysd_docker_host_command }} start --attach {{ wger_redis_identifier }}
+
+ExecStop=-{{ sysd_docker_host_sh }} -c '{{ sysd_docker_host_command }} stop -t {{ sysd_docker_stop_grace }} {{ wger_redis_identifier }} 2>/dev/null || true'
+ExecStop=-{{ sysd_docker_host_sh }} -c '{{ sysd_docker_host_command }} rm {{ wger_redis_identifier }} 2>/dev/null || true'
+
+Restart=always
+RestartSec=30
+SyslogIdentifier={{ wger_redis_identifier }}
+
+[Install]
+WantedBy=multi-user.target

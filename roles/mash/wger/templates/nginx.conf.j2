@@ -1,0 +1,68 @@
+# Managed by Ansible (wger-ar role) — do not edit by hand.
+# Fronts the wger gunicorn app: serves /static and /media from disk and
+# reverse-proxies everything else to gunicorn. Runs as the wger user with all
+# writable scratch on a tmpfs at /tmp (no 'user' directive — the container
+# already starts unprivileged via --user).
+worker_processes auto;
+pid /tmp/nginx.pid;
+error_log /dev/stderr warn;
+
+events {
+    worker_connections 1024;
+}
+
+http {
+    include /etc/nginx/mime.types;
+    default_type application/octet-stream;
+    access_log /dev/stdout;
+
+    sendfile on;
+    tcp_nopush on;
+    keepalive_timeout 65;
+    server_tokens off;
+    client_max_body_size {{ wger_nginx_client_max_body_size }};
+
+    # All writable scratch on the /tmp tmpfs.
+    client_body_temp_path /tmp/nginx-client;
+    proxy_temp_path       /tmp/nginx-proxy;
+    fastcgi_temp_path     /tmp/nginx-fastcgi;
+    uwsgi_temp_path       /tmp/nginx-uwsgi;
+    scgi_temp_path        /tmp/nginx-scgi;
+
+    gzip on;
+    gzip_vary on;
+    gzip_min_length 1024;
+    gzip_types text/plain text/css application/javascript application/json image/svg+xml application/xml;
+
+    server {
+        listen {{ wger_nginx_http_port }};
+        server_name _;
+
+        # Collected static assets (hashed via ManifestStaticFilesStorage).
+        location /static/ {
+            alias /static/;
+            access_log off;
+            expires 30d;
+            add_header Cache-Control "public";
+        }
+
+        # User uploads + synced exercise/ingredient images.
+        location /media/ {
+            alias /media/;
+            access_log off;
+            expires 30d;
+            add_header Cache-Control "public";
+        }
+
+        location / {
+            proxy_pass http://{{ wger_nginx_upstream_host }}:{{ wger_nginx_upstream_port }};
+            proxy_http_version 1.1;
+            proxy_set_header Host $http_host;
+            proxy_set_header X-Real-IP $remote_addr;
+            proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+            # Preserve the scheme Traefik terminated (https), not the internal http hop.
+            proxy_set_header X-Forwarded-Proto $http_x_forwarded_proto;
+            proxy_redirect off;
+        }
+    }
+}

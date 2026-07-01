@@ -1,0 +1,169 @@
+{% set p = wger_branding_palette -%}
+{% if wger_branding_font_import %}@import url('{{ wger_branding_font_import }}');
+{% endif -%}
+/*
+ * {{ wger_site_name | default('wger') }} dark skin — MANAGED BY ANSIBLE (wger_branding role).
+ * Loaded LAST (after bootstrap-compiled.css, bootstrap-custom.css, the React
+ * bundle CSS) via CUSTOM_CSS_URL, and assumes <html data-bs-theme="dark">
+ * (BRAND_COLOR_MODE=dark). It re-points Bootstrap 5.3's compiled dark palette to
+ * the warm-grey/red brand palette, plus explicit overrides where the variable
+ * system doesn't reach (theme-color buttons, the navbar, the footer, the D3
+ * chart and the jQuery-UI autocompleter). MUI/Emotion React widgets keep their
+ * own surfaces — they sit on the dark shell but aren't reachable by plain CSS.
+ */
+
+/* 1. Re-point Bootstrap's dark palette. */
+[data-bs-theme="dark"] {
+  --bs-body-bg: {{ p.shell }};
+  --bs-body-bg-rgb: {{ p.shell_rgb }};
+  --bs-body-color: {{ p.text }};
+  --bs-body-color-rgb: {{ p.text_rgb }};
+  --bs-emphasis-color: #ffffff;
+  --bs-emphasis-color-rgb: 255,255,255;
+
+  --bs-secondary-bg: {{ p.surface }};
+  --bs-secondary-color: {{ p.muted }};
+  --bs-secondary-color-rgb: {{ p.muted_rgb }};
+  --bs-tertiary-bg: {{ p.raised }};
+  --bs-tertiary-color: {{ p.muted }};
+
+  --bs-border-color: {{ p.border }};
+  --bs-border-color-translucent: rgba(255,255,255,.12);
+
+  --bs-primary: {{ p.primary }};
+  --bs-primary-rgb: {{ p.primary_rgb }};
+  --bs-primary-text-emphasis: #ff8080;
+  --bs-primary-bg-subtle: #3a1111;
+  --bs-primary-border-subtle: #6a1414;
+
+  --bs-link-color: {{ p.accent }};
+  --bs-link-color-rgb: {{ p.accent_rgb }};
+  --bs-link-hover-color: {{ p.link_hover }};
+
+  --bs-body-font-family: {{ wger_branding_font_body }};
+  --bs-heading-color: {{ p.text }};
+}
+
+/* 2. Fonts (wger compiles Open Sans into bootstrap-custom.css). */
+[data-bs-theme="dark"] body { font-family: var(--bs-body-font-family); }
+[data-bs-theme="dark"] h1, [data-bs-theme="dark"] h2, [data-bs-theme="dark"] h3,
+[data-bs-theme="dark"] h4, [data-bs-theme="dark"] h5, [data-bs-theme="dark"] h6,
+[data-bs-theme="dark"] .h1, [data-bs-theme="dark"] .h2, [data-bs-theme="dark"] .h3,
+[data-bs-theme="dark"] .extra-bold {
+  font-family: {{ wger_branding_font_heading }};
+  color: var(--bs-body-color);
+}
+
+/* 3. Navbar — wger uses .navbar.bg-primary. Dark shell with a red rule (Odoo-like). */
+[data-bs-theme="dark"] .navbar.bg-primary {
+  background-color: {{ p.shell }} !important;
+  border-bottom: 2px solid var(--bs-primary);
+}
+[data-bs-theme="dark"] .navbar .nav-link,
+[data-bs-theme="dark"] .navbar .navbar-brand { color: {{ p.text }} !important; }
+[data-bs-theme="dark"] .navbar .nav-link:hover { color: var(--bs-link-hover-color) !important; }
+
+/* 4. Buttons — .btn-* colors are compiled to literals, so override each var set. */
+[data-bs-theme="dark"] .btn-primary {
+  --bs-btn-bg: {{ p.primary }}; --bs-btn-border-color: {{ p.primary }};
+  --bs-btn-hover-bg: {{ p.primary_hover }}; --bs-btn-hover-border-color: {{ p.primary_hover }};
+  --bs-btn-active-bg: {{ p.primary_active }}; --bs-btn-active-border-color: {{ p.primary_active }};
+  --bs-btn-color: #fff; --bs-btn-hover-color: #fff; --bs-btn-active-color: #fff;
+  --bs-btn-disabled-bg: {{ p.primary }}; --bs-btn-disabled-border-color: {{ p.primary }}; --bs-btn-disabled-color: #fff;
+}
+[data-bs-theme="dark"] .btn-outline-primary {
+  --bs-btn-color: {{ p.accent }}; --bs-btn-border-color: {{ p.primary }};
+  --bs-btn-hover-bg: {{ p.primary }}; --bs-btn-hover-border-color: {{ p.primary }}; --bs-btn-hover-color: #fff;
+  --bs-btn-active-bg: {{ p.primary }}; --bs-btn-active-border-color: {{ p.primary }};
+}
+[data-bs-theme="dark"] .btn-light {
+  --bs-btn-bg: {{ p.input }}; --bs-btn-border-color: {{ p.border }}; --bs-btn-color: {{ p.text }};
+  --bs-btn-hover-bg: #443c3c; --bs-btn-hover-border-color: #4a4242; --bs-btn-hover-color: #fff;
+  --bs-btn-active-bg: #4a4242; --bs-btn-active-color: #fff;
+}
+[data-bs-theme="dark"] .btn-link { --bs-btn-color: {{ p.accent }}; --bs-btn-hover-color: {{ p.link_hover }}; }
+/* .btn-success (Save) keeps Bootstrap green — readable on dark. */
+
+/* 5. Surfaces: cards / modals / dropdowns / list groups / popovers. */
+[data-bs-theme="dark"] .card {
+  --bs-card-bg: {{ p.raised }}; --bs-card-cap-bg: {{ p.raised_cap }}; --bs-card-border-color: var(--bs-border-color);
+}
+[data-bs-theme="dark"] .modal-content { background-color: {{ p.raised }}; border-color: var(--bs-border-color); }
+[data-bs-theme="dark"] .dropdown-menu {
+  --bs-dropdown-bg: {{ p.raised }}; --bs-dropdown-border-color: var(--bs-border-color);
+  --bs-dropdown-link-color: {{ p.text }}; --bs-dropdown-link-hover-bg: {{ p.input }}; --bs-dropdown-link-hover-color: #fff;
+  --bs-dropdown-link-active-bg: var(--bs-primary); --bs-dropdown-link-active-color: #fff;
+  --bs-dropdown-header-color: var(--bs-secondary-color);
+}
+[data-bs-theme="dark"] .list-group {
+  --bs-list-group-bg: {{ p.raised }}; --bs-list-group-border-color: var(--bs-border-color); --bs-list-group-color: {{ p.text }};
+}
+[data-bs-theme="dark"] .popover { --bs-popover-bg: {{ p.raised }}; --bs-popover-border-color: var(--bs-border-color); }
+
+/* 6. Tables (incl. datatables.net-bs5). */
+[data-bs-theme="dark"] .table {
+  --bs-table-bg: transparent; --bs-table-color: {{ p.text }}; --bs-table-border-color: var(--bs-border-color);
+  --bs-table-striped-bg: rgba(255,255,255,.03); --bs-table-striped-color: {{ p.text }};
+  --bs-table-hover-bg: rgba(255,255,255,.06); --bs-table-hover-color: #fff;
+}
+[data-bs-theme="dark"] .table thead th,
+[data-bs-theme="dark"] .table > :not(caption) > * > th {
+  background-color: {{ p.input }}; color: {{ p.text }}; border-color: var(--bs-border-color);
+}
+
+/* 7. Forms / inputs (palette: inputs = {{ p.input }}). */
+[data-bs-theme="dark"] .form-control,
+[data-bs-theme="dark"] .form-select {
+  background-color: {{ p.input }}; border-color: var(--bs-border-color); color: {{ p.text }};
+}
+[data-bs-theme="dark"] .form-control:focus,
+[data-bs-theme="dark"] .form-select:focus {
+  background-color: {{ p.border }}; border-color: var(--bs-primary); color: #fff;
+  box-shadow: 0 0 0 .25rem rgba({{ p.primary_rgb }},.25);
+}
+[data-bs-theme="dark"] .form-control::placeholder { color: #8a8080; }
+[data-bs-theme="dark"] .input-group-text { background-color: {{ p.raised }}; border-color: var(--bs-border-color); color: var(--bs-secondary-color); }
+[data-bs-theme="dark"] .form-check-input { background-color: {{ p.input }}; border-color: var(--bs-border-color); }
+[data-bs-theme="dark"] .form-check-input:checked { background-color: var(--bs-primary); border-color: var(--bs-primary); }
+
+/* 8. Footer (wger uses .bg-light / .bg-wger-light / .text-muted). */
+[data-bs-theme="dark"] #main-footer.bg-light,
+[data-bs-theme="dark"] #main-footer .bg-wger-light { background-color: {{ p.shell }} !important; }
+[data-bs-theme="dark"] #main-footer .text-muted,
+[data-bs-theme="dark"] .text-muted { color: var(--bs-secondary-color) !important; }
+
+/* 9. Utility overrides that would otherwise stay light. */
+[data-bs-theme="dark"] .bg-light { background-color: {{ p.surface }} !important; }
+[data-bs-theme="dark"] .bg-white { background-color: {{ p.raised }} !important; }
+[data-bs-theme="dark"] .text-dark, [data-bs-theme="dark"] .text-black { color: var(--bs-body-color) !important; }
+
+/* 10. Pagination / breadcrumbs / progress / nav-tabs. */
+[data-bs-theme="dark"] .page-link { background-color: {{ p.raised }}; border-color: var(--bs-border-color); color: var(--bs-link-color); }
+[data-bs-theme="dark"] .page-link:hover { background-color: {{ p.input }}; color: var(--bs-link-hover-color); }
+[data-bs-theme="dark"] .page-item.active .page-link { background-color: var(--bs-primary); border-color: var(--bs-primary); color: #fff; }
+[data-bs-theme="dark"] .breadcrumb { --bs-breadcrumb-divider-color: var(--bs-secondary-color); }
+[data-bs-theme="dark"] .progress { background-color: {{ p.input }}; }
+[data-bs-theme="dark"] .nav-tabs {
+  --bs-nav-tabs-border-color: var(--bs-border-color);
+  --bs-nav-tabs-link-active-bg: {{ p.surface }}; --bs-nav-tabs-link-active-color: #fff;
+  --bs-nav-tabs-link-active-border-color: var(--bs-border-color) var(--bs-border-color) {{ p.surface }};
+}
+
+/* 11. wger's SVG body-weight chart (workout-manager.css). */
+[data-bs-theme="dark"] .axis path,
+[data-bs-theme="dark"] .axis line { stroke: {{ p.chart_axis }}; }
+[data-bs-theme="dark"] .axis text { fill: var(--bs-secondary-color); }
+[data-bs-theme="dark"] .line { stroke: {{ p.accent }}; }
+[data-bs-theme="dark"] .area { fill: rgba({{ p.accent_rgb }},.15); }
+[data-bs-theme="dark"] .dot { fill: {{ p.raised }}; stroke: {{ p.accent }}; }
+[data-bs-theme="dark"] .brush .extent { stroke: {{ p.chart_axis }}; }
+
+/* 12. jQuery-UI autocompleter (hardcoded light in workout-manager.css). */
+[data-bs-theme="dark"] .autocomplete-suggestions { background: {{ p.raised }}; border-color: var(--bs-border-color); color: {{ p.text }}; }
+[data-bs-theme="dark"] .autocomplete-selected { background: {{ p.input }}; }
+[data-bs-theme="dark"] .autocomplete-group,
+[data-bs-theme="dark"] .ui-autocomplete-category { background-color: {{ p.input }}; color: {{ p.text }}; border-color: var(--bs-border-color); }
+[data-bs-theme="dark"] .ui-autocomplete li.ui-menu-item:nth-child(odd) { background: {{ p.raised_cap }}; }
+
+/* 13. Legacy alert links compiled color:black in workout-manager.css. */
+[data-bs-theme="dark"] div.warning a, [data-bs-theme="dark"] div.success a, [data-bs-theme="dark"] div.info a { color: var(--bs-link-color); }
