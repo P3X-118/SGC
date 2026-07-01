@@ -197,6 +197,19 @@
     - role: galaxy/browserless
     # /role-specific:browserless
 
+    # role-specific:caddy
+    # Local-only role (no GitHub fetch; P3X-118/caddy-ar unpublished).
+    # Lives at roles/mash/caddy/, synced from ~/sgc/ansible/roles/caddy-ar/.
+    # caddi backend (voice-first golf caddy: sync/backup + LLM proxy).
+    - when: caddy_enabled | bool
+      role: mash/caddy
+      tags:
+        - setup-all
+        - setup-caddy
+        - install-all
+        - install-caddy
+    # /role-specific:caddy
+
     # role-specific:calibre_web
     #- role: galaxy/calibre_web
     # /role-specific:calibre_web
@@ -228,6 +241,19 @@
     # role-specific:converse
     #- role: galaxy/converse
     # /role-specific:converse
+
+    # role-specific:cloudflared
+    # Local-only role (no GitHub fetch; P3X-118/cloudflared-ar unpublished).
+    # Lives at roles/mash/cloudflared/, synced from ~/sgc/ansible/roles/cloudflared-ar/.
+    # Cloudflare Tunnel edge connector — public ingress for no-inbound hosts.
+    - when: cloudflared_enabled | bool
+      role: mash/cloudflared
+      tags:
+        - setup-all
+        - setup-cloudflared
+        - install-all
+        - install-cloudflared
+    # /role-specific:cloudflared
 
     # role-specific:convertx
     #- role: galaxy/convertx

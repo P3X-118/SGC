@@ -100,6 +100,17 @@
   version: 2.38.2-2
   name: browserless
   activation_prefix: browserless_
+# role-specific:caddy
+# caddi backend is a LOCAL role at roles/mash/caddy/ — synced from
+# ~/sgc/ansible/roles/caddy-ar/ (P3X-118/caddy-ar not published to GitHub).
+# setup.yml references it as `mash/caddy` directly; no galaxy fetch.
+# When caddy-ar is published, restore the git+ entry below and switch
+# setup.yml back to `galaxy/caddy`.
+#- src: git+https://github.com/P3X-118/caddy-ar.git
+#  version: v0.1.0-0
+#  name: caddy
+#  activation_prefix: caddy_
+# /role-specific:caddy
 #- src: git+https://github.com/P3X-118/ansible-role-calibre-web.git
 #  version: v0.6.25-3
 #  name: calibre_web
@@ -120,6 +131,17 @@
 #  version: v25.11.2.24-0
 #  name: clickhouse
 #  activation_prefix: clickhouse_
+# role-specific:cloudflared
+# cloudflared (Cloudflare Tunnel edge) is a LOCAL role at roles/mash/cloudflared/ —
+# synced from ~/sgc/ansible/roles/cloudflared-ar/ (P3X-118/cloudflared-ar not
+# published to GitHub). setup.yml references it as `mash/cloudflared` directly;
+# no galaxy fetch. When published, restore the git+ entry below and switch
+# setup.yml back to `galaxy/cloudflared`.
+#- src: git+https://github.com/P3X-118/cloudflared-ar.git
+#  version: v2025.2.0-0
+#  name: cloudflared
+#  activation_prefix: cloudflared_
+# /role-specific:cloudflared
 #- src: git+https://github.com/P3X-118/ansible-role-collabora-online.git
 #  version: v25.04.7.2.1-0
 #  name: collabora_online

@@ -1,0 +1,29 @@
+# SPDX-FileCopyrightText: 2026 SGC project contributors
+#
+# SPDX-License-Identifier: AGPL-3.0-or-later
+
+---
+- name: Check existence of Cloudflared systemd service
+  ansible.builtin.stat:
+    path: "{{ sysd_docker_service_path }}/{{ cloudflared_identifier }}.service"
+  register: cloudflared_service_stat
+
+- name: Uninstall Cloudflared systemd services and files
+  when: cloudflared_service_stat.stat.exists | bool
+  block:
+    - name: Ensure Cloudflared systemd service is stopped
+      ansible.builtin.service:
+        name: "{{ cloudflared_identifier }}"
+        state: stopped
+        enabled: false
+        daemon_reload: true
+
+    - name: Ensure Cloudflared systemd service does not exist
+      ansible.builtin.file:
+        path: "{{ sysd_docker_service_path }}/{{ cloudflared_identifier }}.service"
+        state: absent
+
+    - name: Ensure Cloudflared path does not exist
+      ansible.builtin.file:
+        path: "{{ cloudflared_base_path }}"
+        state: absent

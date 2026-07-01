@@ -1,0 +1,26 @@
+# SPDX-FileCopyrightText: 2026 SGC project contributors
+#
+# SPDX-License-Identifier: AGPL-3.0-or-later
+
+---
+- name: Perform caddi backend installation tasks
+  when: caddy_enabled | bool
+  tags:
+    - setup-all
+    - setup-caddy
+    - install-all
+    - install-caddy
+  block:
+    - name: Validate caddi backend configuration
+      ansible.builtin.include_tasks: "{{ role_path }}/tasks/validate_config.yml"
+    - name: Install caddi backend
+      ansible.builtin.include_tasks: "{{ role_path }}/tasks/install.yml"
+
+- name: Perform caddi backend uninstallation tasks
+  when: not caddy_enabled | bool
+  tags:
+    - setup-all
+    - setup-caddy
+  block:
+    - name: Uninstall caddi backend
+      ansible.builtin.include_tasks: "{{ role_path }}/tasks/uninstall.yml"

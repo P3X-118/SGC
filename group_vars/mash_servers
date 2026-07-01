@@ -253,6 +253,16 @@ sgc_sysd_srvc_list_auto_itemized:
     {{ ({'name': (converse_identifier + '.service'), 'priority': 2000, 'groups': ['mash', 'converse']} if converse_enabled else omit) }}
   # /role-specific:converse
 
+  # role-specific:caddy
+  - |-
+    {{ ({'name': (caddy_identifier + '.service'), 'priority': 2000, 'groups': ['sgc', 'caddy']} if caddy_enabled else omit) }}
+  # /role-specific:caddy
+
+  # role-specific:cloudflared
+  - |-
+    {{ ({'name': (cloudflared_identifier + '.service'), 'priority': 2000, 'groups': ['sgc', 'cloudflared']} if cloudflared_enabled else omit) }}
+  # /role-specific:cloudflared
+
   # role-specific:convertx
   - |-
     {{ ({'name': (convertx_identifier + '.service'), 'priority': 2000, 'groups': ['mash', 'convertx']} if convertx_enabled else omit) }}
@@ -1467,6 +1477,28 @@ postgres_autom_itemized:
       } if codimd_enabled and codimd_database_postgres_hostname == postgres_connection_hostname and codimd_database_type == 'postgres' else omit)
     }}
   # /role-specific:codimd
+
+  # role-specific:caddy
+  - |-
+    {{
+      ({
+        'name': caddy_database_name,
+        'username': caddy_database_username,
+        'password': caddy_database_password,
+      } if caddy_enabled and caddy_database_hostname == postgres_connection_hostname else omit)
+    }}
+  # /role-specific:caddy
+
+  # role-specific:do
+  - |-
+    {{
+      ({
+        'name': do_database_name,
+        'username': do_database_username,
+        'password': do_database_password,
+      } if do_enabled and do_database_hostname == postgres_connection_hostname else omit)
+    }}
+  # /role-specific:do
 
   # role-specific:docmost
   - |-
@@ -3813,6 +3845,64 @@ browserless_container_labels_traefik_tls_certResolver: "{{ traefik_certResolver_
 
 
 
+# role-specific:caddy
+########################################################################
+#                                                                      #
+# caddy (caddi backend)                                                #
+#                                                                      #
+########################################################################
+
+caddy_enabled: false
+
+caddy_identifier: "{{ service_id_prefix }}caddy"
+
+caddy_base_path: "{{ sgc_playbook_base_path }}/{{ service_directory_prefix }}caddy"
+
+caddy_uid: "{{ sgc_playbook_uid }}"
+caddy_gid: "{{ sgc_playbook_gid }}"
+
+caddy_systemd_required_services_list_auto: |
+  {{
+    ([postgres_identifier ~ '.service'] if postgres_enabled and caddy_database_hostname == postgres_connection_hostname else [])
+  }}
+
+caddy_container_additional_networks_auto: |
+  {{
+    ([revproxy_service_networks] if revproxy_service_networks else [])
+    +
+    ([postgres_container_network] if postgres_enabled and caddy_database_hostname == postgres_connection_hostname and caddy_container_network != postgres_container_network else [])
+  }}
+
+# Session/JWT signing secret, derived from the master secret.
+caddy_environment_variables_jwt_secret: "{{ '%s' | format(sgc_pgsk) | password_hash('sha512', 'secret.caddy', rounds=655555) | to_uuid }}"
+
+caddy_container_labels_traefik_enabled: "{{ traefik_labels_enabled }}"
+caddy_container_labels_traefik_docker_network: "{{ revproxy_service_networks }}"
+
+# role-specific:postgres
+caddy_database_hostname: "{{ postgres_connection_hostname if postgres_enabled else '' }}"
+caddy_database_port: "{{ postgres_connection_port if postgres_enabled else '5432' }}"
+caddy_database_username: "{{ caddy_identifier }}"
+caddy_database_password: "{{ '%s' | format(sgc_pgsk) | password_hash('sha512', 'db.caddy', rounds=655555) | to_uuid }}"
+caddy_database_name: "{{ caddy_identifier }}"
+# /role-specific:postgres
+
+# role-specific:traefik
+# On caddy.courses, Traefik is HTTP-only behind a Cloudflare Tunnel (host_vars
+# disables web-secure + ACME), so traefik_entrypoint_primary resolves to `web`
+# and traefik_certResolver_primary to '' — HTTP routing, edge terminates TLS.
+caddy_container_labels_traefik_entrypoints: "{{ traefik_entrypoint_primary }}"
+caddy_container_labels_traefik_tls_certResolver: "{{ traefik_certResolver_primary }}"
+# /role-specific:traefik
+
+########################################################################
+#                                                                      #
+# /caddy (caddi backend)                                               #
+#                                                                      #
+########################################################################
+# /role-specific:caddy
+
+
 # role-specific:calibre_web
 ########################################################################
 #                                                                      #
@@ -4169,6 +4259,36 @@ converse_container_labels_traefik_tls_certResolver: "{{ traefik_certResolver_pri
 ########################################################################
 # /role-specific:converse
 
+
+
+# role-specific:cloudflared
+########################################################################
+#                                                                      #
+# cloudflared (Cloudflare Tunnel edge)                                 #
+#                                                                      #
+########################################################################
+
+cloudflared_enabled: false
+
+cloudflared_identifier: "{{ service_id_prefix }}cloudflared"
+
+cloudflared_base_path: "{{ sgc_playbook_base_path }}/{{ service_directory_prefix }}cloudflared"
+
+cloudflared_uid: "{{ sgc_playbook_uid }}"
+cloudflared_gid: "{{ sgc_playbook_gid }}"
+
+# The tunnel connector token is a per-host secret. Set vault_cloudflare_tunnel_token
+# in the host's vault and reference it from host_vars as
+# cloudflared_environment_variable_tunnel_token. cloudflared runs with host
+# networking (no Traefik labels, no DB) and forwards to the host's Traefik `web`
+# entrypoint; Cloudflare terminates TLS at the edge.
+
+########################################################################
+#                                                                      #
+# /cloudflared (Cloudflare Tunnel edge)                                #
+#                                                                      #
+########################################################################
+# /role-specific:cloudflared
 
 
 # role-specific:convertx

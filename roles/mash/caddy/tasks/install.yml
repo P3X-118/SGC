@@ -1,0 +1,111 @@
+# SPDX-FileCopyrightText: 2026 SGC project contributors
+#
+# SPDX-License-Identifier: AGPL-3.0-or-later
+
+---
+- name: Ensure caddi backend path exists
+  ansible.builtin.file:
+    path: "{{ item }}"
+    state: directory
+    mode: "0750"
+    owner: "{{ caddy_uid }}"
+    group: "{{ caddy_gid }}"
+  with_items:
+    - "{{ caddy_base_path }}"
+
+- name: Ensure caddi backend support files installed
+  ansible.builtin.template:
+    src: "{{ role_path }}/templates/{{ item }}.j2"
+    dest: "{{ caddy_base_path }}/{{ item }}"
+    mode: "0640"
+    owner: "{{ caddy_uid }}"
+    group: "{{ caddy_gid }}"
+  with_items:
+    - env
+    - labels
+  register: caddy_support_files_result
+
+- name: Run if self-building of caddi backend container image is not enabled
+  when: "not caddy_container_image_self_build | bool"
+  block:
+    - name: Ensure caddi backend container image is pulled via community.docker.docker_image
+      when: sysd_docker_image_pull_method == 'ansible-module'
+      community.docker.docker_image:
+        name: "{{ caddy_container_image }}"
+        source: "{{ 'pull' if ansible_version.major > 2 or ansible_version.minor > 7 else omit }}"
+        force_source: "{{ caddy_container_image_force_pull if ansible_version.major > 2 or ansible_version.minor >= 8 else omit }}"
+        force: "{{ omit if ansible_version.major > 2 or ansible_version.minor >= 8 else caddy_container_image_force_pull }}"
+      register: caddy_container_image_pull_result
+      retries: "{{ container_retry }}"
+      delay: "{{ container_retry_delay }}"
+      until: caddy_container_image_pull_result is not failed
+
+    - name: Ensure caddi backend container image is pulled via ansible.builtin.command
+      when: sysd_docker_image_pull_method == 'command'
+      ansible.builtin.command:
+        cmd: "{{ sysd_docker_host_command }} pull {{ caddy_container_image }}"
+      register: caddy_container_image_pull_result
+      retries: "{{ container_retry }}"
+      delay: "{{ container_retry_delay }}"
+      until: caddy_container_image_pull_result is not failed
+      changed_when: "'Downloaded newer image' in caddy_container_image_pull_result.stdout"
+
+- name: Run if self-building of caddi backend container image is enabled
+  when: "caddy_container_image_self_build | bool"
+  block:
+    - name: Ensure caddi backend repository is present on self-build
+      ansible.builtin.git:
+        repo: "{{ caddy_container_image_self_build_repo }}"
+        version: "{{ caddy_container_image_self_build_repo_version }}"
+        dest: "{{ caddy_container_image_self_build_src_files_path }}"
+        force: "yes"
+      register: caddy_git_pull_results
+
+    - name: Ensure caddi backend container image is built
+      ansible.builtin.shell:
+        chdir: "{{ caddy_container_image_self_build_src_files_path }}"
+        cmd: |
+          {{ sysd_docker_host_command }} build \
+          -t "{{ caddy_container_image_self_build_name }}" \
+          -f Dockerfile \
+          .
+      register: caddy_container_image_build_result
+      changed_when: "'Successfully built' in caddy_container_image_build_result.stdout or ('writing image' in caddy_container_image_build_result.stderr and 'CACHED' not in caddy_container_image_build_result.stderr)"
+
+- name: Ensure caddi backend container network is created via community.docker.docker_network
+  when: sysd_docker_net_creation_method == 'ansible-module'
+  community.docker.docker_network:
+    enable_ipv6: "{{ sysd_docker_ipv6_enabled }}"
+    name: "{{ caddy_container_network }}"
+    driver: bridge
+    driver_options: "{{ sysd_docker_net_driver_opts }}"
+  register: caddy_network_creation_result
+
+- name: Ensure caddi backend container network is created via ansible.builtin.command
+  when: sysd_docker_net_creation_method == 'command'
+  ansible.builtin.command:
+    cmd: >-
+      {{ sysd_docker_host_command }} network create
+      {% if sysd_docker_ipv6_enabled %}--ipv6{% endif %}
+      {{ sysd_docker_net_driver_opts_string }}
+      {{ caddy_container_network }}
+  register: caddy_network_creation_result
+  changed_when: caddy_network_creation_result.rc == 0
+  failed_when: caddy_network_creation_result.rc != 0 and 'already exists' not in caddy_network_creation_result.stderr
+
+- name: Ensure caddi backend systemd service is present
+  ansible.builtin.template:
+    src: "{{ role_path }}/templates/systemd/caddy.service.j2"
+    dest: "{{ sysd_docker_service_path }}/{{ caddy_identifier }}.service"
+    mode: "0644"
+  register: caddy_systemd_service_result
+
+- name: Determine whether caddi backend needs a restart
+  ansible.builtin.set_fact:
+    caddy_restart_necessary: >-
+      {{
+        caddy_support_files_result.changed | default(false)
+        or caddy_systemd_service_result.changed | default(false)
+        or caddy_container_image_pull_result.changed | default(false)
+        or caddy_container_image_build_result.changed | default(false)
+      }}

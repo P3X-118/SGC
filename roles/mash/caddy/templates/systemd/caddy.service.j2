@@ -1,0 +1,59 @@
+{#
+SPDX-FileCopyrightText: 2026 SGC project contributors
+
+SPDX-License-Identifier: AGPL-3.0-or-later
+#}
+
+[Unit]
+Description=caddi backend ({{ caddy_identifier }})
+{% for service in caddy_systemd_required_services_list %}
+Requires={{ service }}
+After={{ service }}
+{% endfor %}
+{% for service in caddy_systemd_wanted_services_list %}
+Wants={{ service }}
+{% endfor %}
+DefaultDependencies=no
+
+[Service]
+Type=simple
+Environment="HOME={{ sysd_docker_unit_home_path }}"
+ExecStartPre=-{{ sysd_docker_host_sh }} -c '{{ sysd_docker_host_command }} stop -t {{ sysd_docker_stop_grace }} {{ caddy_identifier }} 2>/dev/null || true'
+ExecStartPre=-{{ sysd_docker_host_sh }} -c '{{ sysd_docker_host_command }} rm {{ caddy_identifier }} 2>/dev/null || true'
+
+ExecStartPre={{ sysd_docker_host_command }} create \
+      --rm \
+      --name={{ caddy_identifier }} \
+      --log-driver=none \
+      --user={{ caddy_uid }}:{{ caddy_gid }} \
+      --cap-drop=ALL \
+      --read-only \
+      --network={{ caddy_container_network }} \
+      {% if caddy_container_http_host_bind_port %}
+      -p {{ caddy_container_http_host_bind_port }}:{{ caddy_container_http_port }} \
+      {% endif %}
+      --env-file={{ caddy_base_path }}/env \
+      --label-file={{ caddy_base_path }}/labels \
+      {% for volume in caddy_container_additional_volumes %}
+      --mount type={{ volume.type | default('bind' if '/' in volume.src else 'volume') }},src={{ volume.src }},dst={{ volume.dst }}{{ (',' + volume.options) if volume.options else '' }} \
+      {% endfor %}
+      {% for arg in caddy_container_extra_arguments %}
+      {{ arg }} \
+      {% endfor %}
+      {{ caddy_container_image_self_build_name if caddy_container_image_self_build else caddy_container_image }}
+
+{% for network in caddy_container_additional_networks %}
+ExecStartPre={{ sysd_docker_host_command }} network connect {{ network }} {{ caddy_identifier }}
+{% endfor %}
+
+ExecStart={{ sysd_docker_host_command }} start --attach {{ caddy_identifier }}
+
+ExecStop=-{{ sysd_docker_host_sh }} -c '{{ sysd_docker_host_command }} stop -t {{ sysd_docker_stop_grace }} {{ caddy_identifier }} 2>/dev/null || true'
+ExecStop=-{{ sysd_docker_host_sh }} -c '{{ sysd_docker_host_command }} rm {{ caddy_identifier }} 2>/dev/null || true'
+
+Restart=always
+RestartSec=30
+SyslogIdentifier={{ caddy_identifier }}
+
+[Install]
+WantedBy=multi-user.target

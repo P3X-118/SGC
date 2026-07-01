@@ -1,0 +1,48 @@
+# SPDX-FileCopyrightText: 2026 SGC project contributors
+#
+# SPDX-License-Identifier: AGPL-3.0-or-later
+
+---
+- name: Check existence of caddi backend systemd service
+  ansible.builtin.stat:
+    path: "{{ sysd_docker_service_path }}/{{ caddy_identifier }}.service"
+  register: caddy_service_stat
+
+- name: Uninstall caddi backend systemd services and files
+  when: caddy_service_stat.stat.exists | bool
+  block:
+    - name: Ensure caddi backend systemd service is stopped
+      ansible.builtin.service:
+        name: "{{ caddy_identifier }}"
+        state: stopped
+        enabled: false
+        daemon_reload: true
+
+    - name: Ensure caddi backend systemd service does not exist
+      ansible.builtin.file:
+        path: "{{ sysd_docker_service_path }}/{{ caddy_identifier }}.service"
+        state: absent
+
+    - name: Ensure caddi backend container network does not exist
+      when: caddy_container_network_deletion_enabled
+      block:
+        - name: Ensure caddi backend container network does not exist via community.docker.docker_network
+          when: sysd_docker_net_creation_method == 'ansible-module'
+          community.docker.docker_network:
+            name: "{{ caddy_container_network }}"
+            state: absent
+          register: caddy_network_deletion_result
+
+        - name: Ensure caddi backend container network does not exist via ansible.builtin.command
+          when: sysd_docker_net_creation_method == 'command'
+          ansible.builtin.command:
+            cmd: >-
+              {{ sysd_docker_host_command }} network rm
+              {{ caddy_container_network }}
+          register: caddy_network_deletion_result
+          changed_when: caddy_container_network in caddy_network_deletion_result.stdout
+
+    - name: Ensure caddi backend path does not exist
+      ansible.builtin.file:
+        path: "{{ caddy_base_path }}"
+        state: absent

@@ -1,0 +1,72 @@
+# SPDX-FileCopyrightText: 2026 SGC project contributors
+#
+# SPDX-License-Identifier: AGPL-3.0-or-later
+
+---
+# Project source code URL: https://github.com/cloudflare/cloudflared
+
+cloudflared_enabled: true
+
+cloudflared_identifier: cloudflared
+cloudflared_base_path: "/{{ cloudflared_identifier }}"
+
+cloudflared_uid: ""
+cloudflared_gid: ""
+
+# renovate: datasource=docker depName=cloudflare/cloudflared
+cloudflared_version: 2025.2.0
+
+cloudflared_container_image: "{{ cloudflared_container_image_registry_prefix }}cloudflare/cloudflared:{{ cloudflared_container_image_tag }}"
+cloudflared_container_image_tag: "{{ cloudflared_version }}"
+cloudflared_container_image_registry_prefix: "{{ cloudflared_container_image_registry_prefix_upstream }}"
+cloudflared_container_image_registry_prefix_upstream: "{{ cloudflared_container_image_registry_prefix_upstream_default }}"
+cloudflared_container_image_registry_prefix_upstream_default: docker.io/
+cloudflared_container_image_force_pull: "{{ cloudflared_container_image.endswith(':latest') }}"
+
+# The command (and its arguments) passed to the cloudflared container.
+# The image entrypoint is already `cloudflared`, so this is appended after the image.
+# cloudflared authenticates with a connector token (TUNNEL_TOKEN) and pulls its
+# full ingress configuration from the Cloudflare Zero Trust dashboard.
+cloudflared_container_command:
+  - tunnel
+  - --no-autoupdate
+  - run
+
+# A list of extra arguments to pass to the container (`docker create` command)
+cloudflared_container_extra_arguments: "{{ cloudflared_container_extra_arguments_auto + cloudflared_container_extra_arguments_custom }}"
+cloudflared_container_extra_arguments_auto: []
+cloudflared_container_extra_arguments_custom: []
+
+# List of systemd services that the Cloudflared systemd service depends on
+cloudflared_systemd_required_services_list: "{{ cloudflared_systemd_required_services_list_default + cloudflared_systemd_required_services_list_auto + cloudflared_systemd_required_services_list_custom }}"
+cloudflared_systemd_required_services_list_default: "{{ [sysd_docker_service] if sysd_docker_service else [] }}"
+cloudflared_systemd_required_services_list_auto: []
+cloudflared_systemd_required_services_list_custom: []
+
+# List of systemd services that the Cloudflared systemd service wants
+cloudflared_systemd_wanted_services_list: "{{ cloudflared_systemd_wanted_services_list_default + cloudflared_systemd_wanted_services_list_auto + cloudflared_systemd_wanted_services_list_custom }}"
+cloudflared_systemd_wanted_services_list_default: []
+cloudflared_systemd_wanted_services_list_auto: []
+cloudflared_systemd_wanted_services_list_custom: []
+
+# Specify the timezone
+cloudflared_environment_variables_tz: UTC
+
+# The Cloudflare Tunnel connector token (REQUIRED).
+# Create the tunnel in the Cloudflare Zero Trust dashboard and set this to its
+# connector token. On the host, pass this via vault, e.g.:
+#   cloudflared_environment_variable_tunnel_token: "{{ vault_cloudflare_tunnel_token }}"
+cloudflared_environment_variable_tunnel_token: ""
+
+# Additional environment variables.
+cloudflared_environment_variables_additional_variables: ""
+
+# cloudflared_restart_necessary controls whether the Cloudflared systemd
+# service will be restarted (when true) or merely started (when false) by the
+# systemd service manager role (when conditional restart is enabled).
+#
+# This value is automatically computed during installation based on whether
+# any configuration files, the systemd service file, or the container image changed.
+# The default of `false` means "no restart needed" — appropriate when the role's
+# installation tasks haven't run (e.g., due to --tags skipping them).
+cloudflared_restart_necessary: false

@@ -1,0 +1,63 @@
+# SPDX-FileCopyrightText: 2026 SGC project contributors
+#
+# SPDX-License-Identifier: AGPL-3.0-or-later
+
+---
+- name: Ensure Cloudflared path exists
+  ansible.builtin.file:
+    path: "{{ item }}"
+    state: directory
+    mode: "0750"
+    owner: "{{ cloudflared_uid }}"
+    group: "{{ cloudflared_gid }}"
+  with_items:
+    - "{{ cloudflared_base_path }}"
+
+- name: Ensure Cloudflared support files installed
+  ansible.builtin.template:
+    src: "{{ role_path }}/templates/{{ item }}.j2"
+    dest: "{{ cloudflared_base_path }}/{{ item }}"
+    mode: "0640"
+    owner: "{{ cloudflared_uid }}"
+    group: "{{ cloudflared_gid }}"
+  with_items:
+    - env
+  register: cloudflared_support_files_result
+
+- name: Ensure Cloudflared container image is pulled via community.docker.docker_image
+  when: sysd_docker_image_pull_method == 'ansible-module'
+  community.docker.docker_image:
+    name: "{{ cloudflared_container_image }}"
+    source: "{{ 'pull' if ansible_version.major > 2 or ansible_version.minor > 7 else omit }}"
+    force_source: "{{ cloudflared_container_image_force_pull if ansible_version.major > 2 or ansible_version.minor >= 8 else omit }}"
+    force: "{{ omit if ansible_version.major > 2 or ansible_version.minor >= 8 else cloudflared_container_image_force_pull }}"
+  register: cloudflared_container_image_pull_result
+  retries: "{{ container_retry }}"
+  delay: "{{ container_retry_delay }}"
+  until: cloudflared_container_image_pull_result is not failed
+
+- name: Ensure Cloudflared container image is pulled via ansible.builtin.command
+  when: sysd_docker_image_pull_method == 'command'
+  ansible.builtin.command:
+    cmd: "{{ sysd_docker_host_command }} pull {{ cloudflared_container_image }}"
+  register: cloudflared_container_image_pull_result
+  retries: "{{ container_retry }}"
+  delay: "{{ container_retry_delay }}"
+  until: cloudflared_container_image_pull_result is not failed
+  changed_when: "'Downloaded newer image' in cloudflared_container_image_pull_result.stdout"
+
+- name: Ensure Cloudflared systemd service is present
+  ansible.builtin.template:
+    src: "{{ role_path }}/templates/systemd/cloudflared.service.j2"
+    dest: "{{ sysd_docker_service_path }}/{{ cloudflared_identifier }}.service"
+    mode: "0644"
+  register: cloudflared_systemd_service_result
+
+- name: Determine whether Cloudflared needs a restart
+  ansible.builtin.set_fact:
+    cloudflared_restart_necessary: >-
+      {{
+        cloudflared_support_files_result.changed | default(false)
+        or cloudflared_systemd_service_result.changed | default(false)
+        or cloudflared_container_image_pull_result.changed | default(false)
+      }}

@@ -1,0 +1,26 @@
+# SPDX-FileCopyrightText: 2026 SGC project contributors
+#
+# SPDX-License-Identifier: AGPL-3.0-or-later
+
+---
+- name: Perform Cloudflared installation tasks
+  when: cloudflared_enabled | bool
+  tags:
+    - setup-all
+    - setup-cloudflared
+    - install-all
+    - install-cloudflared
+  block:
+    - name: Validate Cloudflared configuration
+      ansible.builtin.include_tasks: "{{ role_path }}/tasks/validate_config.yml"
+    - name: Install Cloudflared
+      ansible.builtin.include_tasks: "{{ role_path }}/tasks/install.yml"
+
+- name: Perform Cloudflared uninstallation tasks
+  when: not cloudflared_enabled | bool
+  tags:
+    - setup-all
+    - setup-cloudflared
+  block:
+    - name: Uninstall Cloudflared
+      ansible.builtin.include_tasks: "{{ role_path }}/tasks/uninstall.yml"
