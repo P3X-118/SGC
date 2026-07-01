@@ -1,17 +1,16 @@
 ---
+# Scope: this role owns ONLY /opt/tmw/infra/aws/.env (secrets).
+# docker-compose.yml and Caddyfile are owned by the TMW app's own
+# deploy tool (~/b2b/TexasModernWaste/bin/deploy.sh, which tars
+# `api web infra` over /opt/tmw). That tool EXCLUDES .env, so the two
+# systems don't fight: deploy.sh ships code + compose + Caddyfile, this
+# role ships the .env it can't see. See [[project-tmw-authentik-outpost]].
+
 - name: Ensure compose directory exists
   ansible.builtin.file:
     path: "{{ texasmodern_signup_compose_path }}"
     state: directory
     mode: "0755"
-
-- name: Render docker-compose.yml
-  ansible.builtin.template:
-    src: docker-compose.yml.j2
-    dest: "{{ texasmodern_signup_compose_path }}/docker-compose.yml"
-    mode: "0644"
-    backup: true
-  register: texasmodern_signup_compose_rendered
 
 - name: Render .env
   ansible.builtin.template:
@@ -21,13 +20,14 @@
     backup: true
   register: texasmodern_signup_env_rendered
 
-- name: (Re)start the texasmodern_signup stack
+# Apply .env changes to the running stack. The compose file itself is
+# provided by deploy.sh (not this role); we just (re)create containers
+# so a rotated secret takes effect. No-op when .env is unchanged.
+# `build: never` — images are built by deploy.sh, never here.
+- name: (Re)start the texasmodern_signup stack to apply .env
   community.docker.docker_compose_v2:
     project_src: "{{ texasmodern_signup_compose_path }}"
     state: present
-    # Don't rebuild web/api/caddy on every apply — those images are
-    # built out-of-band when their source under /opt/tmw/{api,web} is
-    # updated. `pull: missing` still ensures the pinned authentik
-    # proxy / postgres images get pulled the first time.
     build: never
     pull: missing
+  when: texasmodern_signup_env_rendered.changed

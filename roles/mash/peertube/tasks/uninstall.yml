@@ -1,0 +1,76 @@
+# SPDX-FileCopyrightText: 2023 Slavi Pantaleev
+# SPDX-FileCopyrightText: 2025 Suguru Hirahara
+#
+# SPDX-License-Identifier: AGPL-3.0-or-later
+
+---
+- name: Check existence of PeerTube systemd service
+  ansible.builtin.stat:
+    path: "{{ sysd_docker_service_path }}/{{ peertube_identifier }}.service"
+  register: peertube_service_stat
+
+- name: Uninstall PeerTube systemd services and files
+  when: peertube_service_stat.stat.exists | bool
+  block:
+    - name: Ensure PeerTube systemd service is stopped
+      ansible.builtin.service:
+        name: "{{ peertube_identifier }}"
+        state: stopped
+        enabled: false
+        daemon_reload: true
+
+    - name: Ensure PeerTube systemd service does not exist
+      ansible.builtin.file:
+        path: "{{ sysd_docker_service_path }}/{{ peertube_identifier }}.service"
+        state: absent
+
+    - name: Ensure PeerTube container network does not exist via community.docker.docker_network
+      when: sysd_docker_net_creation_method == 'ansible-module'
+      community.docker.docker_network:
+        name: "{{ peertube_container_network }}"
+        state: absent
+
+    - name: Ensure PeerTube container network does not exist via ansible.builtin.command
+      when: sysd_docker_net_creation_method == 'command'
+      ansible.builtin.command:
+        cmd: >-
+          {{ sysd_docker_host_command }} network rm
+          {{ peertube_container_network }}
+      register: network_deletion_result
+      changed_when: peertube_container_network in network_deletion_result.stdout
+
+- name: Check existence of PeerTube config path
+  ansible.builtin.stat:
+    path: "{{ peertube_config_path }}"
+  register: peertube_config_path_stat
+
+# We just want to notify the user. Deleting data is too destructive.
+- name: Notify if PeerTube config remains
+  when: peertube_config_path_stat.stat.exists | bool
+  ansible.builtin.set_fact:
+    runtime_messages_list: |
+      {{
+        runtime_messages_list | default([])
+        +
+        [
+          "Note: As the local PeerTube instance has been removed, some old config remains in `" + peertube_config_path + "`. Feel free to delete it."
+        ]
+      }}
+
+- name: Check existence of PeerTube local data path
+  ansible.builtin.stat:
+    path: "{{ peertube_data_path }}"
+  register: peertube_data_path_stat
+
+# We just want to notify the user. Deleting data is too destructive.
+- name: Notify if PeerTube local data remains
+  when: peertube_data_path_stat.stat.exists | bool
+  ansible.builtin.set_fact:
+    runtime_messages_list: |
+      {{
+        runtime_messages_list | default([])
+        +
+        [
+          "Note: As the local PeerTube instance has been removed, some old data including video files remain in `" + peertube_data_path + "`. Feel free to delete it."
+        ]
+      }}

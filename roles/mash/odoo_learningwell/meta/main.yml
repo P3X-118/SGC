@@ -1,0 +1,19 @@
+---
+galaxy_info:
+  author: Oneill
+  company: SGC
+  role_name: odoo_learningwell
+  namespace: SGC
+  description: |
+    Provisions Odoo-side state for The Learning Well (school-supply e-commerce):
+    a managed res.company, a generic bundle product, and the learningwell-service
+    JSON-RPC user (Sales + CRM). Reproducible/idempotent so the company can be
+    recreated on a fresh or migrated Odoo. Mirrors mash/odoo_ghostrak's one-shot
+    `odoo-bin shell` provisioning pattern.
+  license: MIT
+  min_ansible_version: "2.10"
+  platforms:
+    - name: Debian
+      versions: [all]
+    - name: Ubuntu
+      versions: [all]

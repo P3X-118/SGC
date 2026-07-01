@@ -1,0 +1,39 @@
+# SPDX-FileCopyrightText: 2026 Oneill (SGC)
+#
+# SPDX-License-Identifier: AGPL-3.0-or-later
+
+---
+- name: Fail if required Odoo (do) settings are not defined
+  ansible.builtin.fail:
+    msg: >-
+      You need to define a required configuration setting (`{{ item }}`).
+  when: "lookup('vars', item, default='') | string | length == 0"
+  with_items:
+    - do_uid
+    - do_gid
+    - do_hostname
+    - do_path_prefix
+    - do_container_network
+    - do_config_admin_passwd
+    - do_database_hostname
+    - do_database_password
+    - do_database_name
+
+- name: Fail if Odoo (do) is configured for an unsupported subpath
+  ansible.builtin.fail:
+    msg: >-
+      do_path_prefix (`{{ do_path_prefix }}`) must be `/`. Odoo does not reliably
+      support hosting under a subpath.
+  when: "do_path_prefix != '/'"
+
+- name: Run if Traefik is enabled
+  when: do_container_labels_traefik_enabled | bool
+  block:
+    - name: Fail if Traefik settings required for Odoo (do) are not defined
+      ansible.builtin.fail:
+        msg: >-
+          You need to define a required configuration setting (`{{ item }}`).
+      when: "lookup('vars', item, default='') | string | length == 0"
+      with_items:
+        - do_container_labels_traefik_hostname
+        - do_container_labels_traefik_path_prefix

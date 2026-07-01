@@ -1,0 +1,82 @@
+---
+# SGC role: MinIO (S3-compatible object storage)
+# Public S3 endpoint reachable at `https://{{ minio_hostname }}`.
+# Admin console at `https://{{ minio_console_hostname }}`.
+# Buckets + scoped users/keys are bootstrapped post-startup via `mc`.
+#
+# Disabled by default; flip `minio_enabled: true` on hosts in
+# group_vars/mash_servers and provide the secrets (vault) named below.
+
+minio_enabled: false
+
+# Pin a stable release. To bump: change here, then `just update`.
+minio_image: "minio/minio:RELEASE.2025-01-20T14-49-07Z"
+minio_mc_image: "minio/mc:RELEASE.2025-01-17T23-25-50Z"
+
+# On-disk layout: matches the /<service>/<instance>/ pattern used by
+# sgc-ntfy etc. The data dir is the only path that must be persistent.
+minio_base_path: /minio
+minio_instance: sgc-minio
+minio_data_path: "{{ minio_base_path }}/{{ minio_instance }}/data"
+minio_config_path: "{{ minio_base_path }}/{{ minio_instance }}/config"
+
+# Public hostnames behind Traefik. The S3 hostname is what clients
+# POST/PUT to (must be on a PUBLIC DNS zone since vendor pages
+# `<img src>` it from any device); the console hostname is the admin UI.
+# Defaults target the eagledrive.live zone (public); override per-host
+# if deploying somewhere else.
+minio_hostname: "photos.eagledrive.live"
+minio_console_hostname: "minio-console.eagledrive.live"
+
+# Extra hostnames to ALSO route to the S3 API router (same backend) — e.g.
+# serving a second brand's photos from one MinIO. Each becomes an additional
+# `Host(...)` OR-clause on the minio-api router rule. Default: none (so the
+# rule stays exactly `Host(`{{ minio_hostname }}`)` on every existing host).
+minio_api_extra_hostnames: []
+
+# Root admin credentials. REQUIRED — generate strong values and vault
+# them into group_vars/mash_servers. The role refuses to install if
+# either is empty (see validate_config.yml).
+minio_root_user: ""
+minio_root_password: ""
+
+# Internal MinIO listening ports (not exposed on the host — Traefik
+# reaches them on the docker network).
+minio_api_port: 9000
+minio_console_port: 9001
+
+# Networks. Override per host:
+#   bskypds.pro      → traefik   (SGC's shared Traefik network)
+#   eagledrive.live  → eagledrivelive_default  (eagledrive-edge owns 80/443)
+# A separate private network exists per-instance for bootstrap sidecars
+# (so `mc` can reach the minio container by name regardless of the
+# public Traefik attachment).
+minio_traefik_network: traefik
+minio_private_network: "{{ minio_instance }}"
+
+# Cert resolver name. Override per host:
+#   bskypds.pro      → default   (DNS-01 via CF, bskypds.pro zone)
+#   eagledrive.live  → le        (HTTP-01 on eagledrive-edge)
+minio_traefik_cert_resolver: default
+
+# Traefik entrypoint name for HTTPS. Override per host:
+#   bskypds.pro      → web-secure  (SGC convention)
+#   eagledrive.live  → websecure   (eagledrive-edge convention)
+minio_traefik_entrypoint: web-secure
+
+# Buckets to create on startup. Each item:
+#   { name: ..., policy: <public|download|upload|none> }
+# `download` = anonymous READ allowed (typical for served photos);
+# `public`   = anonymous READ + WRITE (almost never what you want);
+# `none`     = fully private; the bucket creator needs explicit access.
+minio_buckets: []
+
+# Scoped users + keys. Each item:
+#   { name: ..., access_key: ..., secret_key: ..., policies: [...] }
+# Policies can be MinIO builtins (readwrite, readonly, writeonly) or
+# names of inline policies defined via minio_inline_policies below.
+minio_users: []
+
+# Optional inline policies (JSON docs). Each item:
+#   { name: ..., document: <PolicyJSON dict> }
+minio_inline_policies: []

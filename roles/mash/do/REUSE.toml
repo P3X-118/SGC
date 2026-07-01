@@ -1,0 +1,10 @@
+version = 1
+SPDX-PackageName = "do-ar"
+SPDX-PackageSupplier = "Oneill <oneill@sgc.ai>"
+SPDX-PackageDownloadLocation = "https://github.com/P3X-118/do-ar"
+
+[[annotations]]
+path = [".ansible-lint", ".yamllint.yml", ".gitignore", ".pre-commit-config.yaml", "justfile", "meta/main.yml", ".github/**"]
+precedence = "aggregate"
+SPDX-FileCopyrightText = "2026 Oneill (SGC)"
+SPDX-License-Identifier = "AGPL-3.0-or-later"

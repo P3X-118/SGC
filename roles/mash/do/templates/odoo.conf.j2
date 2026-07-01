@@ -1,0 +1,47 @@
+{#
+SPDX-FileCopyrightText: 2026 Oneill (SGC)
+
+SPDX-License-Identifier: AGPL-3.0-or-later
+#}
+[options]
+admin_passwd = {{ do_config_admin_passwd }}
+data_dir = {{ do_config_data_dir }}
+addons_path = {{ do_config_addons_path }}
+
+; database
+db_host = {{ do_database_hostname }}
+db_port = {{ do_database_port }}
+db_user = {{ do_database_username }}
+db_password = {{ do_database_password }}
+{% if do_database_name %}
+db_name = {{ do_database_name }}
+{% endif %}
+dbfilter = {{ do_config_dbfilter }}
+db_sslmode = {{ do_config_db_sslmode }}
+db_maxconn = {{ do_config_db_maxconn }}
+list_db = {{ do_config_list_db | ternary('True', 'False') }}
+
+; http / proxy
+http_interface = 0.0.0.0
+http_port = {{ do_container_http_port }}
+gevent_port = {{ do_container_gevent_port }}
+proxy_mode = {{ do_config_proxy_mode | ternary('True', 'False') }}
+
+; workers and limits
+workers = {{ do_config_workers }}
+max_cron_threads = {{ do_config_max_cron_threads }}
+limit_memory_soft = {{ do_config_limit_memory_soft }}
+limit_memory_hard = {{ do_config_limit_memory_hard }}
+limit_time_cpu = {{ do_config_limit_time_cpu }}
+limit_time_real = {{ do_config_limit_time_real }}
+
+; logging / misc
+log_level = {{ do_config_log_level }}
+{% if do_config_server_wide_modules %}
+server_wide_modules = {{ do_config_server_wide_modules }}
+{% endif %}
+unaccent = {{ do_config_unaccent | ternary('True', 'False') }}
+{% if do_config_additional %}
+
+{{ do_config_additional }}
+{% endif %}

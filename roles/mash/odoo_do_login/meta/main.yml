@@ -1,0 +1,18 @@
+---
+galaxy_info:
+  author: Oneill
+  company: SGC
+  role_name: odoo_do_login
+  namespace: SGC
+  description: |
+    Odoo-side SSO state for do.sgc.ai: ensures the `groups` OIDC scope is present
+    on the Authentik (sgc-do) auth_oauth_provider so the sgc_login group gate
+    receives the claim it requires (sgc-do-users). Idempotent; the do-host analog
+    of mash/odoo_ghostrak's groups-scope concern.
+  license: MIT
+  min_ansible_version: "2.10"
+  platforms:
+    - name: Debian
+      versions: [all]
+    - name: Ubuntu
+      versions: [all]

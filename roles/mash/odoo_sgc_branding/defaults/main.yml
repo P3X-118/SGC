@@ -1,0 +1,28 @@
+---
+# odoo_sgc_branding — per-company document/email branding on the do.sgc.ai
+# multi-company Odoo, sourced from the per-brand identities already defined in
+# the Authentik brands (so login + Odoo documents read continuous). Sets each
+# company's primary/secondary document colors + email colors. Idempotent
+# one-shot `odoo-bin shell` (same pattern as mash/odoo_learningwell).
+#
+# Logos are NOT set here yet: TMW has a raster (PNG) logo ready, but SGC + 30A
+# only have SVG marks (need a raster render) — handled as a follow-up.
+#
+# Enable in host_vars/odoo/vars.yml:
+#   odoo_sgc_branding_enabled: true
+#   odoo_sgc_branding_companies: [ {name, primary, secondary}, ... ]
+# Then: just install-service odoo_sgc_branding --limit odoo
+
+odoo_sgc_branding_enabled: false
+odoo_sgc_branding_database_name: "{{ do_database_name | default('sgc-do') }}"
+
+# Per-company colors. primary = document header/band, secondary = accent.
+# email_primary / email_secondary default to primary / secondary when omitted.
+odoo_sgc_branding_companies: []
+
+# One-shot docker-run plumbing (mirrors mash/odoo_learningwell / odoo_sgc_companies).
+odoo_sgc_branding_install_do_base_path: "{{ do_base_path | default('/' ~ (sgc_playbook_identifier | default('sgc-do')) ~ '/' ~ (do_identifier | default('do'))) }}"
+odoo_sgc_branding_install_do_image: "sgc-do:{{ do_version | default('19.0') }}-{{ do_image_release | default('01') }}"
+odoo_sgc_branding_install_network: "{{ (service_id_prefix | default('do-')) ~ 'postgres' }}"
+odoo_sgc_branding_install_user: "{{ (sgc_playbook_uid | default(999)) ~ ':' ~ (sgc_playbook_gid | default(988)) }}"
+odoo_sgc_branding_install_add_hosts: []

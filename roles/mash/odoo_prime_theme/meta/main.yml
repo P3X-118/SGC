@@ -1,0 +1,21 @@
+---
+galaxy_info:
+  author: Oneill
+  company: SGC
+  role_name: odoo_prime_theme
+  namespace: SGC
+  description: |
+    Installs the prime_theme Odoo module — the asset-only Prime Baseball backend
+    skin (warm-grey dark UI + red #dd1717 brand accent; Odoo 19 Community has no
+    working native dark mode) on the prime.i.legit.services Odoo. Same install
+    pattern as mash/odoo_prime_login: rsync source from controller, then run a
+    one-shot docker container that mirrors the running systemd unit's
+    mounts/network/add-host to do -i/-u prime_theme --stop-after-init (which
+    regenerates the web asset bundles).
+  license: MIT
+  min_ansible_version: "2.10"
+  platforms:
+    - name: Debian
+      versions: [all]
+    - name: Ubuntu
+      versions: [all]

@@ -1,0 +1,37 @@
+---
+# odoo_sgc_companies — declaratively ensure the SGC multi-company setup on the
+# do.sgc.ai Odoo. SGC is the OPERATOR / home company (company id 1); the listed
+# MANAGED companies are independent legal entities that SGC's staff operate —
+# NOT branches of SGC, so they are created top-level with NO parent_id (no
+# consolidation hierarchy). Every internal user is granted access to ALL
+# companies + the Multi-Companies group (so the company switcher works).
+#
+# Idempotent (get-or-create by name; re-runs that match report changed=false), so
+# it ADOPTS companies created by hand or by a market-specific role — e.g.
+# odoo_learningwell owns "The Learning Well" (+ its product/service-user); this
+# role just keeps it top-level + grants access. It also self-heals any company
+# left parented by an earlier model back to flat. Same one-shot `odoo-bin shell`
+# docker-run pattern as mash/odoo_learningwell (own DB session, no downtime).
+#
+# Enable in host_vars/odoo/vars.yml:
+#   odoo_sgc_companies_enabled: true
+#   odoo_sgc_companies_managed: ["30A", "Texas Modern Waste"]
+# Then: just install-service odoo_sgc_companies --limit odoo
+
+odoo_sgc_companies_enabled: false
+
+odoo_sgc_companies_database_name: "{{ do_database_name | default('sgc-do') }}"
+
+# Operator / home company (company id 1) display name + the managed companies
+# (independent, top-level — SGC operates them, it does not own them as branches).
+odoo_sgc_companies_operator: "SGC"
+odoo_sgc_companies_managed: []
+
+# One-shot docker-run plumbing (mirrors mash/odoo_learningwell; defaults match the
+# `do` role's systemd unit on the odoo host). Network derived from the host's
+# service_id_prefix (sgc- -> sgc-postgres), like mash/odoo_sgc_login.
+odoo_sgc_companies_install_do_base_path: "{{ do_base_path | default('/' ~ (sgc_playbook_identifier | default('sgc-do')) ~ '/' ~ (do_identifier | default('do'))) }}"
+odoo_sgc_companies_install_do_image: "sgc-do:{{ do_version | default('19.0') }}-{{ do_image_release | default('01') }}"
+odoo_sgc_companies_install_network: "{{ (service_id_prefix | default('do-')) ~ 'postgres' }}"
+odoo_sgc_companies_install_user: "{{ (sgc_playbook_uid | default(999)) ~ ':' ~ (sgc_playbook_gid | default(988)) }}"
+odoo_sgc_companies_install_add_hosts: []

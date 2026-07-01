@@ -1,0 +1,22 @@
+---
+galaxy_info:
+  author: Oneill
+  company: SGC
+  role_name: odoo_sgc_login
+  namespace: SGC
+  description: |
+    Installs the SHARED sgc_login Odoo module on a do-based Odoo: the generic
+    Authentik OIDC addon that gates SSO login on SGC_DO_REQUIRED_GROUP and
+    authoritatively grants/revokes Odoo admin (base.group_system) from
+    SGC_DO_ADMIN_GROUP. Same install pattern as mash/odoo_prime_login /
+    mash/odoo_ghostrak: rsync source from the controller, then a one-shot docker
+    container mirroring the running systemd unit's mounts/network/add-host to
+    do -i/-u sgc_login --stop-after-init. Group names are read from the Odoo
+    container env (set via do_environment_variables_additional_variables).
+  license: MIT
+  min_ansible_version: "2.10"
+  platforms:
+    - name: Debian
+      versions: [all]
+    - name: Ubuntu
+      versions: [all]

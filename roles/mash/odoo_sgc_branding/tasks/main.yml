@@ -1,0 +1,56 @@
+---
+# odoo_sgc_branding — apply per-company document/email colors via one one-shot
+# `odoo-bin shell` docker run (own DB session, no downtime). Idempotent: the
+# script reports changed=True only when it mutated a company; "OK " gates
+# failed_when.
+
+- name: odoo_sgc_branding — validate inputs
+  ansible.builtin.assert:
+    that:
+      - odoo_sgc_branding_database_name | length > 0
+    fail_msg: "odoo_sgc_branding requires database_name"
+  tags:
+    - setup-all
+    - setup-odoo_sgc_branding
+    - install-all
+    - install-odoo_sgc_branding
+  when: odoo_sgc_branding_enabled | bool
+
+- name: odoo_sgc_branding — apply per-company document/email colors (one-shot odoo shell)
+  ansible.builtin.shell:
+    cmd: >-
+      docker run --rm -i
+      --user={{ odoo_sgc_branding_install_user }}
+      --cap-drop=ALL
+      --network={{ odoo_sgc_branding_install_network }}
+      -e SGC_BRANDING_JSON={{ odoo_sgc_branding_companies | to_json | quote }}
+      --mount type=bind,src={{ odoo_sgc_branding_install_do_base_path }}/odoo.conf,dst=/etc/odoo/odoo.conf,readonly
+      --mount type=bind,src={{ odoo_sgc_branding_install_do_base_path }}/data,dst=/var/lib/odoo
+      --mount type=bind,src={{ odoo_sgc_branding_install_do_base_path }}/extra-addons,dst=/mnt/extra-addons,readonly
+      {% for h in odoo_sgc_branding_install_add_hosts %}--add-host={{ h }} {% endfor %}
+      {{ odoo_sgc_branding_install_do_image }}
+      odoo-bin shell -c /etc/odoo/odoo.conf --no-http -d {{ odoo_sgc_branding_database_name }}
+    stdin: "{{ lookup('file', 'provision-sgc-branding.py') }}"
+  register: odoo_sgc_branding_run
+  changed_when: "odoo_sgc_branding_run.stdout is search('changed=True')"
+  failed_when:
+    - odoo_sgc_branding_run.rc != 0
+    - odoo_sgc_branding_run.stdout is not search('OK ')
+  tags:
+    - setup-all
+    - setup-odoo_sgc_branding
+    - install-all
+    - install-odoo_sgc_branding
+  when: odoo_sgc_branding_enabled | bool
+
+- name: odoo_sgc_branding — report
+  ansible.builtin.debug:
+    msg: "{{ odoo_sgc_branding_run.stdout | default('(skipped)') }}"
+  tags:
+    - setup-all
+    - setup-odoo_sgc_branding
+    - install-all
+    - install-odoo_sgc_branding
+  when:
+    - odoo_sgc_branding_enabled | bool
+    - odoo_sgc_branding_run is defined

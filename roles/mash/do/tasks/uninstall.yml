@@ -1,0 +1,76 @@
+# SPDX-FileCopyrightText: 2026 Oneill (SGC)
+#
+# SPDX-License-Identifier: AGPL-3.0-or-later
+
+---
+- name: Check existence of Odoo (do) systemd service
+  ansible.builtin.stat:
+    path: "{{ sysd_docker_service_path }}/{{ do_identifier }}.service"
+  register: do_service_stat
+
+- name: Uninstall Odoo (do) systemd services and files
+  when: do_service_stat.stat.exists | bool
+  block:
+    - name: Ensure Odoo (do) systemd service is stopped
+      ansible.builtin.service:
+        name: "{{ do_identifier }}"
+        state: stopped
+        enabled: false
+        daemon_reload: true
+
+    - name: Ensure Odoo (do) systemd service does not exist
+      ansible.builtin.file:
+        path: "{{ sysd_docker_service_path }}/{{ do_identifier }}.service"
+        state: absent
+
+    - name: Ensure Odoo (do) support files do not exist
+      ansible.builtin.file:
+        path: "{{ do_base_path }}/{{ item }}"
+        state: absent
+      with_items:
+        - odoo.conf
+        - env
+        - labels
+
+    - name: Ensure Odoo (do) image source files path does not exist
+      ansible.builtin.file:
+        path: "{{ do_container_image_self_build_src_files_path }}"
+        state: absent
+
+    - name: Ensure Odoo (do) container network does not exist
+      when: do_container_network_deletion_enabled
+      block:
+        - name: Ensure Odoo (do) container network does not exist via community.docker.docker_network
+          when: sysd_docker_net_creation_method == 'ansible-module'
+          community.docker.docker_network:
+            name: "{{ do_container_network }}"
+            state: absent
+          register: do_network_deletion_result
+
+        - name: Ensure Odoo (do) container network does not exist via ansible.builtin.command
+          when: sysd_docker_net_creation_method == 'command'
+          ansible.builtin.command:
+            cmd: >-
+              {{ sysd_docker_host_command }} network rm
+              {{ do_container_network }}
+          register: do_network_deletion_result
+          changed_when: do_container_network in do_network_deletion_result.stdout
+          failed_when: do_network_deletion_result.rc != 0 and 'not found' not in do_network_deletion_result.stderr
+
+- name: Check existence of Odoo (do) local data path
+  ansible.builtin.stat:
+    path: "{{ do_data_path }}"
+  register: do_data_path_stat
+
+# We just want to notify the user. Deleting data is too destructive.
+- name: Notify if Odoo (do) local data remains
+  when: do_data_path_stat.stat.exists | bool
+  ansible.builtin.set_fact:
+    playbook_runtime_messages: |
+      {{
+        playbook_runtime_messages | default([])
+        +
+        [
+          "Note: The Odoo (do) instance has been removed, but its data (database filestore) remains in `" + do_data_path + "`. Feel free to delete it if no longer needed."
+        ]
+      }}

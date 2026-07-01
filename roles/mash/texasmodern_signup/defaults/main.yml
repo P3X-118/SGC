@@ -1,18 +1,24 @@
 ---
 # SGC role: texasmodern_signup
 #
-# Manages the texasmodern-signup.eagledrive.live AWS EC2 stack: Caddy
-# (TLS + forward_auth), Expo web bundle (nginx), Fastify API, Postgres,
-# and an Authentik proxy Outpost that connects OUT to the shared
-# Authentik on bskypds.pro over the SGC VPN mesh.
+# Manages ONLY the .env (secrets) for the texasmodern-signup.eagledrive.live
+# AWS EC2 stack at /opt/tmw/infra/aws/.env, then (re)starts the compose
+# stack so a rotated secret takes effect.
 #
-# Scope is intentionally narrow: this role owns
-#   /opt/tmw/infra/aws/docker-compose.yml
-#   /opt/tmw/infra/aws/.env
-# and runs `docker compose up -d`. The application source under
-# /opt/tmw/{api,web,caddy,...} is rsync'd in out-of-band — the role
-# does NOT clone or modify it. See [[project-tmw-authentik-outpost]] in
-# claude memory for why this scope was chosen.
+# Scope is deliberately .env-only. The docker-compose.yml, Caddyfile, and
+# all application source (api/web/caddy) are owned by the TMW app's own
+# deploy tool: ~/b2b/TexasModernWaste/bin/deploy.sh, which tars
+# `api web infra` over /opt/tmw on each deploy. That tar EXCLUDES .env,
+# so the two systems coexist: deploy.sh ships code + compose + Caddyfile,
+# this role ships the .env deploy.sh can't see. Earlier this role also
+# rendered docker-compose.yml, which FOUGHT deploy.sh (every deploy
+# reverted the role's compose, taking the admin login + tmw.eagledrive.live
+# down on 2026-05-20). Compose ownership now lives solely in the canonical
+# source. See [[project-tmw-authentik-outpost]] for the full history.
+#
+# The mesh extra_hosts pin, the proxy image pin (2025.10.3), and the
+# tmw.eagledrive.live Caddy redirect now live in
+# ~/b2b/TexasModernWaste/infra/aws/{docker-compose.yml,Caddyfile}.
 
 texasmodern_signup_enabled: false
 
@@ -57,31 +63,16 @@ texasmodern_signup_ntfy_auth_token: ""
 texasmodern_signup_ntfy_topic_signup: "tmw-signup"
 texasmodern_signup_ntfy_topic_view: "tmw-view"
 
-# Authentik proxy Outpost.
-# Server-side provisioning lives on bskypds.pro (see
-# texasmodern_authentik_* vars + provision-texasmodern.py). The token
-# below is the Outpost API token printed by that script — paste it
-# into vault after a fresh provisioning run.
+# Authentik proxy Outpost — the bits that live in .env.
+# Server-side provisioning lives on bskypds.pro (see texasmodern_authentik_*
+# vars + provision-texasmodern.py). The token below is the Outpost API
+# token printed by that script — paste it into vault after a fresh
+# provisioning run.
 #
-# The container reaches the server via the VPN mesh (extra_hosts pins
-# auth.eagledrive.live to bskypds's mesh IP). Public 128.254.161.222
-# is not reliably reachable from this EC2.
-#
-# IMPORTANT: pin the proxy image to the EXACT patch version of the
-# Authentik server on bskypds.pro. The floating :YYYY.MM tag drifts
-# ahead and a newer outpost will reject the server's API response
-# (schema mismatch → "no value given for required property
-# assigned_backchannel_application_slug" crash-loop). See
-# [[reference-authentik-outpost-version-pinning]].
+# NOTE: the mesh extra_hosts pin and the proxy image pin are NOT here —
+# they're compose concerns owned by the canonical source
+# (~/b2b/TexasModernWaste/infra/aws/docker-compose.yml). Only the two
+# values that flow through .env live in this role.
 texasmodern_signup_authentik_host: "https://auth.eagledrive.live"
-texasmodern_signup_authentik_proxy_image: "ghcr.io/goauthentik/proxy"
-texasmodern_signup_authentik_proxy_image_tag: "2025.10.3"
 # REQUIRED. Provide via vault.
 texasmodern_signup_authentik_outpost_token: ""
-
-# Mesh IP of the Authentik server (bskypds.pro on the SGC overlay).
-# Used as an extra_hosts entry inside the authentik-proxy container so
-# DNS for auth.eagledrive.live resolves to the mesh, not the (broken)
-# public path. Traefik on bskypds serves the LE cert for that hostname
-# on the internal address, so TLS verification stays on.
-texasmodern_signup_authentik_mesh_ip: "169.254.0.127"

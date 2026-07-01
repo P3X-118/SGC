@@ -1,0 +1,35 @@
+---
+# odoo_do_login — Odoo-side SSO state for do.sgc.ai (the SGC back-office Odoo);
+# the do-host analog of odoo_ghostrak's groups-scope concern.
+#
+# Why this exists: the sgc_login addon GATES every Authentik login on the OIDC
+# `groups` claim containing `sgc-do-users` (raises AccessDenied otherwise). Odoo
+# only RECEIVES that claim if its auth_oauth_provider REQUESTS the `groups`
+# scope. That scope was set by hand, so a rebuild/migration silently drops it
+# and locks everyone out ("user access denied" on the SSO button). This role
+# ensures `groups` is on the do provider's scope, idempotently, so it can't
+# regress. The Authentik side (the `sgc-do-users` group + the `groups`
+# ScopeMapping) is provisioned by ~/sgc/apps/authentik/scripts/sgc/provision-sgc-do.py.
+#
+# Runs on the odoo host. Enable in host_vars/odoo/vars.yml:
+#   odoo_do_login_enabled: true
+# Then: just install-service odoo_do_login --limit odoo
+
+odoo_do_login_enabled: false
+
+# Postgres connectivity on the odoo host (the do role's per-service DB). Defaults
+# derive from this host's do/postgres identifiers — override if they differ.
+# NOTE: do_database_name derives to `sgc-do` on this host (service_id_prefix +
+# "do"); the host_vars/odoo comment says `sgc-do-do` — confirm with `\l` and set
+# odoo_do_login_database_name explicitly if it differs.
+odoo_do_login_postgres_container: "sgc-postgres"  # confirmed via `docker ps` on the odoo host
+odoo_do_login_database_user: "{{ do_database_username | default('sgc-do') }}"
+odoo_do_login_database_name: "{{ do_database_name | default('sgc-do') }}"
+
+# The Authentik OAuth provider row to target (provision-sgc-do.py sets client_id 'sgc-do').
+odoo_do_login_oidc_client_id: "sgc-do"
+
+# Scopes to ensure are present on auth_oauth_provider.scope (space-separated).
+# `groups` is the one sgc_login's group gate depends on.
+odoo_do_login_oidc_required_scopes:
+  - groups

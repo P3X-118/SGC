@@ -28,9 +28,33 @@ eagledrive_ntfy_token: ""
 eagledrive_pds_url: ""
 eagledrive_pds_pro_url: ""
 eagledrive_changedetection_url: ""
+
+# --- PDS env patch (for the hand-managed live stack) -------------------
+# The eagledrive.live app on t05 is a hand-managed compose project
+# (/home/ubuntu/eagledrive.live), NOT deployed by this role's full mode.
+# Its compose already substitutes PDS_URL/PDS_PRO_URL from its .env. This
+# gated path idempotently sets those two lines and recreates the consuming
+# services — so wiring the PDS into the app is repeatable, not a hand edit.
+# Runs independently of eagledrive_enabled.
+eagledrive_pds_env_manage: false
+eagledrive_pds_env_stack_path: ""        # e.g. /home/ubuntu/eagledrive.live
+eagledrive_pds_env_file: ".env"          # relative to the stack path
+eagledrive_pds_env_recreate_services:    # services that read PDS_URL
+  - api
 eagledrive_changedetection_api_key: ""
 eagledrive_reitti_url: ""
 eagledrive_gun_relay_url: ""
+
+# MinIO (object storage; see roles/mash/minio/). Empty = scraper photo
+# rehosting is off — vendor pages keep showing CDN-direct URLs, which
+# rot for IG/FB (signed) and Yelp keeps working until they don't. To
+# enable: deploy mash/minio on a mash host and populate the access keys
+# in group_vars (vaulted). The scrapers app reads MINIO_* env vars.
+eagledrive_minio_endpoint: ""
+eagledrive_minio_bucket: ""
+eagledrive_minio_public_url_base: ""
+eagledrive_minio_access_key: ""
+eagledrive_minio_secret_key: ""
 
 # Authentik OIDC (env-gated soft cutover). Leave the issuer blank to keep
 # the pre-auth behavior (open create, edit_token claim) — the API/app

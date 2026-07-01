@@ -1,0 +1,16 @@
+---
+galaxy_info:
+  author: Oneill
+  company: SGC
+  role_name: do
+  namespace: sgc
+  description: Odoo (ERP) — SGC custom fork deployment
+  platforms:
+    - name: Debian
+      versions:
+        - all
+    - name: Ubuntu
+      versions:
+        - all
+  license: AGPL-3.0-or-later
+  min_ansible_version: "2.1"

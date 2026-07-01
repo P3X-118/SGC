@@ -1,0 +1,85 @@
+---
+# odoo_do_login — ensure the `groups` OIDC scope is present on do.sgc.ai's Odoo
+# auth_oauth_provider so sgc_login's group gate actually receives the claim.
+# Same idempotent psql pattern as mash/odoo_ghostrak's groups-scope concern:
+# changed_when reads psql's "UPDATE N" line (N=0 is the no-op re-run).
+
+- name: odoo_do_login — validate inputs
+  ansible.builtin.assert:
+    that:
+      - odoo_do_login_postgres_container | length > 0
+      - odoo_do_login_database_user | length > 0
+      - odoo_do_login_database_name | length > 0
+      - odoo_do_login_oidc_client_id | length > 0
+    fail_msg: "odoo_do_login requires postgres_container, database_user, database_name, and oidc_client_id"
+  tags:
+    - setup-all
+    - setup-odoo_do_login
+    - install-all
+    - install-odoo_do_login
+  when: odoo_do_login_enabled | bool
+
+- name: odoo_do_login — copy oidc-groups-scope SQL to host
+  ansible.builtin.copy:
+    src: oidc-groups-scope.sql
+    dest: /tmp/odoo_do_login_oidc_groups_scope.sql
+    mode: '0644'
+  tags:
+    - setup-all
+    - setup-odoo_do_login
+    - install-all
+    - install-odoo_do_login
+  when: odoo_do_login_enabled | bool
+
+- name: odoo_do_login — ensure each required OIDC scope is present on auth_oauth_provider
+  # One psql invocation per scope. The SQL appends idempotently (word-boundary
+  # regex skips already-present), so "UPDATE 0" gates changed_when.
+  ansible.builtin.shell: >-
+    docker exec -i
+    {{ odoo_do_login_postgres_container }}
+    psql -v ON_ERROR_STOP=1
+    -v client_id={{ odoo_do_login_oidc_client_id | quote }}
+    -v scope={{ item | quote }}
+    -U {{ odoo_do_login_database_user | quote }}
+    -d {{ odoo_do_login_database_name | quote }}
+    < /tmp/odoo_do_login_oidc_groups_scope.sql
+  loop: "{{ odoo_do_login_oidc_required_scopes }}"
+  loop_control:
+    label: "{{ item }}"
+  register: odoo_do_login_groups_scope
+  changed_when: "'UPDATE 0' not in odoo_do_login_groups_scope.stdout and (odoo_do_login_groups_scope.stdout is search('UPDATE '))"
+  failed_when:
+    - odoo_do_login_groups_scope.rc != 0
+  tags:
+    - setup-all
+    - setup-odoo_do_login
+    - install-all
+    - install-odoo_do_login
+  when: odoo_do_login_enabled | bool
+
+- name: odoo_do_login — report scope results (one line per scope)
+  ansible.builtin.debug:
+    msg: "scope={{ item.item }} → {{ (item.stdout_lines | last) | default('(no output)') }}"
+  loop: "{{ odoo_do_login_groups_scope.results | default([]) }}"
+  loop_control:
+    label: "{{ item.item | default('?') }}"
+  tags:
+    - setup-all
+    - setup-odoo_do_login
+    - install-all
+    - install-odoo_do_login
+  when:
+    - odoo_do_login_enabled | bool
+    - odoo_do_login_groups_scope is defined
+    - odoo_do_login_groups_scope.results is defined
+
+- name: odoo_do_login — clean up oidc-groups-scope SQL from host
+  ansible.builtin.file:
+    path: /tmp/odoo_do_login_oidc_groups_scope.sql
+    state: absent
+  tags:
+    - setup-all
+    - setup-odoo_do_login
+    - install-all
+    - install-odoo_do_login
+  when: odoo_do_login_enabled | bool

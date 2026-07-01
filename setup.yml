@@ -348,6 +348,18 @@
       tags: [setup-all, setup-odoo_sgc_companies, install-all, install-odoo_sgc_companies]
     # /role-specific:odoo_sgc_companies
 
+    # role-specific:odoo_texasmodern
+    # Provisions Texas Modern Waste's Odoo service products (cart/cleaning/valet)
+    # + the texasmodern-service JSON-RPC user the TMW intake app authenticates as
+    # (Sales, default company = Texas Modern Waste). Does NOT create the company
+    # (odoo_sgc_companies does) nor install modules (already present) — zero
+    # downtime. One-shot odoo-bin shell; idempotent. Runs AFTER odoo_sgc_companies
+    # so the company exists. No-op unless odoo_texasmodern_enabled.
+    - when: odoo_texasmodern_enabled | default(false) | bool
+      role: mash/odoo_texasmodern
+      tags: [setup-all, setup-odoo_texasmodern, install-all, install-odoo_texasmodern]
+    # /role-specific:odoo_texasmodern
+
     # role-specific:odoo_sgc_branding
     # Per-company document/email colors on the do.sgc.ai multi-company Odoo,
     # sourced from the Authentik brand identities. Idempotent one-shot odoo-bin
@@ -388,6 +400,30 @@
       role: mash/odoo_prime_recruiting
       tags: [setup-all, setup-odoo_prime_recruiting, install-all, install-odoo_prime_recruiting]
     # /role-specific:odoo_prime_recruiting
+
+    # role-specific:odoo_prime_theme
+    # Installs the prime_theme Odoo module — the asset-only Prime Baseball
+    # backend skin (warm-grey dark UI + red #dd1717 brand accent; Odoo 19
+    # Community has no working native dark mode). Same install pattern as
+    # mash/odoo_prime_website; source in ~/b2b/primeBaseball/odoo-addons/prime_theme.
+    # The one-shot -u regenerates the web asset bundles. No-op unless
+    # odoo_prime_theme_enabled.
+    - when: odoo_prime_theme_enabled | default(false) | bool
+      role: mash/odoo_prime_theme
+      tags: [setup-all, setup-odoo_prime_theme, install-all, install-odoo_prime_theme]
+    # /role-specific:odoo_prime_theme
+
+    # role-specific:odoo_prime_company_hierarchy
+    # Installs the prime_company_hierarchy addon: the Prime HQ ▸ orgs ▸ teams
+    # company tree (on a decoupled prime_parent_company_id, immune to
+    # odoo_sgc_companies' parent_id flattening) + the org-admin subtree access
+    # tier layered on sgc_login. Runs LAST so companies (odoo_sgc_companies) and
+    # sgc_login already exist. Source ~/b2b/primeBaseball/odoo-addons/
+    # prime_company_hierarchy. No-op unless odoo_prime_company_hierarchy_enabled.
+    - when: odoo_prime_company_hierarchy_enabled | default(false) | bool
+      role: mash/odoo_prime_company_hierarchy
+      tags: [setup-all, setup-odoo_prime_company_hierarchy, install-all, install-odoo_prime_company_hierarchy]
+    # /role-specific:odoo_prime_company_hierarchy
 
     # role-specific:docker_registry
     #- role: galaxy/docker_registry
@@ -998,7 +1034,14 @@
     # /role-specific:peertube_lockdown
 
     # role-specific:peertube
-    - role: galaxy/peertube
+    # Aligned off the devture_* contract → local mash role (no shims; user directive:
+    # nothing on devture in a production state). Was galaxy/peertube (P3X upstream);
+    # forked to roles/mash/peertube with devture_systemd_docker_base_*/devture_playbook_*
+    # renamed to the SGC-native sysd_*/container_retry*/runtime_messages_list. The
+    # requirements.yml git entry is neutralized so `just roles` won't re-fetch the
+    # devture version. Self-guards internally, but gate here like mash/wger|ghosttrak.
+    - when: peertube_enabled | bool
+      role: mash/peertube
     # /role-specific:peertube
 
     # role-specific:peertube_roster
@@ -1222,6 +1265,11 @@
     # role-specific:stoked
     - when: stoked_enabled | bool
       role: galaxy/stoked
+      tags:
+        - setup-all
+        - setup-stoked
+        - install-all
+        - install-stoked
     # /role-specific:stoked
 
     # role-specific:syncstorage_rs_docker

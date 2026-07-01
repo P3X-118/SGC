@@ -1,0 +1,46 @@
+---
+# odoo_sgc_theme — installs the sgc_theme Odoo backend skin on a do-based Odoo.
+#
+# sgc_theme (~/sgc/apps/odoo-addons/sgc_theme) is PRESENTATION-ONLY: it ships no
+# models, controllers or data — only asset-bundle overrides (SCSS) — so it is
+# safe to install/upgrade on the shared multi-company do.sgc.ai instance without
+# touching any company's records. It re-skins the back-office in the SGC
+# "Stargate Command" aesthetic: naquadah-slate command chrome, event-horizon
+# cyan + Egyptian gold accents, and a Stargate-ring /web/login page.
+#
+# The skin is brand-INDEPENDENT (the shared house chrome). Per-company document
+# colours are owned separately by mash/odoo_sgc_branding and layer on top.
+#
+# Same hash-marker rsync + one-shot `-u/-i` install pattern as
+# mash/odoo_sgc_login / odoo_prime_login (each addon role stays self-contained;
+# factor a shared mash/do_addon_install out if the duplication keeps growing).
+#
+# Enable per-host:
+#   odoo_sgc_theme_enabled: true
+# Then: `just install-service odoo_sgc_theme --limit <host>`.
+
+odoo_sgc_theme_enabled: false
+
+odoo_sgc_theme_module_name: sgc_theme
+
+# Absolute path on the CONTROLLER — the SHARED odoo-addons workspace.
+odoo_sgc_theme_src_path: "/home/oneill/sgc/apps/odoo-addons/{{ odoo_sgc_theme_module_name }}"
+
+# Target on the HOST. Mirrors the do role's do_extra_addons_path layout.
+odoo_sgc_theme_dst_path: "{{ do_extra_addons_path | default('/' ~ (sgc_playbook_identifier | default('do')) ~ '/' ~ (do_identifier | default('do')) ~ '/extra-addons') }}/{{ odoo_sgc_theme_module_name }}"
+
+# DB the module installs into. Same default as odoo_prime_login.
+odoo_sgc_theme_database_name: "{{ do_identifier | default('do') }}"
+
+# --- Install runtime (mirror the do systemd unit) ------------------------
+# Defaults match mash/do's docker create args so the install container runs the
+# same code as the long-running service.
+odoo_sgc_theme_systemd_service: "{{ (do_identifier | default('do')) ~ '.service' }}"
+odoo_sgc_theme_install_do_base_path: "{{ do_base_path | default('/' ~ (sgc_playbook_identifier | default('do')) ~ '/' ~ (do_identifier | default('do'))) }}"
+odoo_sgc_theme_install_do_image: "sgc-do:{{ do_image_version | default('19.0') }}-{{ do_image_release | default('01') }}"
+# Postgres docker network. Derived from service_id_prefix (e.g. "sgc-" ->
+# "sgc-postgres", "prime-" -> "prime-postgres") so it's correct whether or not
+# sgc_playbook_identifier matches the prefix. Override per host if it differs.
+odoo_sgc_theme_install_network: "{{ (service_id_prefix | default('do-')) ~ 'postgres' }}"
+odoo_sgc_theme_install_add_hosts: []
+odoo_sgc_theme_install_user: "{{ (sgc_playbook_uid | default(999)) ~ ':' ~ (sgc_playbook_gid | default(988)) }}"

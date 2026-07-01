@@ -1,0 +1,43 @@
+---
+# odoo_prime_mesh — installs the prime_mesh custom Odoo
+# module on the Prime Odoo. The module ships:
+#   - a Prime company tree (prime_parent_company_id + prime_company_path) decoupled
+#     from native parent_id, so it survives odoo_sgc_companies' flattening,
+#   - the ORG-ADMIN access tier on top of sgc_login (org-admins expand to their
+#     organization's subtree + the company switcher, isolated from other orgs),
+#   - a post_init_hook that marks the operator company (base.main_company) as HQ.
+#
+# Sourced from `~/b2b/primeBaseball/odoo-addons/prime_mesh/` on the
+# controller; rsynced into the host's do_extra_addons_path and installed via
+# a one-shot `docker run` that mirrors the running prime-do systemd unit's
+# image/mounts/network/add-host. Same idempotency pattern as
+# mash/odoo_ghostrak — a content-hash marker on the host gates whether the
+# stop/install/start cycle fires. Run AFTER odoo_sgc_companies + odoo_ghostrak.
+#
+# Enable per-host (on primebaseball.pro):
+#   odoo_prime_mesh_enabled: true
+# Then: `just install-service odoo_prime_mesh --limit primebaseball.pro`.
+
+odoo_prime_mesh_enabled: false
+
+odoo_prime_mesh_module_name: prime_mesh
+
+# Absolute path on the CONTROLLER — defaults to the prime engagement
+# workspace (the canonical home for prime-only Odoo modules).
+odoo_prime_mesh_src_path: "/home/oneill/b2b/primeBaseball/odoo-addons/{{ odoo_prime_mesh_module_name }}"
+
+# Target on the HOST. Mirrors the do role's do_extra_addons_path layout.
+odoo_prime_mesh_dst_path: "{{ do_extra_addons_path | default('/' ~ (sgc_playbook_identifier | default('do')) ~ '/' ~ (do_identifier | default('do')) ~ '/extra-addons') }}/{{ odoo_prime_mesh_module_name }}"
+
+# DB the module installs into. Same default as odoo_ghostrak.
+odoo_prime_mesh_database_name: "{{ do_identifier | default('do') }}"
+
+# --- Install runtime (mirror prime-do systemd unit) ----------------------
+# Defaults match mash/do's docker create args so the install container runs
+# the same code as the long-running service.
+odoo_prime_mesh_systemd_service: "{{ (do_identifier | default('do')) ~ '.service' }}"
+odoo_prime_mesh_install_do_base_path: "{{ do_base_path | default('/' ~ (sgc_playbook_identifier | default('do')) ~ '/' ~ (do_identifier | default('do'))) }}"
+odoo_prime_mesh_install_do_image: "sgc-do:{{ do_image_version | default('19.0') }}-{{ do_image_release | default('01') }}"
+odoo_prime_mesh_install_network: "{{ (sgc_playbook_identifier | default('do')) ~ '-postgres' }}"
+odoo_prime_mesh_install_add_hosts: []
+odoo_prime_mesh_install_user: "{{ (sgc_playbook_uid | default(999)) ~ ':' ~ (sgc_playbook_gid | default(988)) }}"

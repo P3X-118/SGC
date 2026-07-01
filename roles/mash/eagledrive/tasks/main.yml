@@ -12,8 +12,24 @@
     - name: Install eagledrive
       ansible.builtin.include_tasks: "{{ role_path }}/tasks/install.yml"
 
+# Repeatable PDS wiring for the hand-managed live stack — independent of
+# the full role deploy. `just install-service eagledrive -e target=<host>`
+# reaches this via the install-eagledrive tag.
+- name: Patch PDS env into the hand-managed eagledrive stack
+  when: eagledrive_pds_env_manage | bool
+  tags:
+    - setup-all
+    - setup-eagledrive
+    - install-all
+    - install-eagledrive
+  block:
+    - name: Set PDS env + recreate consumers
+      ansible.builtin.include_tasks: "{{ role_path }}/tasks/pds_env.yml"
+
 - name: Perform eagledrive uninstallation tasks
-  when: not eagledrive_enabled | bool
+  when:
+    - not eagledrive_enabled | bool
+    - not eagledrive_pds_env_manage | bool
   tags:
     - setup-all
     - setup-eagledrive

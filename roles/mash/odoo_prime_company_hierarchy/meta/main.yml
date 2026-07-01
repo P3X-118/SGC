@@ -1,0 +1,20 @@
+---
+galaxy_info:
+  author: Oneill
+  company: SGC
+  role_name: odoo_prime_company_hierarchy
+  namespace: SGC
+  description: |
+    Installs the prime_company_hierarchy Odoo module (Prime HQ ▸ orgs ▸ teams
+    company tree on a decoupled field + the org-admin subtree access tier on top
+    of sgc_login) on the Prime Odoo. Same install pattern as mash/odoo_ghostrak:
+    rsync source from controller, then run a one-shot docker container that
+    mirrors the running systemd unit's mounts/network/add-host to do
+    -i/-u {{ module_name }} --stop-after-init.
+  license: MIT
+  min_ansible_version: "2.10"
+  platforms:
+    - name: Debian
+      versions: [all]
+    - name: Ubuntu
+      versions: [all]

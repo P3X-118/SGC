@@ -1,0 +1,19 @@
+---
+galaxy_info:
+  author: Oneill
+  company: SGC
+  role_name: odoo_sgc_branding
+  namespace: SGC
+  description: |
+    Per-company document + email branding on the do.sgc.ai multi-company Odoo,
+    sourced from the per-brand identities in the Authentik brands. Sets each
+    company's primary/secondary document colors + email colors via an idempotent
+    one-shot odoo-bin shell (same pattern as mash/odoo_learningwell). Logos are a
+    follow-up (raster render needed for the SVG-only marks).
+  license: MIT
+  min_ansible_version: "2.10"
+  platforms:
+    - name: Debian
+      versions: [all]
+    - name: Ubuntu
+      versions: [all]

@@ -1,0 +1,22 @@
+---
+galaxy_info:
+  author: Oneill
+  company: SGC
+  role_name: odoo_sgc_theme
+  namespace: SGC
+  description: |
+    Installs the sgc_theme Odoo backend skin on a do-based Odoo: the SGC
+    "Stargate Command" white-glove back-office theme (asset-only — naquadah
+    slate chrome, event-horizon cyan + Egyptian gold accents, a Stargate-ring
+    login). Brand-independent base; per-company document colours are owned by
+    mash/odoo_sgc_branding. Same install pattern as mash/odoo_sgc_login /
+    mash/odoo_prime_login: rsync source from the controller, then a one-shot
+    docker container mirroring the running systemd unit's mounts/network to
+    do -i/-u sgc_theme --stop-after-init (regenerates the asset bundles).
+  license: MIT
+  min_ansible_version: "2.10"
+  platforms:
+    - name: Debian
+      versions: [all]
+    - name: Ubuntu
+      versions: [all]

@@ -1,0 +1,135 @@
+---
+# odoo_texasmodern — provision Texas Modern Waste's Odoo service products and the
+# texasmodern-service JSON-RPC user. Each concern is its own task, gated by a flag
+# in defaults. Scripts are piped through a one-shot `odoo-bin shell --no-http`
+# docker run (same image/mounts/network as the long-running do service; own DB
+# session, no downtime). `changed_when` keys off the script's "changed=True" line.
+#
+# The Texas Modern Waste company is created by odoo_sgc_companies; the
+# sale_management/crm/product modules are already installed (odoo_learningwell) —
+# so this role provisions ONLY products + the service user.
+
+- name: odoo_texasmodern — validate inputs
+  ansible.builtin.assert:
+    that:
+      - odoo_texasmodern_database_name | length > 0
+      - odoo_texasmodern_company_name | length > 0
+    fail_msg: "odoo_texasmodern requires database_name and company_name"
+  tags:
+    - setup-all
+    - setup-odoo_texasmodern
+    - install-all
+    - install-odoo_texasmodern
+  when: odoo_texasmodern_enabled | bool
+
+# --- 1. Service products ----------------------------------------------------
+
+- name: odoo_texasmodern — provision the TMW service products (one-shot odoo shell)
+  ansible.builtin.shell:
+    cmd: >-
+      docker run --rm -i
+      --user={{ odoo_texasmodern_install_user }}
+      --cap-drop=ALL
+      --network={{ odoo_texasmodern_install_network }}
+      -e TMW_COMPANY_NAME={{ odoo_texasmodern_company_name | quote }}
+      -e TMW_PRODUCTS={{ odoo_texasmodern_products | to_json | quote }}
+      --mount type=bind,src={{ odoo_texasmodern_install_do_base_path }}/odoo.conf,dst=/etc/odoo/odoo.conf,readonly
+      --mount type=bind,src={{ odoo_texasmodern_install_do_base_path }}/data,dst=/var/lib/odoo
+      --mount type=bind,src={{ odoo_texasmodern_install_do_base_path }}/extra-addons,dst=/mnt/extra-addons,readonly
+      {% for h in odoo_texasmodern_install_add_hosts %}--add-host={{ h }} {% endfor %}
+      {{ odoo_texasmodern_install_do_image }}
+      odoo-bin shell -c /etc/odoo/odoo.conf --no-http -d {{ odoo_texasmodern_database_name }}
+    stdin: "{{ lookup('file', 'provision-texasmodern-products.py') }}"
+  register: odoo_texasmodern_products_result
+  changed_when: "odoo_texasmodern_products_result.stdout is search('changed=True')"
+  failed_when:
+    - odoo_texasmodern_products_result.rc != 0
+    - odoo_texasmodern_products_result.stdout is not search('OK ')
+  tags:
+    - setup-all
+    - setup-odoo_texasmodern
+    - install-all
+    - install-odoo_texasmodern
+  when:
+    - odoo_texasmodern_enabled | bool
+    - odoo_texasmodern_provision_products | bool
+
+- name: odoo_texasmodern — report products result
+  ansible.builtin.debug:
+    msg: "{{ odoo_texasmodern_products_result.stdout | default('(skipped)') }}"
+  tags:
+    - setup-all
+    - setup-odoo_texasmodern
+    - install-all
+    - install-odoo_texasmodern
+  when:
+    - odoo_texasmodern_enabled | bool
+    - odoo_texasmodern_provision_products | bool
+    - odoo_texasmodern_products_result is defined
+
+# --- 2. texasmodern-service user -------------------------------------------
+
+- name: odoo_texasmodern — assert service-user password resolved
+  ansible.builtin.assert:
+    that:
+      - odoo_texasmodern_service_user_password | length > 32
+    fail_msg: >
+      odoo_texasmodern_service_user_password didn't resolve. Check sgc_pgsk is
+      set on this (odoo) host — vault-encrypted in host_vars/odoo/vault.yml as
+      vault_sgc_pgsk.
+  tags:
+    - setup-all
+    - setup-odoo_texasmodern
+    - install-all
+    - install-odoo_texasmodern
+  when:
+    - odoo_texasmodern_enabled | bool
+    - odoo_texasmodern_provision_service_user | bool
+
+- name: odoo_texasmodern — provision texasmodern-service Odoo user (one-shot odoo shell)
+  ansible.builtin.shell:
+    cmd: >-
+      docker run --rm -i
+      --user={{ odoo_texasmodern_install_user }}
+      --cap-drop=ALL
+      --network={{ odoo_texasmodern_install_network }}
+      -e TEXASMODERN_SERVICE_PASSWORD={{ odoo_texasmodern_service_user_password | quote }}
+      -e TMW_SERVICE_LOGIN={{ odoo_texasmodern_service_user_login | quote }}
+      -e TMW_SERVICE_NAME={{ odoo_texasmodern_service_user_name | quote }}
+      -e TMW_COMPANY_NAME={{ odoo_texasmodern_company_name | quote }}
+      -e TMW_SERVICE_GROUPS={{ (odoo_texasmodern_service_user_groups | join(',')) | quote }}
+      --mount type=bind,src={{ odoo_texasmodern_install_do_base_path }}/odoo.conf,dst=/etc/odoo/odoo.conf,readonly
+      --mount type=bind,src={{ odoo_texasmodern_install_do_base_path }}/data,dst=/var/lib/odoo
+      --mount type=bind,src={{ odoo_texasmodern_install_do_base_path }}/extra-addons,dst=/mnt/extra-addons,readonly
+      {% for h in odoo_texasmodern_install_add_hosts %}--add-host={{ h }} {% endfor %}
+      {{ odoo_texasmodern_install_do_image }}
+      odoo-bin shell -c /etc/odoo/odoo.conf --no-http -d {{ odoo_texasmodern_database_name }}
+    stdin: "{{ lookup('file', 'provision-texasmodern-service-user.py') }}"
+  register: odoo_texasmodern_user
+  # cmd inlines the password via -e TEXASMODERN_SERVICE_PASSWORD=…. Suppress.
+  no_log: true
+  changed_when: "odoo_texasmodern_user.stdout is search('changed=True')"
+  failed_when:
+    - odoo_texasmodern_user.rc != 0
+    - odoo_texasmodern_user.stdout is not search('OK ')
+  tags:
+    - setup-all
+    - setup-odoo_texasmodern
+    - install-all
+    - install-odoo_texasmodern
+  when:
+    - odoo_texasmodern_enabled | bool
+    - odoo_texasmodern_provision_service_user | bool
+
+- name: odoo_texasmodern — report service-user result (status only, no secret)
+  ansible.builtin.debug:
+    msg: "{{ odoo_texasmodern_user.stdout | default('(skipped)') }}"
+  tags:
+    - setup-all
+    - setup-odoo_texasmodern
+    - install-all
+    - install-odoo_texasmodern
+  when:
+    - odoo_texasmodern_enabled | bool
+    - odoo_texasmodern_provision_service_user | bool
+    - odoo_texasmodern_user is defined

@@ -1,0 +1,26 @@
+# SPDX-FileCopyrightText: 2026 Oneill (SGC)
+#
+# SPDX-License-Identifier: AGPL-3.0-or-later
+
+---
+- name: Perform Odoo (do) installation tasks
+  when: do_enabled | bool
+  tags:
+    - setup-all
+    - setup-do
+    - install-all
+    - install-do
+  block:
+    - name: Validate Odoo (do) configuration
+      ansible.builtin.include_tasks: "{{ role_path }}/tasks/validate_config.yml"
+    - name: Install Odoo (do)
+      ansible.builtin.include_tasks: "{{ role_path }}/tasks/install.yml"
+
+- name: Perform Odoo (do) uninstallation tasks
+  when: not do_enabled | bool
+  tags:
+    - setup-all
+    - setup-do
+  block:
+    - name: Uninstall Odoo (do)
+      ansible.builtin.include_tasks: "{{ role_path }}/tasks/uninstall.yml"

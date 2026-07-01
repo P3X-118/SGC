@@ -621,7 +621,7 @@
 # /role-specific:pds
 # role-specific:pds_pro
 - src: git+https://github.com/P3X-118/pds-pro-ar.git
-  version: sgc
+  version: v0.2.3-0
   name: pds_pro
   activation_prefix: pds_pro_
 # /role-specific:pds_pro
@@ -635,10 +635,15 @@
 # — not fetched from GitHub. setup.yml references it as
 # `mash/pds_provisioning_runner` directly.
 # /role-specific:pds_provisioning_runner
-- src: git+https://github.com/P3X-118/ansible-role-peertube.git
-  version: v7.2.3-5
-  name: peertube
-  activation_prefix: peertube_
+# peertube is now a LOCAL mash role (roles/mash/peertube), forked from the P3X
+# upstream below and aligned off the devture_* contract to SGC-native sysd_* (no
+# shims — user: nothing on devture in production). setup.yml references mash/peertube
+# directly. Keep this entry commented as the upstream provenance/version pin; do NOT
+# re-enable (a `just roles` fetch would clobber the alignment with the devture version).
+#- src: git+https://github.com/P3X-118/ansible-role-peertube.git
+#  version: v7.2.3-5
+#  name: peertube
+#  activation_prefix: peertube_
 #- src: git+https://seed.radicle.garden/ztixjo2qUzCBLADieR3hKkYEk4eE.git
 #  version: v9.11.0-0
 #  name: pgadmin
@@ -927,6 +932,17 @@
 #  version: v15.1.0-3
 #  name: wg_easy
 #  activation_prefix: wg_easy_
+# role-specific:wger
+# wger (Workout Manager) is a LOCAL role at roles/mash/wger/ — synced from
+# ~/sgc/ansible/roles/wger-ar/ (P3X-118/wger-ar not yet published to GitHub).
+# setup.yml references it as `mash/wger` directly; no galaxy fetch.
+# When wger-ar is published, restore the git+ entry below and switch
+# setup.yml back to `galaxy/wger`.
+#- src: git+https://github.com/P3X-118/wger-ar.git
+#  version: 2.6.0-0
+#  name: wger
+#  activation_prefix: wger_
+# /role-specific:wger
 #- src: git+https://seed.radicle.garden/z54oV5qKRrLSArZqdisrD9s7h9BQ.git
 #  version: v0.1.16-1
 #  name: wikimore

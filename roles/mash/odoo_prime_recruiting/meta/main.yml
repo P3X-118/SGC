@@ -1,0 +1,20 @@
+---
+galaxy_info:
+  author: Oneill
+  company: SGC
+  role_name: odoo_prime_recruiting
+  namespace: SGC
+  description: |
+    Installs the prime_recruiting Odoo module — the sports-agent athlete
+    recruiting pipeline on CRM (Recruiting team + funnel stages + recruit-profile
+    fields on opportunities) on the prime.i.legit.services Odoo. Same install
+    pattern as mash/odoo_ghostrak: rsync source from controller, then run a
+    one-shot docker container that mirrors the running systemd unit's
+    mounts/network/add-host to do -i/-u prime_recruiting --stop-after-init.
+  license: MIT
+  min_ansible_version: "2.10"
+  platforms:
+    - name: Debian
+      versions: [all]
+    - name: Ubuntu
+      versions: [all]

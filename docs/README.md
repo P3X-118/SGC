@@ -55,6 +55,8 @@ If your server and services experience issues, feel free to come to [our support
 
 - [Playbook tags](playbook-tags.md)
 
+- [QEMU/KVM hosts (malp & asgard) — building, accessing & recovering service VMs](kvm-hosts.md)
+
 - [Running `just` commands](just.md)
 
 - [Running multiple instances of the same service on the same host](running-multiple-instances.md)

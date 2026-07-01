@@ -1,0 +1,21 @@
+---
+galaxy_info:
+  author: Oneill
+  company: SGC
+  role_name: odoo_texasmodern
+  namespace: SGC
+  description: |
+    Provisions Odoo-side state for Texas Modern Waste (waste-hauling intake):
+    the TMW service products (cart / cleaning / valet) and the texasmodern-service
+    JSON-RPC user (Sales, default company = Texas Modern Waste) that the intake
+    app authenticates as. Reproducible/idempotent. Unlike odoo_learningwell it
+    neither creates the company (odoo_sgc_companies does) nor installs modules
+    (already present), so it runs with zero downtime. Mirrors mash/odoo_learningwell's
+    one-shot `odoo-bin shell` provisioning pattern.
+  license: MIT
+  min_ansible_version: "2.10"
+  platforms:
+    - name: Debian
+      versions: [all]
+    - name: Ubuntu
+      versions: [all]

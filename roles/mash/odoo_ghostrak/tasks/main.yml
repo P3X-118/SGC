@@ -464,14 +464,6 @@
     - odoo_ghostrak_enabled | bool
     - odoo_ghostrak_install_addon | bool
     - odoo_ghostrak_addon_changed | bool
-  tags:
-    - setup-all
-    - setup-odoo_ghostrak
-    - install-all
-    - install-odoo_ghostrak
-  when:
-    - odoo_ghostrak_enabled | bool
-    - odoo_ghostrak_install_addon | bool
 
 # Module install/upgrade only when sync actually moved files. On a no-op
 # sync the running Odoo stays up untouched. The first run on a fresh host

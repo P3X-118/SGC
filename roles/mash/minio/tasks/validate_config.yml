@@ -1,0 +1,51 @@
+---
+# Refuse to proceed if the operator forgot to vault the root creds.
+# (Empty defaults are intentional — never ship a default password.)
+- name: minio — assert root credentials are set when enabled
+  ansible.builtin.assert:
+    that:
+      - minio_root_user | length > 0
+      - minio_root_password | length >= 12
+    fail_msg: >-
+      minio_enabled=true but minio_root_user / minio_root_password are
+      unset (or password < 12 chars). Generate strong values and put
+      them in group_vars/mash_servers (vaulted).
+  when: minio_enabled | bool
+
+- name: minio — assert hostnames look plausible
+  ansible.builtin.assert:
+    that:
+      - minio_hostname is match('^[a-z0-9.-]+\\.[a-z]{2,}$')
+      - minio_console_hostname is match('^[a-z0-9.-]+\\.[a-z]{2,}$')
+    fail_msg: "minio_hostname / minio_console_hostname must be valid DNS names."
+  when: minio_enabled | bool
+
+- name: minio — assert bucket policies are recognized
+  ansible.builtin.assert:
+    that:
+      - item.name is match('^[a-z0-9][a-z0-9.-]{1,61}[a-z0-9]$')
+      - item.policy in ['public', 'download', 'upload', 'none']
+    fail_msg: "Bucket {{ item.name | default('<unnamed>') }} has an invalid name or policy."
+  loop: "{{ minio_buckets }}"
+  loop_control:
+    label: "{{ item.name | default('<unnamed>') }}"
+  when:
+    - minio_enabled | bool
+    - minio_buckets | length > 0
+
+- name: minio — assert each scoped user has the required fields
+  ansible.builtin.assert:
+    that:
+      - item.name | length > 0
+      - item.access_key | length > 0
+      - item.secret_key | length >= 12
+      - (item.policies | default([])) is iterable
+    fail_msg: "User {{ item.name | default('<unnamed>') }} is missing access_key/secret_key (>=12)."
+  loop: "{{ minio_users }}"
+  loop_control:
+    label: "{{ item.name | default('<unnamed>') }}"
+  when:
+    - minio_enabled | bool
+    - minio_users | length > 0
+  # The asserted item contains the bare secret_key — keep it out of logs.
+  no_log: true

@@ -1,0 +1,21 @@
+---
+galaxy_info:
+  author: Oneill
+  company: SGC
+  role_name: odoo_sgc_companies
+  namespace: SGC
+  description: |
+    Declaratively ensure the SGC multi-company setup on the do.sgc.ai Odoo:
+    company 1 -> the SGC operator/home company, a host_vars list of independent
+    MANAGED companies (created top-level — NOT branches of SGC), and per-user
+    access to all companies + the Multi-Companies group (company switcher).
+    Idempotent one-shot odoo-bin shell (same pattern as mash/odoo_learningwell);
+    adopts companies created by hand or by market-specific roles, and self-heals
+    any previously-parented company back to flat/top-level.
+  license: MIT
+  min_ansible_version: "2.10"
+  platforms:
+    - name: Debian
+      versions: [all]
+    - name: Ubuntu
+      versions: [all]

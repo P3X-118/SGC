@@ -1,0 +1,73 @@
+---
+# odoo_learningwell — Odoo-side provisioning for The Learning Well, modelled on
+# odoo_ghostrak. Reproducible/idempotent so the managed company can be recreated
+# on a fresh or migrated Odoo:
+#   1. the "The Learning Well" res.company (multi-company: 30A is company 1),
+#   2. a generic "School Supply Bundle" product (default_code TLW-BUNDLE) that
+#      sale.order lines reference until per-(school, grade) products exist,
+#   3. the `learningwell-service` JSON-RPC user (Sales + CRM, default company =
+#      The Learning Well), password DERIVED from this Odoo host's sgc_pgsk — the
+#      learningwell app host re-derives the same value via cross-host hostvars.
+#
+# Runs on the host that owns the Odoo deployment (the `odoo` VM). Enable per-host
+# in host_vars/odoo/vars.yml:  odoo_learningwell_enabled: true
+# Then:  just install-service odoo_learningwell --limit odoo
+#
+# Each concern uses the same one-shot `odoo-bin shell --no-http` docker run as
+# odoo_ghostrak — coexists with the running Odoo (own DB session, no downtime),
+# idempotent (re-runs that match desired state report changed=false).
+
+odoo_learningwell_enabled: false
+
+# Odoo database (the `do` role's per-service DB on this host).
+odoo_learningwell_database_name: "{{ do_database_name | default('sgc-do') }}"
+
+# --- The managed company ---------------------------------------------------
+odoo_learningwell_company_name: "The Learning Well"
+odoo_learningwell_company_currency: "USD"
+odoo_learningwell_company_country_code: "US"
+
+# --- Generic bundle product (sale.order lines reference it) -----------------
+odoo_learningwell_provision_bundle_product: true
+odoo_learningwell_bundle_product_code: "TLW-BUNDLE"
+odoo_learningwell_bundle_product_name: "School Supply Bundle"
+
+# --- App modules (Sales/CRM/product) ---------------------------------------
+# The service user + bundle product need these. Installing runs
+# `odoo -i … -u … --stop-after-init` with the do service briefly STOPPED — a
+# ~1-3 min INSTANCE-WIDE downtime (all companies), so it's gated off by default;
+# enable + run in a maintenance window. Standard core apps (in the image).
+odoo_learningwell_install_modules: false
+odoo_learningwell_modules: "sale_management,crm,product"
+odoo_learningwell_systemd_service: "{{ (do_identifier | default('do')) ~ '.service' }}"
+
+# --- Affiliate click/conversion model (manual model x_lw_affiliate_click) ---
+# Logs affiliate Amazon hand-offs from the app + conversion-ready fields.
+# Provisioned BEFORE the module-install restart so it loads cleanly.
+odoo_learningwell_provision_affiliate_model: false
+
+# --- Service user (the app authenticates as this over JSON-RPC) -------------
+odoo_learningwell_provision_service_user: true
+odoo_learningwell_service_user_login: "learningwell-service"
+odoo_learningwell_service_user_name: "The Learning Well (service account)"
+# Derived from THIS odoo host's sgc_pgsk; the learningwell app host re-derives
+# the same value (hostvars['odoo'].sgc_pgsk). No operator hand-off — same as the
+# odoo_ghostrak bff-service pattern.
+odoo_learningwell_service_user_password: "{{ ((sgc_pgsk | default('')) ~ '.odoo.learningwell') | hash('sha256') }}"
+# Odoo groups granting create on sale.order + crm.lead. Missing xmlids are
+# skipped by the script (defensive across Odoo editions).
+odoo_learningwell_service_user_groups:
+  - base.group_user
+  - sales_team.group_sale_salesman
+  - sales_team.group_sale_salesman_all_leads
+
+# --- One-shot docker-run plumbing (mirrors odoo_ghostrak; defaults match the
+#     `do` role's systemd unit on the odoo host) ---------------------------
+odoo_learningwell_install_do_base_path: "{{ do_base_path | default('/' ~ (sgc_playbook_identifier | default('sgc-do')) ~ '/' ~ (do_identifier | default('do'))) }}"
+odoo_learningwell_install_do_image: "sgc-do:{{ do_version | default('19.0') }}-{{ do_image_release | default('01') }}"
+# DB-only network — the shell short-circuits HTTP with --no-http. The postgres
+# container/network on the odoo host is `sgc-postgres` (confirmed via docker ps).
+odoo_learningwell_install_network: "sgc-postgres"
+odoo_learningwell_install_user: "{{ (sgc_playbook_uid | default(999)) ~ ':' ~ (sgc_playbook_gid | default(988)) }}"
+# Optional --add-host entries (the ORM provisioning needs no OIDC reachability).
+odoo_learningwell_install_add_hosts: []

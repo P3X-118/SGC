@@ -7,8 +7,9 @@
       - texasmodern_signup_cloudflare_api_token | length > 0
       - texasmodern_signup_postgres_password | length > 0
       - texasmodern_signup_authentik_outpost_token | length > 0
-      - texasmodern_signup_authentik_mesh_ip | length > 0
     fail_msg: >-
       texasmodern_signup requires: hostname, caddy_email,
-      cloudflare_api_token, postgres_password, authentik_outpost_token,
-      and authentik_mesh_ip. Provide secrets via vault.
+      cloudflare_api_token, postgres_password, and
+      authentik_outpost_token. Provide secrets via vault. (Compose-level
+      concerns like the mesh extra_hosts pin live in the canonical TMW
+      source, not this role.)

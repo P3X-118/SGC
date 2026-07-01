@@ -1,0 +1,123 @@
+# SPDX-FileCopyrightText: 2026 Oneill (SGC)
+#
+# SPDX-License-Identifier: AGPL-3.0-or-later
+
+---
+- name: Ensure Odoo (do) paths exist
+  ansible.builtin.file:
+    path: "{{ item }}"
+    state: directory
+    mode: "0750"
+    owner: "{{ do_uid }}"
+    group: "{{ do_gid }}"
+  with_items:
+    - "{{ do_base_path }}"
+    - "{{ do_data_path }}"
+
+- name: Ensure Odoo (do) extra-addons path exists
+  when: do_extra_addons_enabled | bool
+  ansible.builtin.file:
+    path: "{{ do_extra_addons_path }}"
+    state: directory
+    mode: "0750"
+    owner: "{{ do_uid }}"
+    group: "{{ do_gid }}"
+
+- name: Ensure Odoo (do) support files installed
+  ansible.builtin.template:
+    src: "{{ role_path }}/templates/{{ item }}.j2"
+    dest: "{{ do_base_path }}/{{ item }}"
+    mode: "0640"
+    owner: "{{ do_uid }}"
+    group: "{{ do_gid }}"
+  with_items:
+    - odoo.conf
+    - env
+    - labels
+  register: do_support_files_result
+
+- name: Run if self-building of Odoo (do) container image is not enabled
+  when: "not do_container_image_self_build | bool"
+  block:
+    - name: Ensure Odoo (do) container image is pulled via community.docker.docker_image
+      when: sysd_docker_image_pull_method == 'ansible-module'
+      community.docker.docker_image:
+        name: "{{ do_container_image }}"
+        source: "{{ 'pull' if ansible_version.major > 2 or ansible_version.minor > 7 else omit }}"
+        force_source: "{{ do_container_image_force_pull if ansible_version.major > 2 or ansible_version.minor >= 8 else omit }}"
+        force: "{{ omit if ansible_version.major > 2 or ansible_version.minor >= 8 else do_container_image_force_pull }}"
+      register: do_container_image_pull_result
+      retries: "{{ container_retry }}"
+      delay: "{{ container_retry_delay }}"
+      until: do_container_image_pull_result is not failed
+
+    - name: Ensure Odoo (do) container image is pulled via ansible.builtin.command
+      when: sysd_docker_image_pull_method == 'command'
+      ansible.builtin.command:
+        cmd: "{{ sysd_docker_host_command }} pull {{ do_container_image }}"
+      register: do_container_image_pull_result
+      retries: "{{ container_retry }}"
+      delay: "{{ container_retry_delay }}"
+      until: do_container_image_pull_result is not failed
+      changed_when: "'Downloaded newer image' in do_container_image_pull_result.stdout"
+
+- name: Run if self-building of Odoo (do) container image is enabled
+  when: "do_container_image_self_build | bool"
+  block:
+    - name: Ensure Odoo (do) fork is present on self-build
+      ansible.builtin.git:
+        repo: "{{ do_container_image_self_build_repo }}"
+        version: "{{ do_container_image_self_build_repo_version }}"
+        dest: "{{ do_container_image_self_build_src_files_path }}"
+        force: "yes"
+      register: do_git_pull_results
+
+    - name: Ensure Odoo (do) container image is built
+      community.docker.docker_image:
+        name: "{{ do_container_image_self_build_name }}"
+        source: build
+        force_source: "{{ do_git_pull_results.changed if ansible_version.major > 2 or ansible_version.minor >= 8 else omit }}"
+        force: "{{ omit if ansible_version.major > 2 or ansible_version.minor >= 8 else do_git_pull_results.changed }}"
+        build:
+          dockerfile: "{{ do_container_image_self_build_dockerfile }}"
+          path: "{{ do_container_image_self_build_src_files_path }}"
+          pull: true
+      register: do_container_image_build_result
+
+- name: Ensure Odoo (do) container network is created via community.docker.docker_network
+  when: sysd_docker_net_creation_method == 'ansible-module'
+  community.docker.docker_network:
+    enable_ipv6: "{{ sysd_docker_ipv6_enabled }}"
+    name: "{{ do_container_network }}"
+    driver: bridge
+    driver_options: "{{ sysd_docker_net_driver_opts }}"
+  register: do_network_creation_result
+
+- name: Ensure Odoo (do) container network is created via ansible.builtin.command
+  when: sysd_docker_net_creation_method == 'command'
+  ansible.builtin.command:
+    cmd: >-
+      {{ sysd_docker_host_command }} network create
+      {% if sysd_docker_ipv6_enabled %}--ipv6{% endif %}
+      {{ sysd_docker_net_driver_opts_string }}
+      {{ do_container_network }}
+  register: do_network_creation_result
+  changed_when: do_network_creation_result.rc == 0
+  failed_when: do_network_creation_result.rc != 0 and 'already exists' not in do_network_creation_result.stderr
+
+- name: Ensure Odoo (do) systemd service is present
+  ansible.builtin.template:
+    src: "{{ role_path }}/templates/systemd/do.service.j2"
+    dest: "{{ sysd_docker_service_path }}/{{ do_identifier }}.service"
+    mode: "0644"
+  register: do_systemd_service_result
+
+- name: Determine whether Odoo (do) needs a restart
+  ansible.builtin.set_fact:
+    do_restart_necessary: >-
+      {{
+        do_support_files_result.changed | default(false)
+        or do_systemd_service_result.changed | default(false)
+        or do_container_image_pull_result.changed | default(false)
+        or do_container_image_build_result.changed | default(false)
+      }}

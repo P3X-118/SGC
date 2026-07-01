@@ -1,0 +1,36 @@
+---
+# Idempotently set PDS_URL / PDS_PRO_URL in the hand-managed eagledrive
+# stack's .env, then recreate the services that read them. Surgical
+# (lineinfile) so the rest of the hand-managed .env — many secrets — is
+# never touched.
+- name: Validate PDS env patch inputs
+  ansible.builtin.assert:
+    that:
+      - eagledrive_pds_env_stack_path | length > 0
+      - eagledrive_pds_url | length > 0
+    fail_msg: "eagledrive_pds_env_manage requires eagledrive_pds_env_stack_path and eagledrive_pds_url"
+
+- name: Ensure PDS_URL / PDS_PRO_URL in the stack .env
+  ansible.builtin.lineinfile:
+    path: "{{ eagledrive_pds_env_stack_path }}/{{ eagledrive_pds_env_file }}"
+    regexp: "^{{ item.key }}="
+    line: "{{ item.key }}={{ item.value }}"
+    state: present
+    backup: true
+  loop:
+    - { key: "PDS_URL", value: "{{ eagledrive_pds_url }}" }
+    - { key: "PDS_PRO_URL", value: "{{ eagledrive_pds_pro_url }}" }
+  loop_control:
+    label: "{{ item.key }}"
+  # Only manage keys we actually have a value for — never clobber an
+  # existing line with an empty value.
+  when: item.value | length > 0
+  register: eagledrive_pds_env_lines
+
+- name: Recreate services that consume the PDS env
+  community.docker.docker_compose_v2:
+    project_src: "{{ eagledrive_pds_env_stack_path }}"
+    services: "{{ eagledrive_pds_env_recreate_services }}"
+    state: present
+    recreate: always
+  when: eagledrive_pds_env_lines is changed

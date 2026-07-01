@@ -1,0 +1,75 @@
+{#
+SPDX-FileCopyrightText: 2026 Oneill (SGC)
+
+SPDX-License-Identifier: AGPL-3.0-or-later
+#}
+
+{% if do_container_labels_traefik_enabled %}
+traefik.enable=true
+
+{% if do_container_labels_traefik_docker_network %}
+traefik.docker.network={{ do_container_labels_traefik_docker_network }}
+{% endif %}
+
+{% set middlewares = [] %}
+
+{% if do_container_labels_traefik_path_prefix != '/' %}
+traefik.http.middlewares.{{ do_identifier }}-slashless-redirect.redirectregex.regex=^({{ do_container_labels_traefik_path_prefix | quote }})$
+traefik.http.middlewares.{{ do_identifier }}-slashless-redirect.redirectregex.replacement=${1}/
+{% set middlewares = middlewares + [do_identifier + '-slashless-redirect'] %}
+{% endif %}
+
+{% if do_container_labels_traefik_path_prefix != '/' %}
+traefik.http.middlewares.{{ do_identifier }}-strip-prefix.stripprefix.prefixes={{ do_container_labels_traefik_path_prefix }}
+{% set middlewares = middlewares + [do_identifier + '-strip-prefix'] %}
+{% endif %}
+
+{% if do_container_labels_traefik_additional_request_headers.keys() | length > 0 %}
+{% for name, value in do_container_labels_traefik_additional_request_headers.items() %}
+traefik.http.middlewares.{{ do_identifier }}-add-request-headers.headers.customrequestheaders.{{ name }}={{ value }}
+{% endfor %}
+{% set middlewares = middlewares + [do_identifier + '-add-request-headers'] %}
+{% endif %}
+
+{% if do_container_labels_traefik_additional_response_headers.keys() | length > 0 %}
+{% for name, value in do_container_labels_traefik_additional_response_headers.items() %}
+traefik.http.middlewares.{{ do_identifier }}-add-response-headers.headers.customresponseheaders.{{ name }}={{ value }}
+{% endfor %}
+{% set middlewares = middlewares + [do_identifier + '-add-response-headers'] %}
+{% endif %}
+
+{# --- main HTTP router -> Odoo http port (8069) --- #}
+traefik.http.routers.{{ do_identifier }}.rule={{ do_container_labels_traefik_rule }}
+{% if do_container_labels_traefik_priority | int > 0 %}
+traefik.http.routers.{{ do_identifier }}.priority={{ do_container_labels_traefik_priority }}
+{% endif %}
+traefik.http.routers.{{ do_identifier }}.service={{ do_identifier }}
+{% if middlewares | length > 0 %}
+traefik.http.routers.{{ do_identifier }}.middlewares={{ middlewares | join(',') }}
+{% endif %}
+traefik.http.routers.{{ do_identifier }}.entrypoints={{ do_container_labels_traefik_entrypoints }}
+traefik.http.routers.{{ do_identifier }}.tls={{ do_container_labels_traefik_tls | to_json }}
+{% if do_container_labels_traefik_tls %}
+traefik.http.routers.{{ do_identifier }}.tls.certResolver={{ do_container_labels_traefik_tls_certResolver }}
+{% endif %}
+traefik.http.services.{{ do_identifier }}.loadbalancer.server.port={{ do_container_http_port }}
+
+{# --- websocket / longpolling router -> Odoo gevent port (8072) --- #}
+{% if do_container_labels_traefik_websocket_enabled %}
+traefik.http.routers.{{ do_identifier }}-websocket.rule={{ do_container_labels_traefik_rule }} && PathPrefix(`/websocket`)
+{% if do_container_labels_traefik_priority | int > 0 %}
+traefik.http.routers.{{ do_identifier }}-websocket.priority={{ (do_container_labels_traefik_priority | int) + 1 }}
+{% endif %}
+traefik.http.routers.{{ do_identifier }}-websocket.service={{ do_identifier }}-websocket
+traefik.http.routers.{{ do_identifier }}-websocket.entrypoints={{ do_container_labels_traefik_entrypoints }}
+traefik.http.routers.{{ do_identifier }}-websocket.tls={{ do_container_labels_traefik_tls | to_json }}
+{% if do_container_labels_traefik_tls %}
+traefik.http.routers.{{ do_identifier }}-websocket.tls.certResolver={{ do_container_labels_traefik_tls_certResolver }}
+{% endif %}
+traefik.http.services.{{ do_identifier }}-websocket.loadbalancer.server.port={{ do_container_gevent_port }}
+{% endif %}
+{% endif %}
+
+{% for arg in do_container_labels_additional_labels %}
+{{ arg }}
+{% endfor %}

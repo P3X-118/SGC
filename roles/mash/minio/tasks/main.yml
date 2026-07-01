@@ -1,0 +1,14 @@
+---
+- name: Validate config
+  ansible.builtin.import_tasks: validate_config.yml
+  tags: [setup-minio, install-minio]
+
+- name: Install
+  ansible.builtin.import_tasks: install.yml
+  when: minio_enabled | bool
+  tags: [install-minio]
+
+- name: Uninstall
+  ansible.builtin.import_tasks: uninstall.yml
+  when: not (minio_enabled | bool)
+  tags: [install-minio]

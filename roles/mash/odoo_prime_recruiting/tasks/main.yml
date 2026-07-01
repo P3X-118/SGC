@@ -1,0 +1,198 @@
+---
+# odoo_prime_recruiting — same hash-marker idempotency pattern as
+# mash/odoo_ghostrak's install_addon concern. If/when we install a THIRD
+# addon, factor this + odoo_ghostrak's install block out into a shared
+# role (mash/do_addon_install) and have both wrap it. Until then, the
+# duplication is intentional — each role stays self-contained and named
+# after the concern it owns (prime_recruiting is a prime engagement asset, not
+# a ghostrak product asset).
+
+- name: odoo_prime_recruiting — validate inputs
+  ansible.builtin.assert:
+    that:
+      - odoo_prime_recruiting_src_path | length > 0
+      - odoo_prime_recruiting_dst_path | length > 0
+      - odoo_prime_recruiting_database_name | length > 0
+      - odoo_prime_recruiting_systemd_service | length > 0
+      - odoo_prime_recruiting_install_do_image | length > 0
+      - odoo_prime_recruiting_install_network | length > 0
+    fail_msg: "odoo_prime_recruiting requires module_name, src/dst paths, db name, systemd service, image, and network to be set"
+  tags:
+    - setup-all
+    - setup-odoo_prime_recruiting
+    - install-all
+    - install-odoo_prime_recruiting
+  when: odoo_prime_recruiting_enabled | bool
+
+- name: odoo_prime_recruiting — verify source exists on controller
+  ansible.builtin.stat:
+    path: "{{ odoo_prime_recruiting_src_path }}/__manifest__.py"
+  delegate_to: localhost
+  become: false
+  register: odoo_prime_recruiting_src_stat
+  tags:
+    - setup-all
+    - setup-odoo_prime_recruiting
+    - install-all
+    - install-odoo_prime_recruiting
+  when: odoo_prime_recruiting_enabled | bool
+
+- name: odoo_prime_recruiting — assert source is present
+  ansible.builtin.assert:
+    that:
+      - odoo_prime_recruiting_src_stat.stat.exists
+    fail_msg: >
+      odoo_prime_recruiting_src_path '{{ odoo_prime_recruiting_src_path }}' has no
+      __manifest__.py on the controller. Default points at
+      ~/b2b/primeBaseball/odoo-addons/prime_recruiting.
+  tags:
+    - setup-all
+    - setup-odoo_prime_recruiting
+    - install-all
+    - install-odoo_prime_recruiting
+  when: odoo_prime_recruiting_enabled | bool
+
+- name: odoo_prime_recruiting — ensure target dir exists on host
+  ansible.builtin.file:
+    path: "{{ odoo_prime_recruiting_dst_path }}"
+    state: directory
+    owner: "{{ do_user | default(sgc_playbook_user) | default('root') }}"
+    group: "{{ do_group | default(sgc_playbook_group_name) | default('root') }}"
+    mode: '0755'
+  tags:
+    - setup-all
+    - setup-odoo_prime_recruiting
+    - install-all
+    - install-odoo_prime_recruiting
+  when: odoo_prime_recruiting_enabled | bool
+
+# Hash-marker idempotency. Same pattern as odoo_ghostrak — synchronize alone
+# always reports changed=true, so we gate on a content hash.
+- name: odoo_prime_recruiting — compute source hash (controller)
+  ansible.builtin.shell:
+    cmd: >-
+      find {{ odoo_prime_recruiting_src_path | quote }} -type f
+      -not -path '*__pycache__*' -not -name '*.pyc' -not -path '*/.git/*'
+      -print0 | LC_ALL=C sort -z | xargs -0 sha256sum | sha256sum | cut -d' ' -f1
+  register: odoo_prime_recruiting_src_hash
+  delegate_to: localhost
+  become: false
+  changed_when: false
+  tags:
+    - setup-all
+    - setup-odoo_prime_recruiting
+    - install-all
+    - install-odoo_prime_recruiting
+  when: odoo_prime_recruiting_enabled | bool
+
+- name: odoo_prime_recruiting — read previous hash marker on host
+  ansible.builtin.slurp:
+    src: "{{ odoo_prime_recruiting_dst_path }}/.odoo_prime_recruiting_addon_hash"
+  register: odoo_prime_recruiting_dst_hash_raw
+  failed_when: false
+  changed_when: false
+  tags:
+    - setup-all
+    - setup-odoo_prime_recruiting
+    - install-all
+    - install-odoo_prime_recruiting
+  when: odoo_prime_recruiting_enabled | bool
+
+- name: odoo_prime_recruiting — decide whether source has changed
+  ansible.builtin.set_fact:
+    odoo_prime_recruiting_addon_changed: >-
+      {{ (odoo_prime_recruiting_dst_hash_raw.content | default('') | b64decode | trim)
+         != (odoo_prime_recruiting_src_hash.stdout | trim) }}
+  tags:
+    - setup-all
+    - setup-odoo_prime_recruiting
+    - install-all
+    - install-odoo_prime_recruiting
+  when: odoo_prime_recruiting_enabled | bool
+
+- name: odoo_prime_recruiting — rsync source to host (only when content changed)
+  ansible.posix.synchronize:
+    src: "{{ odoo_prime_recruiting_src_path }}/"
+    dest: "{{ odoo_prime_recruiting_dst_path }}/"
+    delete: true
+    recursive: true
+    checksum: true
+    rsync_opts:
+      - "--exclude=__pycache__"
+      - "--exclude=*.pyc"
+      - "--exclude=.git"
+      - "--exclude=.odoo_prime_recruiting_addon_hash"
+  tags:
+    - setup-all
+    - setup-odoo_prime_recruiting
+    - install-all
+    - install-odoo_prime_recruiting
+  when:
+    - odoo_prime_recruiting_enabled | bool
+    - odoo_prime_recruiting_addon_changed | bool
+
+- name: odoo_prime_recruiting — install/upgrade the prime_recruiting module (brief downtime)
+  block:
+    - name: Stop Odoo to release DB locks
+      ansible.builtin.systemd:
+        name: "{{ odoo_prime_recruiting_systemd_service }}"
+        state: stopped
+
+    - name: Install/upgrade prime_recruiting via one-shot docker run
+      ansible.builtin.command:
+        cmd: >-
+          docker run --rm
+          --user={{ odoo_prime_recruiting_install_user }}
+          --cap-drop=ALL
+          --network={{ odoo_prime_recruiting_install_network }}
+          --mount type=bind,src={{ odoo_prime_recruiting_install_do_base_path }}/odoo.conf,dst=/etc/odoo/odoo.conf,readonly
+          --mount type=bind,src={{ odoo_prime_recruiting_install_do_base_path }}/data,dst=/var/lib/odoo
+          --mount type=bind,src={{ odoo_prime_recruiting_install_do_base_path }}/extra-addons,dst=/mnt/extra-addons,readonly
+          {% for h in odoo_prime_recruiting_install_add_hosts %}--add-host={{ h }} {% endfor %}
+          {{ odoo_prime_recruiting_install_do_image }}
+          odoo --no-http
+          -d {{ odoo_prime_recruiting_database_name }}
+          -u {{ odoo_prime_recruiting_module_name }}
+          -i {{ odoo_prime_recruiting_module_name }}
+          --stop-after-init --without-demo=all
+      register: odoo_prime_recruiting_module_install
+      changed_when: true
+      failed_when:
+        - odoo_prime_recruiting_module_install.rc != 0
+
+    - name: Start Odoo back up
+      ansible.builtin.systemd:
+        name: "{{ odoo_prime_recruiting_systemd_service }}"
+        state: started
+  rescue:
+    - name: (rescue) Start Odoo back up after install failure
+      ansible.builtin.systemd:
+        name: "{{ odoo_prime_recruiting_systemd_service }}"
+        state: started
+    - name: (rescue) Re-raise the install failure
+      ansible.builtin.fail:
+        msg: "prime_recruiting module install failed; Odoo restarted. See task output above."
+  tags:
+    - setup-all
+    - setup-odoo_prime_recruiting
+    - install-all
+    - install-odoo_prime_recruiting
+  when:
+    - odoo_prime_recruiting_enabled | bool
+    - odoo_prime_recruiting_addon_changed | default(false) | bool
+
+- name: odoo_prime_recruiting — write addon hash marker on host
+  ansible.builtin.copy:
+    content: "{{ odoo_prime_recruiting_src_hash.stdout | trim }}\n"
+    dest: "{{ odoo_prime_recruiting_dst_path }}/.odoo_prime_recruiting_addon_hash"
+    owner: "{{ do_user | default(sgc_playbook_user) | default('root') }}"
+    group: "{{ do_group | default(sgc_playbook_group_name) | default('root') }}"
+    mode: '0644'
+  tags:
+    - setup-all
+    - setup-odoo_prime_recruiting
+    - install-all
+    - install-odoo_prime_recruiting
+  when:
+    - odoo_prime_recruiting_enabled | bool
+    - odoo_prime_recruiting_addon_changed | default(false) | bool

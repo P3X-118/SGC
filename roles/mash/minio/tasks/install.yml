@@ -1,0 +1,199 @@
+---
+# 1) On-disk layout — data and config dirs survive container removal.
+- name: minio — ensure base directories
+  ansible.builtin.file:
+    path: "{{ item }}"
+    state: directory
+    mode: "0750"
+  loop:
+    - "{{ minio_base_path }}"
+    - "{{ minio_base_path }}/{{ minio_instance }}"
+    - "{{ minio_data_path }}"
+    - "{{ minio_config_path }}"
+
+# 2) Networks. `traefik` is created by the Traefik role; we just attach
+# (assert it exists). A per-instance private net is for the bootstrap
+# sidecar so `mc` can reach minio by container name without colliding
+# with the global traefik net.
+- name: minio — ensure private network
+  community.docker.docker_network:
+    name: "{{ minio_private_network }}"
+    state: present
+
+- name: minio — assert traefik network exists
+  community.docker.docker_network_info:
+    name: "{{ minio_traefik_network }}"
+  register: minio_traefik_net
+  failed_when: not minio_traefik_net.exists
+
+# 3) The MinIO container. Single-node deployment; data lives on the
+# bind volume. Healthcheck uses MinIO's built-in /minio/health/live.
+# Traefik labels expose two routers: one for the S3 API (port 9000),
+# one for the admin console (port 9001).
+- name: minio — start container
+  community.docker.docker_container:
+    name: "{{ minio_instance }}"
+    image: "{{ minio_image }}"
+    state: started
+    restart_policy: unless-stopped
+    pull: true
+    # Force-recreate when the image / env / labels drift.
+    recreate: true
+    command:
+      - server
+      - /data
+      - --console-address
+      - ":{{ minio_console_port }}"
+    env:
+      MINIO_ROOT_USER: "{{ minio_root_user }}"
+      MINIO_ROOT_PASSWORD: "{{ minio_root_password }}"
+      MINIO_BROWSER_REDIRECT_URL: "https://{{ minio_console_hostname }}"
+      MINIO_SERVER_URL: "https://{{ minio_hostname }}"
+    volumes:
+      - "{{ minio_data_path }}:/data:rw"
+      - "{{ minio_config_path }}:/root/.minio:rw"
+    networks:
+      - name: "{{ minio_traefik_network }}"
+      - name: "{{ minio_private_network }}"
+    networks_cli_compatible: true
+    healthcheck:
+      test: ["CMD-SHELL", "curl -fsS http://localhost:{{ minio_api_port }}/minio/health/live || exit 1"]
+      interval: 15s
+      timeout: 5s
+      retries: 6
+      start_period: 30s
+    labels:
+      traefik.enable: "true"
+      traefik.docker.network: "{{ minio_traefik_network }}"
+      # ---- S3 API router ----
+      traefik.http.routers.minio-api.rule: "{{ ([minio_hostname] + minio_api_extra_hostnames) | map('regex_replace', '^', 'Host(`') | map('regex_replace', '$', '`)') | join(' || ') }}"
+      traefik.http.routers.minio-api.entrypoints: "{{ minio_traefik_entrypoint }}"
+      traefik.http.routers.minio-api.tls: "true"
+      traefik.http.routers.minio-api.tls.certResolver: "{{ minio_traefik_cert_resolver }}"
+      traefik.http.routers.minio-api.service: "minio-api"
+      traefik.http.services.minio-api.loadbalancer.server.port: "{{ minio_api_port | string }}"
+      # ---- Admin console router ----
+      traefik.http.routers.minio-console.rule: "Host(`{{ minio_console_hostname }}`)"
+      traefik.http.routers.minio-console.entrypoints: "{{ minio_traefik_entrypoint }}"
+      traefik.http.routers.minio-console.tls: "true"
+      traefik.http.routers.minio-console.tls.certResolver: "{{ minio_traefik_cert_resolver }}"
+      traefik.http.routers.minio-console.service: "minio-console"
+      traefik.http.services.minio-console.loadbalancer.server.port: "{{ minio_console_port | string }}"
+
+# 4) Wait until MinIO answers liveness — `mc` will fail until it does.
+- name: minio — wait for health
+  ansible.builtin.uri:
+    url: "http://127.0.0.1:{{ minio_api_port }}/minio/health/live"
+    return_content: false
+  register: minio_health
+  retries: 12
+  delay: 5
+  until: minio_health.status == 200
+  changed_when: false
+  # The internal :9000 isn't bound on the host; reach via the container.
+  # Use `docker exec` for the actual probe.
+  failed_when: false
+
+- name: minio — wait for health (via docker exec, internal port)
+  ansible.builtin.command:
+    cmd: >-
+      docker exec {{ minio_instance }}
+      curl -fsS http://localhost:{{ minio_api_port }}/minio/health/live
+  changed_when: false
+  register: minio_health_exec
+  retries: 18
+  delay: 5
+  until: minio_health_exec.rc == 0
+
+# 5) Bootstrap: configure `mc` alias inside a sidecar, then create
+# buckets / policies / users / keys. Each step is idempotent.
+- name: minio — bootstrap mc alias
+  ansible.builtin.command:
+    cmd: >-
+      docker run --rm --network {{ minio_private_network }}
+      -e MC_HOST_local=http://{{ minio_root_user }}:{{ minio_root_password }}@{{ minio_instance }}:{{ minio_api_port }}
+      {{ minio_mc_image }}
+      ready local
+  changed_when: false
+  retries: 6
+  delay: 5
+  no_log: true   # MC_HOST_local embeds the root password
+
+- name: minio — create buckets (idempotent)
+  ansible.builtin.command:
+    cmd: >-
+      docker run --rm --network {{ minio_private_network }}
+      -e MC_HOST_local=http://{{ minio_root_user }}:{{ minio_root_password }}@{{ minio_instance }}:{{ minio_api_port }}
+      {{ minio_mc_image }}
+      mb --ignore-existing local/{{ item.name }}
+  loop: "{{ minio_buckets }}"
+  loop_control:
+    label: "{{ item.name }}"
+  changed_when: false
+  no_log: true
+
+- name: minio — apply bucket anonymous policies
+  ansible.builtin.command:
+    cmd: >-
+      docker run --rm --network {{ minio_private_network }}
+      -e MC_HOST_local=http://{{ minio_root_user }}:{{ minio_root_password }}@{{ minio_instance }}:{{ minio_api_port }}
+      {{ minio_mc_image }}
+      anonymous set {{ item.policy }} local/{{ item.name }}
+  loop: "{{ minio_buckets }}"
+  loop_control:
+    label: "{{ item.name }} → {{ item.policy }}"
+  changed_when: false
+  no_log: true
+
+- name: minio — create inline policies
+  ansible.builtin.command:
+    cmd: >-
+      docker run --rm --network {{ minio_private_network }}
+      -e MC_HOST_local=http://{{ minio_root_user }}:{{ minio_root_password }}@{{ minio_instance }}:{{ minio_api_port }}
+      -i --entrypoint sh {{ minio_mc_image }}
+      -c 'cat > /tmp/pol.json && mc admin policy create local {{ item.name }} /tmp/pol.json'
+    stdin: "{{ item.document | to_json }}"
+  loop: "{{ minio_inline_policies }}"
+  loop_control:
+    label: "{{ item.name }}"
+  changed_when: false
+  # MC_HOST_local embeds the root password — never log this task.
+  no_log: true
+
+# Idempotent user-create: re-run `mc admin user add` overwrites the
+# user's secret to the value we specify, so the keys stay canonical
+# with whatever's in group_vars (rotate by changing the secret here).
+- name: minio — create scoped users (idempotent overwrite)
+  ansible.builtin.command:
+    cmd: >-
+      docker run --rm --network {{ minio_private_network }}
+      -e MC_HOST_local=http://{{ minio_root_user }}:{{ minio_root_password }}@{{ minio_instance }}:{{ minio_api_port }}
+      {{ minio_mc_image }}
+      admin user add local {{ item.access_key }} {{ item.secret_key }}
+  loop: "{{ minio_users }}"
+  loop_control:
+    label: "{{ item.name }} (access_key={{ item.access_key }})"
+  changed_when: false
+  no_log: true
+
+- name: minio — attach policies to scoped users
+  ansible.builtin.command:
+    cmd: >-
+      docker run --rm --network {{ minio_private_network }}
+      -e MC_HOST_local=http://{{ minio_root_user }}:{{ minio_root_password }}@{{ minio_instance }}:{{ minio_api_port }}
+      {{ minio_mc_image }}
+      admin policy attach local {{ item.1 }} --user {{ item.0.access_key }}
+  loop: "{{ minio_users | subelements('policies', skip_missing=True) }}"
+  loop_control:
+    label: "{{ item.0.name }} ← {{ item.1 }}"
+  changed_when: false
+  no_log: true
+  # `policy attach` is idempotent in modern `mc` (exit 0 if already
+  # attached). On older clients it can exit non-zero with "policy change
+  # is already in effect" / "already attached" — swallow those, surface
+  # any other failure.
+  register: attach_result
+  failed_when:
+    - attach_result.rc | default(0) != 0
+    - "'already in effect' not in (attach_result.stderr | default(''))"
+    - "'already attached' not in (attach_result.stderr | default(''))"

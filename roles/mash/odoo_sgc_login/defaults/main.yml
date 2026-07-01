@@ -1,0 +1,51 @@
+---
+# odoo_sgc_login — installs the SHARED sgc_login Odoo module on a do-based Odoo.
+#
+# sgc_login is the generic Authentik-OIDC addon (~/sgc/apps/odoo-addons/sgc_login):
+#   - GATES every SSO login on the OIDC `groups` claim containing
+#     SGC_DO_REQUIRED_GROUP (AccessDenied otherwise), and
+#   - grants/revokes Odoo admin (base.group_system) AUTHORITATIVELY from
+#     SGC_DO_ADMIN_GROUP on each login (OdooBot + base.user_admin exempt).
+# Both group names are read from the Odoo container ENV — set them per host via
+# `do_environment_variables_additional_variables` (NOT here).
+#
+# ⚠ The login gate is ACTIVE only when SGC_DO_REQUIRED_GROUP is non-empty (then
+# set it to a group ALL current SSO users have, or non-members are denied). Leave
+# it EMPTY to adopt ONLY the admin mapping with no new login gate (prime's choice).
+# The admin sync is AUTHORITATIVE: a current SSO admin NOT in SGC_DO_ADMIN_GROUP
+# is demoted on next login (base.user_admin is exempt) — enroll existing admins
+# in the group BEFORE install.
+#
+# Same hash-marker rsync + one-shot `-u/-i` install pattern as
+# mash/odoo_prime_login and mash/odoo_ghostrak (each addon role stays
+# self-contained; factor a shared mash/do_addon_install out if a 4th appears).
+#
+# Enable per-host:
+#   odoo_sgc_login_enabled: true
+# Then: `just install-service odoo_sgc_login --limit <host>`.
+
+odoo_sgc_login_enabled: false
+
+odoo_sgc_login_module_name: sgc_login
+
+# Absolute path on the CONTROLLER — the SHARED odoo-addons workspace.
+odoo_sgc_login_src_path: "/home/oneill/sgc/apps/odoo-addons/{{ odoo_sgc_login_module_name }}"
+
+# Target on the HOST. Mirrors the do role's do_extra_addons_path layout.
+odoo_sgc_login_dst_path: "{{ do_extra_addons_path | default('/' ~ (sgc_playbook_identifier | default('do')) ~ '/' ~ (do_identifier | default('do')) ~ '/extra-addons') }}/{{ odoo_sgc_login_module_name }}"
+
+# DB the module installs into. Same default as odoo_prime_login.
+odoo_sgc_login_database_name: "{{ do_identifier | default('do') }}"
+
+# --- Install runtime (mirror the do systemd unit) ------------------------
+# Defaults match mash/do's docker create args so the install container runs the
+# same code as the long-running service.
+odoo_sgc_login_systemd_service: "{{ (do_identifier | default('do')) ~ '.service' }}"
+odoo_sgc_login_install_do_base_path: "{{ do_base_path | default('/' ~ (sgc_playbook_identifier | default('do')) ~ '/' ~ (do_identifier | default('do'))) }}"
+odoo_sgc_login_install_do_image: "sgc-do:{{ do_image_version | default('19.0') }}-{{ do_image_release | default('01') }}"
+# Postgres docker network. Derived from service_id_prefix (e.g. "sgc-" ->
+# "sgc-postgres", "prime-" -> "prime-postgres") so it's correct whether or not
+# sgc_playbook_identifier matches the prefix. Override per host if it differs.
+odoo_sgc_login_install_network: "{{ (service_id_prefix | default('do-')) ~ 'postgres' }}"
+odoo_sgc_login_install_add_hosts: []
+odoo_sgc_login_install_user: "{{ (sgc_playbook_uid | default(999)) ~ ':' ~ (sgc_playbook_gid | default(988)) }}"

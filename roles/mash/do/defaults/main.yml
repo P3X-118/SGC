@@ -1,0 +1,151 @@
+# SPDX-FileCopyrightText: 2026 Oneill (SGC)
+# Structure adapted from the MASH project's ansible roles.
+#
+# SPDX-License-Identifier: AGPL-3.0-or-later
+
+---
+# Odoo (ERP) — SGC role. Deploys the custom `sgc-do` image built from the
+# P3X-118/do fork (branch `sgc`). See docs/configuring-do.md.
+
+do_enabled: true
+
+do_identifier: do
+do_base_path: "/{{ do_identifier }}"
+do_data_path: "{{ do_base_path }}/data"
+do_extra_addons_path: "{{ do_base_path }}/extra-addons"
+
+# Odoo series this role targets.
+do_version: "19.0"
+
+# Custom image release counter, appended to the Odoo version (19.0-00, 19.0-01, …).
+do_image_release: "00"
+
+do_uid: ""
+do_gid: ""
+
+# The scheme/hostname Odoo is served on.
+do_scheme: https
+do_hostname: ""
+
+# Odoo only reliably serves from the domain root, so this should stay `/`.
+do_path_prefix: /
+
+# --- Container image (built from our fork; see apps/do/sgc/docker/Dockerfile) ---
+do_container_image: "{{ do_container_image_registry_prefix }}sgc-do:{{ do_container_image_tag }}"
+do_container_image_tag: "{{ do_version }}-{{ do_image_release }}"
+do_container_image_registry_prefix: "{{ do_container_image_registry_prefix_upstream }}"
+do_container_image_registry_prefix_upstream: "{{ do_container_image_registry_prefix_upstream_default }}"
+# Empty by default: the image is built/loaded locally. Set to e.g. "meow.i.sgc.ai/"
+# to pull it from the prowler registry.
+do_container_image_registry_prefix_upstream_default: ""
+do_container_image_force_pull: "{{ do_container_image.endswith(':latest') }}"
+
+# Optionally build the image on the host straight from the fork (uses our Dockerfile).
+do_container_image_self_build: false
+do_container_image_self_build_name: "sgc-do:{{ do_container_image_tag }}"
+do_container_image_self_build_repo: "https://github.com/P3X-118/do.git"
+do_container_image_self_build_repo_version: sgc
+do_container_image_self_build_dockerfile: sgc/docker/Dockerfile
+do_container_image_self_build_src_files_path: "{{ do_base_path }}/docker-src"
+
+# --- Networking ---
+# Base container network. Auto-created by this role if it doesn't already exist.
+do_container_network: "{{ do_identifier }}"
+do_container_network_deletion_enabled: true
+
+# Additional networks the container connects to (must already exist).
+do_container_additional_networks: "{{ do_container_additional_networks_auto + do_container_additional_networks_custom }}"
+do_container_additional_networks_auto: []
+do_container_additional_networks_custom: []
+
+# Odoo HTTP and gevent (websocket/longpolling) ports inside the container.
+do_container_http_port: 8069
+do_container_gevent_port: 8072
+# Optional host port publishing ("<ip>:<port>" or "<port>"; "" = don't expose).
+do_container_http_host_bind_port: ""
+do_container_gevent_host_bind_port: ""
+
+# Additional bind/volume mounts (see `docker create --mount`).
+do_container_additional_volumes: "{{ do_container_additional_volumes_auto + do_container_additional_volumes_custom }}"
+do_container_additional_volumes_auto: []
+do_container_additional_volumes_custom: []
+
+do_container_extra_arguments: "{{ do_container_extra_arguments_auto + do_container_extra_arguments_custom }}"
+do_container_extra_arguments_auto: []
+do_container_extra_arguments_custom: []
+
+# Mount a host directory of custom addons read-only at /mnt/extra-addons.
+do_extra_addons_enabled: false
+
+# --- odoo.conf settings (templated into {{ do_base_path }}/odoo.conf) ---
+# Master password — controls the DB manager (create/drop/backup). REQUIRED; set a strong value.
+do_config_admin_passwd: ""
+do_config_data_dir: /var/lib/odoo
+do_config_addons_path: "/opt/odoo/addons,/mnt/extra-addons"
+do_config_workers: 2
+do_config_max_cron_threads: 1
+do_config_proxy_mode: true
+do_config_list_db: false
+do_config_dbfilter: "^{{ do_database_name }}$"
+do_config_db_sslmode: prefer
+do_config_db_maxconn: 64
+do_config_log_level: info
+do_config_server_wide_modules: base,web
+do_config_unaccent: true
+do_config_limit_memory_soft: 2147483648
+do_config_limit_memory_hard: 2684354560
+do_config_limit_time_cpu: 600
+do_config_limit_time_real: 1200
+# Free-form lines appended verbatim to the [options] section.
+do_config_additional: ""
+
+# --- Database (PostgreSQL) ---
+do_database_hostname: ""
+do_database_port: 5432
+do_database_username: odoo
+do_database_password: ""
+do_database_name: odoo
+
+# --- Timezone / extra env ---
+do_environment_variables_tz: UTC
+do_environment_variables_additional_variables: ""
+
+# --- Traefik labels (main router → 8069; websocket router → 8072) ---
+do_container_labels_traefik_enabled: true
+do_container_labels_traefik_docker_network: "{{ do_container_network }}"
+do_container_labels_traefik_hostname: "{{ do_hostname }}"
+do_container_labels_traefik_path_prefix: "{{ do_path_prefix }}"
+do_container_labels_traefik_rule: "Host(`{{ do_container_labels_traefik_hostname }}`){% if do_container_labels_traefik_path_prefix != '/' %} && PathPrefix(`{{ do_container_labels_traefik_path_prefix }}`){% endif %}"
+do_container_labels_traefik_priority: 0
+do_container_labels_traefik_entrypoints: web-secure
+do_container_labels_traefik_tls: "{{ do_container_labels_traefik_entrypoints != 'web' }}"
+do_container_labels_traefik_tls_certResolver: default  # noqa var-naming
+
+# Separate Traefik router for Odoo's websocket/longpolling on the gevent port.
+do_container_labels_traefik_websocket_enabled: true
+
+do_container_labels_traefik_additional_request_headers: "{{ do_container_labels_traefik_additional_request_headers_auto | combine(do_container_labels_traefik_additional_request_headers_custom) }}"
+do_container_labels_traefik_additional_request_headers_auto: {}
+do_container_labels_traefik_additional_request_headers_custom: {}
+
+do_container_labels_traefik_additional_response_headers: "{{ do_container_labels_traefik_additional_response_headers_auto | combine(do_container_labels_traefik_additional_response_headers_custom) }}"
+do_container_labels_traefik_additional_response_headers_auto: {}
+do_container_labels_traefik_additional_response_headers_custom: {}
+
+do_container_labels_additional_labels: "{{ do_container_labels_additional_labels_auto + do_container_labels_additional_labels_custom }}"
+do_container_labels_additional_labels_auto: []
+do_container_labels_additional_labels_custom: []
+
+# --- systemd dependencies ---
+do_systemd_required_services_list: "{{ do_systemd_required_services_list_default + do_systemd_required_services_list_auto + do_systemd_required_services_list_custom }}"
+do_systemd_required_services_list_default: "{{ [sysd_docker_service] if sysd_docker_service else [] }}"
+do_systemd_required_services_list_auto: []
+do_systemd_required_services_list_custom: []
+
+do_systemd_wanted_services_list: "{{ do_systemd_wanted_services_list_default + do_systemd_wanted_services_list_auto + do_systemd_wanted_services_list_custom }}"
+do_systemd_wanted_services_list_default: []
+do_systemd_wanted_services_list_auto: []
+do_systemd_wanted_services_list_custom: []
+
+# Computed during install; consumed by the systemd_service_manager role.
+do_restart_necessary: false

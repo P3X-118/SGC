@@ -1,0 +1,15 @@
+---
+# Bring down the container but DO NOT delete the data dir — that's an
+# explicit operator action (rm -rf {{ minio_data_path }}). Same shape
+# as the eagledrive uninstall: idempotent state=absent on the container.
+
+- name: minio — remove container
+  community.docker.docker_container:
+    name: "{{ minio_instance }}"
+    state: absent
+
+- name: minio — remove private network (best effort)
+  community.docker.docker_network:
+    name: "{{ minio_private_network }}"
+    state: absent
+  failed_when: false

@@ -1,0 +1,276 @@
+---
+# odoo_learningwell — provision The Learning Well's Odoo company, bundle product,
+# and service user. Each concern is its own task, gated by a flag in defaults.
+# Scripts are piped through a one-shot `odoo-bin shell --no-http` docker run
+# (same image/mounts/network as the long-running do service; own DB session, no
+# downtime). `changed_when` keys off the script's "changed=True" line.
+#
+# Order matters: company first (the product + user reference it).
+
+- name: odoo_learningwell — validate inputs
+  ansible.builtin.assert:
+    that:
+      - odoo_learningwell_database_name | length > 0
+      - odoo_learningwell_company_name | length > 0
+    fail_msg: "odoo_learningwell requires database_name and company_name"
+  tags:
+    - setup-all
+    - setup-odoo_learningwell
+    - install-all
+    - install-odoo_learningwell
+  when: odoo_learningwell_enabled | bool
+
+# --- 1. Managed company ----------------------------------------------------
+
+- name: odoo_learningwell — provision the The Learning Well company (one-shot odoo shell)
+  ansible.builtin.shell:
+    cmd: >-
+      docker run --rm -i
+      --user={{ odoo_learningwell_install_user }}
+      --cap-drop=ALL
+      --network={{ odoo_learningwell_install_network }}
+      -e LW_COMPANY_NAME={{ odoo_learningwell_company_name | quote }}
+      -e LW_COMPANY_CURRENCY={{ odoo_learningwell_company_currency | quote }}
+      -e LW_COMPANY_COUNTRY={{ odoo_learningwell_company_country_code | quote }}
+      --mount type=bind,src={{ odoo_learningwell_install_do_base_path }}/odoo.conf,dst=/etc/odoo/odoo.conf,readonly
+      --mount type=bind,src={{ odoo_learningwell_install_do_base_path }}/data,dst=/var/lib/odoo
+      --mount type=bind,src={{ odoo_learningwell_install_do_base_path }}/extra-addons,dst=/mnt/extra-addons,readonly
+      {% for h in odoo_learningwell_install_add_hosts %}--add-host={{ h }} {% endfor %}
+      {{ odoo_learningwell_install_do_image }}
+      odoo-bin shell -c /etc/odoo/odoo.conf --no-http -d {{ odoo_learningwell_database_name }}
+    stdin: "{{ lookup('file', 'provision-learningwell-company.py') }}"
+  register: odoo_learningwell_company
+  changed_when: "odoo_learningwell_company.stdout is search('changed=True')"
+  failed_when:
+    - odoo_learningwell_company.rc != 0
+    - odoo_learningwell_company.stdout is not search('OK ')
+  tags:
+    - setup-all
+    - setup-odoo_learningwell
+    - install-all
+    - install-odoo_learningwell
+  when: odoo_learningwell_enabled | bool
+
+- name: odoo_learningwell — report company result
+  ansible.builtin.debug:
+    msg: "{{ odoo_learningwell_company.stdout | default('(skipped)') }}"
+  tags:
+    - setup-all
+    - setup-odoo_learningwell
+    - install-all
+    - install-odoo_learningwell
+  when:
+    - odoo_learningwell_enabled | bool
+    - odoo_learningwell_company is defined
+
+# --- 1a. Affiliate click/conversion model (manual model) -------------------
+# Runs before the module-install so its restart reloads the registry w/ the model.
+
+- name: odoo_learningwell — provision the x_lw_affiliate_click model (one-shot odoo shell)
+  ansible.builtin.shell:
+    cmd: >-
+      docker run --rm -i
+      --user={{ odoo_learningwell_install_user }}
+      --cap-drop=ALL
+      --network={{ odoo_learningwell_install_network }}
+      --mount type=bind,src={{ odoo_learningwell_install_do_base_path }}/odoo.conf,dst=/etc/odoo/odoo.conf,readonly
+      --mount type=bind,src={{ odoo_learningwell_install_do_base_path }}/data,dst=/var/lib/odoo
+      --mount type=bind,src={{ odoo_learningwell_install_do_base_path }}/extra-addons,dst=/mnt/extra-addons,readonly
+      {% for h in odoo_learningwell_install_add_hosts %}--add-host={{ h }} {% endfor %}
+      {{ odoo_learningwell_install_do_image }}
+      odoo-bin shell -c /etc/odoo/odoo.conf --no-http -d {{ odoo_learningwell_database_name }}
+    stdin: "{{ lookup('file', 'provision-learningwell-affiliate-click-model.py') }}"
+  register: odoo_learningwell_affiliate_model
+  changed_when: "odoo_learningwell_affiliate_model.stdout is search('changed=True')"
+  failed_when:
+    - odoo_learningwell_affiliate_model.rc != 0
+    - odoo_learningwell_affiliate_model.stdout is not search('OK ')
+  tags:
+    - setup-all
+    - setup-odoo_learningwell
+    - install-all
+    - install-odoo_learningwell
+  when:
+    - odoo_learningwell_enabled | bool
+    - odoo_learningwell_provision_affiliate_model | bool
+
+- name: odoo_learningwell — report affiliate-model result
+  ansible.builtin.debug:
+    msg: "{{ odoo_learningwell_affiliate_model.stdout | default('(skipped)') }}"
+  tags:
+    - setup-all
+    - setup-odoo_learningwell
+    - install-all
+    - install-odoo_learningwell
+  when:
+    - odoo_learningwell_enabled | bool
+    - odoo_learningwell_provision_affiliate_model | bool
+    - odoo_learningwell_affiliate_model is defined
+
+# --- 1b. App modules (Sales/CRM/product) — brief INSTANCE-WIDE downtime -----
+# Mirrors odoo_sgc_login: stop the do service (DB locks), one-shot install, start.
+
+- name: odoo_learningwell — install Sales/CRM/product modules (stops Odoo briefly)
+  block:
+    - name: odoo_learningwell — stop Odoo to release DB locks
+      ansible.builtin.systemd:
+        name: "{{ odoo_learningwell_systemd_service }}"
+        state: stopped
+      become: true
+
+    - name: odoo_learningwell — install/upgrade modules via one-shot docker run
+      ansible.builtin.command:
+        cmd: >-
+          docker run --rm
+          --user={{ odoo_learningwell_install_user }}
+          --cap-drop=ALL
+          --network={{ odoo_learningwell_install_network }}
+          --mount type=bind,src={{ odoo_learningwell_install_do_base_path }}/odoo.conf,dst=/etc/odoo/odoo.conf,readonly
+          --mount type=bind,src={{ odoo_learningwell_install_do_base_path }}/data,dst=/var/lib/odoo
+          --mount type=bind,src={{ odoo_learningwell_install_do_base_path }}/extra-addons,dst=/mnt/extra-addons,readonly
+          {% for h in odoo_learningwell_install_add_hosts %}--add-host={{ h }} {% endfor %}
+          {{ odoo_learningwell_install_do_image }}
+          odoo --no-http
+          -d {{ odoo_learningwell_database_name }}
+          -i {{ odoo_learningwell_modules }}
+          -u {{ odoo_learningwell_modules }}
+          --stop-after-init --without-demo=all
+      register: odoo_learningwell_modules_install
+      changed_when: true
+      failed_when: odoo_learningwell_modules_install.rc != 0
+
+    - name: odoo_learningwell — start Odoo back up
+      ansible.builtin.systemd:
+        name: "{{ odoo_learningwell_systemd_service }}"
+        state: started
+      become: true
+  rescue:
+    - name: odoo_learningwell — (rescue) restart Odoo after module-install failure
+      ansible.builtin.systemd:
+        name: "{{ odoo_learningwell_systemd_service }}"
+        state: started
+      become: true
+    - name: odoo_learningwell — (rescue) re-raise module-install failure
+      ansible.builtin.fail:
+        msg: "module install failed (Odoo restarted) — see the command output above"
+  tags:
+    - setup-all
+    - setup-odoo_learningwell
+    - install-all
+    - install-odoo_learningwell
+  when:
+    - odoo_learningwell_enabled | bool
+    - odoo_learningwell_install_modules | bool
+
+# --- 2. Generic bundle product ---------------------------------------------
+
+- name: odoo_learningwell — provision the bundle product (one-shot odoo shell)
+  ansible.builtin.shell:
+    cmd: >-
+      docker run --rm -i
+      --user={{ odoo_learningwell_install_user }}
+      --cap-drop=ALL
+      --network={{ odoo_learningwell_install_network }}
+      -e LW_PRODUCT_CODE={{ odoo_learningwell_bundle_product_code | quote }}
+      -e LW_PRODUCT_NAME={{ odoo_learningwell_bundle_product_name | quote }}
+      -e LW_COMPANY_NAME={{ odoo_learningwell_company_name | quote }}
+      --mount type=bind,src={{ odoo_learningwell_install_do_base_path }}/odoo.conf,dst=/etc/odoo/odoo.conf,readonly
+      --mount type=bind,src={{ odoo_learningwell_install_do_base_path }}/data,dst=/var/lib/odoo
+      --mount type=bind,src={{ odoo_learningwell_install_do_base_path }}/extra-addons,dst=/mnt/extra-addons,readonly
+      {% for h in odoo_learningwell_install_add_hosts %}--add-host={{ h }} {% endfor %}
+      {{ odoo_learningwell_install_do_image }}
+      odoo-bin shell -c /etc/odoo/odoo.conf --no-http -d {{ odoo_learningwell_database_name }}
+    stdin: "{{ lookup('file', 'provision-learningwell-bundle-product.py') }}"
+  register: odoo_learningwell_product
+  changed_when: "odoo_learningwell_product.stdout is search('changed=True')"
+  failed_when:
+    - odoo_learningwell_product.rc != 0
+    - odoo_learningwell_product.stdout is not search('OK ')
+  tags:
+    - setup-all
+    - setup-odoo_learningwell
+    - install-all
+    - install-odoo_learningwell
+  when:
+    - odoo_learningwell_enabled | bool
+    - odoo_learningwell_provision_bundle_product | bool
+
+- name: odoo_learningwell — report product result
+  ansible.builtin.debug:
+    msg: "{{ odoo_learningwell_product.stdout | default('(skipped)') }}"
+  tags:
+    - setup-all
+    - setup-odoo_learningwell
+    - install-all
+    - install-odoo_learningwell
+  when:
+    - odoo_learningwell_enabled | bool
+    - odoo_learningwell_provision_bundle_product | bool
+    - odoo_learningwell_product is defined
+
+# --- 3. learningwell-service user ------------------------------------------
+
+- name: odoo_learningwell — assert service-user password resolved
+  ansible.builtin.assert:
+    that:
+      - odoo_learningwell_service_user_password | length > 32
+    fail_msg: >
+      odoo_learningwell_service_user_password didn't resolve. Check sgc_pgsk is
+      set on this (odoo) host — vault-encrypted in host_vars/odoo/vault.yml as
+      vault_sgc_pgsk.
+  tags:
+    - setup-all
+    - setup-odoo_learningwell
+    - install-all
+    - install-odoo_learningwell
+  when:
+    - odoo_learningwell_enabled | bool
+    - odoo_learningwell_provision_service_user | bool
+
+- name: odoo_learningwell — provision learningwell-service Odoo user (one-shot odoo shell)
+  ansible.builtin.shell:
+    cmd: >-
+      docker run --rm -i
+      --user={{ odoo_learningwell_install_user }}
+      --cap-drop=ALL
+      --network={{ odoo_learningwell_install_network }}
+      -e LEARNINGWELL_SERVICE_PASSWORD={{ odoo_learningwell_service_user_password | quote }}
+      -e LW_SERVICE_LOGIN={{ odoo_learningwell_service_user_login | quote }}
+      -e LW_SERVICE_NAME={{ odoo_learningwell_service_user_name | quote }}
+      -e LW_COMPANY_NAME={{ odoo_learningwell_company_name | quote }}
+      -e LW_SERVICE_GROUPS={{ (odoo_learningwell_service_user_groups | join(',')) | quote }}
+      --mount type=bind,src={{ odoo_learningwell_install_do_base_path }}/odoo.conf,dst=/etc/odoo/odoo.conf,readonly
+      --mount type=bind,src={{ odoo_learningwell_install_do_base_path }}/data,dst=/var/lib/odoo
+      --mount type=bind,src={{ odoo_learningwell_install_do_base_path }}/extra-addons,dst=/mnt/extra-addons,readonly
+      {% for h in odoo_learningwell_install_add_hosts %}--add-host={{ h }} {% endfor %}
+      {{ odoo_learningwell_install_do_image }}
+      odoo-bin shell -c /etc/odoo/odoo.conf --no-http -d {{ odoo_learningwell_database_name }}
+    stdin: "{{ lookup('file', 'provision-learningwell-service-user.py') }}"
+  register: odoo_learningwell_user
+  # cmd inlines the password via -e LEARNINGWELL_SERVICE_PASSWORD=…. Suppress.
+  no_log: true
+  changed_when: "odoo_learningwell_user.stdout is search('changed=True')"
+  failed_when:
+    - odoo_learningwell_user.rc != 0
+    - odoo_learningwell_user.stdout is not search('OK ')
+  tags:
+    - setup-all
+    - setup-odoo_learningwell
+    - install-all
+    - install-odoo_learningwell
+  when:
+    - odoo_learningwell_enabled | bool
+    - odoo_learningwell_provision_service_user | bool
+
+- name: odoo_learningwell — report service-user result (status only, no secret)
+  ansible.builtin.debug:
+    msg: "{{ odoo_learningwell_user.stdout | default('(skipped)') }}"
+  tags:
+    - setup-all
+    - setup-odoo_learningwell
+    - install-all
+    - install-odoo_learningwell
+  when:
+    - odoo_learningwell_enabled | bool
+    - odoo_learningwell_provision_service_user | bool
+    - odoo_learningwell_user is defined

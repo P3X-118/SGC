@@ -1,0 +1,100 @@
+# SPDX-FileCopyrightText: 2023 - 2025 Slavi Pantaleev
+#
+# SPDX-License-Identifier: AGPL-3.0-or-later
+
+---
+- name: Include a task to detect installed PeerTube version
+  ansible.builtin.import_tasks: "{{ role_path }}/tasks/utils/detect_installed_version.yml"
+
+- name: Ensure PeerTube paths exist
+  ansible.builtin.file:
+    path: "{{ item }}"
+    state: directory
+    mode: "0750"
+    owner: "{{ peertube_uid }}"
+    group: "{{ peertube_gid }}"
+  with_items:
+    - "{{ peertube_base_path }}"
+    - "{{ peertube_config_path }}"
+    - "{{ peertube_data_path }}"
+
+- name: Ensure PeerTube support files installed
+  ansible.builtin.template:
+    src: "{{ role_path }}/templates/{{ item }}.j2"
+    dest: "{{ peertube_base_path }}/{{ item }}"
+    owner: "{{ peertube_uid }}"
+    group: "{{ peertube_gid }}"
+    mode: "0640"
+  with_items:
+    - env
+    - labels
+
+- name: Ensure PeerTube container image is pulled via community.docker.docker_image
+  when: sysd_docker_image_pull_method == 'ansible-module'
+  community.docker.docker_image:
+    name: "{{ peertube_container_image }}"
+    source: "{{ 'pull' if ansible_version.major > 2 or ansible_version.minor > 7 else omit }}"
+    force_source: "{{ peertube_container_image_force_pull if ansible_version.major > 2 or ansible_version.minor >= 8 else omit }}"
+    force: "{{ omit if ansible_version.major > 2 or ansible_version.minor >= 8 else peertube_container_image_force_pull }}"
+  register: result
+  retries: "{{ container_retry }}"
+  delay: "{{ container_retry_delay }}"
+  until: result is not failed
+
+- name: Ensure PeerTube container image is pulled via ansible.builtin.command
+  when: sysd_docker_image_pull_method == 'command'
+  ansible.builtin.command:
+    cmd: "{{ sysd_docker_host_command }} pull {{ peertube_container_image }}"
+  register: result
+  retries: "{{ container_retry }}"
+  delay: "{{ container_retry_delay }}"
+  until: result is not failed
+  changed_when: "'Downloaded newer image' in result.stdout"
+
+- name: Ensure PeerTube container network is created via community.docker.docker_network
+  when: sysd_docker_net_creation_method == 'ansible-module'
+  community.docker.docker_network:
+    enable_ipv6: "{{ sysd_docker_ipv6_enabled }}"
+    name: "{{ peertube_container_network }}"
+    driver: bridge
+    driver_options: "{{ sysd_docker_net_driver_opts }}"
+
+- name: Ensure PeerTube container network is created via ansible.builtin.command
+  when: sysd_docker_net_creation_method == 'command'
+  ansible.builtin.command:
+    cmd: >-
+      {{ sysd_docker_host_command }} network create
+      {% if sysd_docker_ipv6_enabled %}--ipv6{% endif %}
+      {{ sysd_docker_net_driver_opts_string }}
+      {{ peertube_container_network }}
+  register: network_creation_result
+  changed_when: network_creation_result.rc == 0
+  failed_when: network_creation_result.rc != 0 and 'already exists' not in network_creation_result.stderr
+
+- name: Ensure PeerTube systemd service is present
+  ansible.builtin.template:
+    src: "{{ role_path }}/templates/systemd/peertube.service.j2"
+    dest: "{{ sysd_docker_service_path }}/{{ peertube_identifier }}.service"
+    mode: "0644"
+
+- name: Check if current PeerTube version is less than v6.3.0
+  ansible.builtin.set_fact:
+    # For earlier versions, we were not storing the version in the marker file, so we don't really know the version.
+    # We'll assume that the version is less than v6.3.0 in that case, since that's the first version that supports it.
+    # Being 100% accurate here is not that important, since the migrations we'll run are idempotent anyway.
+    # See: https://github.com/Chocobozzz/PeerTube/releases/tag/v6.3.0
+    peertube_installed_version_less_than_6_3_0: "{{ peertube_detected_existing_installation and (peertube_detected_version == '' or peertube_detected_version is version('v6.3.0', '<')) }}"
+
+- name: Migrate to v6.3.0 if needed
+  when: peertube_installed_version_less_than_6_3_0 | bool and peertube_version is version('v6.3.0', '>=')
+  ansible.builtin.include_tasks:
+    file: "{{ role_path }}/tasks/utils/migrate_to_v6_3_0.yml"
+
+# This is intentionally done last, to ensure we only mark the version after it has been "more successfully" installed.
+- name: Ensure PeerTube INSTALLED_VERSION file created
+  ansible.builtin.template:
+    src: "{{ role_path }}/templates/INSTALLED_VERSION.j2"
+    dest: "{{ peertube_base_path }}/INSTALLED_VERSION"
+    owner: "{{ peertube_uid }}"
+    group: "{{ peertube_gid }}"
+    mode: "0640"

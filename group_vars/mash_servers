@@ -303,6 +303,11 @@ sgc_sysd_srvc_list_auto_itemized:
     {{ ({'name': (ddclient_identifier + '.service'), 'priority': 2000, 'groups': ['mash', 'ddclient']} if ddclient_enabled else omit) }}
   # /role-specific:ddclient
 
+  # role-specific:do
+  - |-
+    {{ ({'name': (do_identifier + '.service'), 'priority': 2000, 'groups': ['sgc', 'do']} if do_enabled else omit) }}
+  # /role-specific:do
+
   # role-specific:docker_registry
   - |-
     {{ ({'name': (docker_registry_identifier + '.service'), 'priority': 2000, 'groups': ['mash', 'docker-registry']} if docker_registry_enabled else omit) }}
@@ -649,6 +654,11 @@ sgc_sysd_srvc_list_auto_itemized:
   - |-
     {{ ({'name': (languagetool_identifier + '.service'), 'priority': 2000, 'groups': ['mash', 'languagetool']} if languagetool_enabled else omit) }}
   # /role-specific:languagetool
+
+  # role-specific:legit_services
+  - |-
+    {{ ({'name': (legit_services_identifier + '.service'), 'priority': 2000, 'groups': ['sgc', 'legit_services']} if legit_services_enabled else omit) }}
+  # /role-specific:legit_services
 
   # role-specific:limesurvey
   - |-
@@ -1314,6 +1324,19 @@ sgc_sysd_srvc_list_auto_itemized:
   - |-
     {{ ({'name': (wg_easy_identifier + '.service'), 'priority': 2000, 'groups': ['mash', 'wg-easy']} if wg_easy_enabled else omit) }}
   # /role-specific:wg_easy
+
+  # role-specific:wger
+  - |-
+    {{ ({'name': (wger_identifier + '.service'), 'priority': 2000, 'groups': ['sgc', 'wger']} if wger_enabled else omit) }}
+  - |-
+    {{ ({'name': (wger_nginx_identifier + '.service'), 'priority': 2000, 'groups': ['sgc', 'wger']} if wger_enabled and wger_nginx_enabled else omit) }}
+  - |-
+    {{ ({'name': (wger_redis_identifier + '.service'), 'priority': 2000, 'groups': ['sgc', 'wger']} if wger_enabled and wger_redis_enabled else omit) }}
+  - |-
+    {{ ({'name': (wger_worker_identifier + '.service'), 'priority': 2000, 'groups': ['sgc', 'wger']} if wger_enabled and wger_celery_enabled else omit) }}
+  - |-
+    {{ ({'name': (wger_beat_identifier + '.service'), 'priority': 2000, 'groups': ['sgc', 'wger']} if wger_enabled and wger_celery_enabled else omit) }}
+  # /role-specific:wger
 
   # role-specific:wikimore
   - |-
@@ -2174,6 +2197,21 @@ postgres_autom_itemized:
     }}
   # /role-specific:weblate
 
+  # role-specific:wger
+  - |-
+    {{
+      ({
+        'name': wger_database_name,
+        'username': wger_database_username,
+        'password': wger_database_password,
+        'additional_sql_queries': [
+          '\\connect "' ~ wger_database_name ~ '"',
+          "DO $do$ BEGIN IF NOT EXISTS (SELECT 1 FROM pg_publication WHERE pubname = 'powersync') THEN CREATE PUBLICATION powersync FOR ALL TABLES; END IF; END $do$;",
+        ],
+      } if wger_enabled and wger_database_hostname == postgres_connection_hostname else omit)
+    }}
+  # /role-specific:wger
+
   # role-specific:woodpecker_ci_server
   - |-
     {{
@@ -2279,10 +2317,25 @@ playbook_state_commit_hash_dst: "{{ sgc_playbook_base_path }}/{{ service_directo
 #                                                                      #
 ########################################################################
 
-docker_daemon_options: "{{ docker_daemon_options }}"
 docker_install_enabled: true
-# Include this or it will cause a failure if there are no options. 
-docker_daemon_options: {}
+# Expanded Docker address pools (2026-05-31): the stock pool (172.17-31/16 +
+# 192.168.0-240/20 ≈ 31 networks) was fully subnetted on 169.254.0.127, blocking
+# new container networks ("all predefined address pools have been fully
+# subnetted"). The first two entries REPRODUCE the stock ranges at their existing
+# granularity so the ~31 already-allocated networks are unaffected; the 10.200/15
+# entry adds 512 fresh /24s. Avoids host LAN (10.13.0.0/22) and the Nebula mesh
+# (169.254.0.0/24). live-restore keeps containers running across FUTURE daemon
+# restarts (this one-time restart still bounces them, since it's being enabled
+# now). Shared daemon on this box — managed by the links.legit.services instance.
+docker_daemon_options:
+  default-address-pools:
+    - base: "172.16.0.0/12"
+      size: 16
+    - base: "192.168.0.0/16"
+      size: 20
+    - base: "10.200.0.0/15"
+      size: 24
+  live-restore: true
 
 ########################################################################
 #                                                                      #
@@ -4548,6 +4601,69 @@ ddclient_gid: "{{ mash_playbook_gid }}"
 
 
 
+# role-specific:do
+########################################################################
+#                                                                      #
+# do (Odoo)                                                            #
+#                                                                      #
+########################################################################
+
+do_enabled: false
+
+do_identifier: "{{ service_id_prefix }}do"
+
+do_base_path: "{{ sgc_playbook_base_path }}/{{ service_directory_prefix }}do"
+
+do_uid: "{{ sgc_playbook_uid }}"
+do_gid: "{{ sgc_playbook_gid }}"
+
+do_systemd_required_services_list_auto: |
+  {{
+    ([postgres_identifier ~ '.service'] if postgres_enabled and do_database_hostname == postgres_connection_hostname else [])
+  }}
+
+do_systemd_wanted_services_list_auto: |
+  {{
+    ([(exim_relay_identifier | default('sgc-exim-relay')) ~ '.service'] if exim_relay_enabled | default(false) else [])
+  }}
+
+do_container_additional_networks_auto: |
+  {{
+    ([exim_relay_container_network | default('sgc-exim-relay')] if (exim_relay_enabled | default(false) and do_container_network != exim_relay_container_network) else [])
+    +
+    ([revproxy_service_networks] if revproxy_service_networks else [])
+    +
+    ([postgres_container_network] if postgres_enabled and do_database_hostname == postgres_connection_hostname and do_container_network != postgres_container_network else [])
+  }}
+
+# Master password for Odoo's database manager; derived from the master secret.
+do_config_admin_passwd: "{{ '%s' | format(sgc_pgsk) | password_hash('sha512', 'secret.do', rounds=655555) | to_uuid }}"
+
+do_container_labels_traefik_enabled: "{{ traefik_labels_enabled }}"
+do_container_labels_traefik_docker_network: "{{ revproxy_service_networks }}"
+
+# role-specific:postgres
+do_database_hostname: "{{ postgres_connection_hostname if postgres_enabled else '' }}"
+do_database_port: "{{ postgres_connection_port if postgres_enabled else '5432' }}"
+do_database_username: "{{ do_identifier }}"
+do_database_password: "{{ '%s' | format(sgc_pgsk) | password_hash('sha512', 'db.do', rounds=655555) | to_uuid }}"
+do_database_name: "{{ do_identifier }}"
+# /role-specific:postgres
+
+# role-specific:traefik
+do_container_labels_traefik_entrypoints: "{{ traefik_entrypoint_primary }}"
+do_container_labels_traefik_tls_certResolver: "{{ traefik_certResolver_primary }}"
+# /role-specific:traefik
+
+########################################################################
+#                                                                      #
+# /do (Odoo)                                                           #
+#                                                                      #
+########################################################################
+# /role-specific:do
+
+
+
 # role-specific:docker_registry
 ########################################################################
 #                                                                      #
@@ -5942,7 +6058,7 @@ geome_gid: "{{ sgc_playbook_gid }}"
 # legitservices/geome is the SGC build of the Reitti fork. Pin to the
 # tagged release that matches what's in apps/geome/pom.xml + the role's
 # requirements.yml `version`.
-geome_container_image: "docker.io/legitservices/geome:v4.0.4-2"
+geome_container_image: "docker.io/legitservices/geome:v4.0.4-5"
 geome_tilecache_container_image: "docker.io/dedicatedcode/reitti-tile-cache:latest"
 
 # Hostname Traefik exposes the app at. Set per-host in inventory if you
@@ -6744,6 +6860,16 @@ hubsite_service_authentik_description: "An open source identity provider"
 hubsite_service_authentik_priority: 1000
 # /role-specific:authentik
 
+# role-specific:do
+# Odoo
+hubsite_service_do_enabled: "{{ do_enabled }}"
+hubsite_service_do_name: "Odoo"
+hubsite_service_do_url: "{{ do_scheme }}://{{ do_hostname }}{{ do_path_prefix }}"
+hubsite_service_do_logo_location: ""
+hubsite_service_do_description: "Open source ERP and CRM"
+hubsite_service_do_priority: 1000
+# /role-specific:do
+
 # role-specific:docker_registry_browser
 # Docker Registry Browser
 hubsite_service_docker_registry_browser_enabled: "{{ docker_registry_browser_enabled }}"
@@ -7181,6 +7307,19 @@ hubsite_service_auto_list:
       } if hubsite_service_authentik_enabled else omit)
     }}
   # /role-specific:authentik
+
+  # role-specific:do
+  - |-
+    {{
+      ({
+        'name': hubsite_service_do_name,
+        'url': hubsite_service_do_url,
+        'logo_location': hubsite_service_do_logo_location,
+        'description': hubsite_service_do_description,
+        'priority': hubsite_service_do_priority,
+      } if hubsite_service_do_enabled else omit)
+    }}
+  # /role-specific:do
 
   # role-specific:docker_registry_browser
   - |-
@@ -8826,6 +8965,39 @@ languagetool_container_labels_traefik_tls_certResolver: "{{ traefik_certResolver
 
 
 
+# role-specific:legit_services
+########################################################################
+#                                                                      #
+# legit_services                                                       #
+#                                                                      #
+########################################################################
+
+legit_services_enabled: false
+
+legit_services_identifier: "{{ service_id_prefix }}legit-services"
+
+legit_services_base_path: "{{ sgc_playbook_base_path }}/{{ service_directory_prefix }}legit-services"
+
+legit_services_uid: "{{ sgc_playbook_uid }}"
+legit_services_gid: "{{ sgc_playbook_gid }}"
+
+legit_services_container_labels_traefik_enabled: "{{ traefik_labels_enabled and legit_services_hostname | length > 0 }}"
+legit_services_container_labels_traefik_docker_network: "{{ revproxy_service_networks }}"
+
+# role-specific:traefik
+legit_services_container_labels_traefik_entrypoints: "{{ traefik_entrypoint_primary }}"
+legit_services_container_labels_traefik_tls_certResolver: "{{ traefik_certResolver_primary }}"
+# /role-specific:traefik
+
+########################################################################
+#                                                                      #
+# /legit_services                                                      #
+#                                                                      #
+########################################################################
+# /role-specific:legit_services
+
+
+
 # role-specific:limesurvey
 ########################################################################
 #                                                                      #
@@ -9980,6 +10152,66 @@ miniflux_container_labels_traefik_tls_certResolver: "{{ traefik_certResolver_pri
 #                                                                      #
 ########################################################################
 # /role-specific:miniflux
+
+
+
+# role-specific:minio
+########################################################################
+#                                                                      #
+# minio (S3-compatible object storage for vendor photos, menu images,  #
+# OG-image cache; eagledrive scrapers rehost IG/FB/Yelp CDN URLs here  #
+# because those URLs are signed/short-lived). Role: roles/mash/minio/. #
+#                                                                      #
+########################################################################
+# To enable: set minio_enabled: true on the production mash host (where
+# sgc-ntfy etc. already live) and provide vaulted minio_root_user /
+# minio_root_password. The eagledrive_minio_access_key / _secret_key
+# below should also be vaulted; the role uses them to provision a
+# scoped write-only user that the eagledrive scrapers authenticate as.
+
+minio_enabled: false
+
+# Buckets created on startup. `download` = anonymous read; required so
+# that <img src="https://s3.sgc.ai/eagledrive-vendor-photos/..."> works
+# from any browser without a signed URL.
+minio_buckets:
+  - { name: "eagledrive-vendor-photos", policy: "download" }
+
+# Inline policy: scoped write access to the photos bucket only. The
+# eagledrive-scrapers user below is granted this.
+minio_inline_policies:
+  - name: "eagledrive-vendor-photos-write"
+    document:
+      Version: "2012-10-17"
+      Statement:
+        - Effect: Allow
+          Action: ["s3:PutObject", "s3:DeleteObject", "s3:GetObject"]
+          Resource: ["arn:aws:s3:::eagledrive-vendor-photos/*"]
+        - Effect: Allow
+          Action: ["s3:ListBucket"]
+          Resource: ["arn:aws:s3:::eagledrive-vendor-photos"]
+
+minio_users:
+  - name: "eagledrive-scrapers"
+    access_key: "{{ eagledrive_minio_access_key | default('') }}"
+    secret_key: "{{ eagledrive_minio_secret_key | default('') }}"
+    policies: ["eagledrive-vendor-photos-write"]
+
+# Bridge vars consumed by the eagledrive role (template env.j2). Public
+# url base is what we store in vendors.image_url / discovered_businesses
+# .image_url after rehosting — it's the path the mobile app loads.
+eagledrive_minio_endpoint: "https://{{ minio_hostname }}"
+eagledrive_minio_bucket: "eagledrive-vendor-photos"
+eagledrive_minio_public_url_base: "https://{{ minio_hostname }}/eagledrive-vendor-photos"
+eagledrive_minio_access_key: ""    # vault
+eagledrive_minio_secret_key: ""    # vault
+
+########################################################################
+#                                                                      #
+# /minio                                                               #
+#                                                                      #
+########################################################################
+# /role-specific:minio
 
 
 
@@ -11860,6 +12092,21 @@ pds_gid: "{{ sgc_playbook_gid }}"
 
 pds_hostname: ""
 
+# --- Handle scheme (repeatable rule for EVERY PDS instance) ---------------
+# The PDS serves at pds.<domain> (PDS_HOSTNAME) but issues user handles on the
+# BARE domain: mike.<domain>, NOT mike.pds.<domain>. Without this the
+# @atproto/pds runtime defaults PDS_SERVICE_HANDLE_DOMAINS to .${PDS_HOSTNAME}
+# (= .pds.<domain>). We derive the bare handle domain by stripping a leading
+# "pds." from pds_hostname, then stamp the admin handle + the env override from
+# it — so a host only sets pds_hostname and the scheme follows automatically.
+# (External resolution of mike.<domain> -> did is a per-USER provisioning step:
+# create _atproto.mike.<domain> TXT = did:plc:...; do NOT wildcard *.<domain>
+# at the PDS, since the bare domain is usually the app itself.)
+pds_handle_domain: "{{ pds_hostname[4:] if pds_hostname.startswith('pds.') else pds_hostname }}"
+pds_admin_handle: "admin.{{ pds_handle_domain }}"
+pds_environment_extra:
+  - "PDS_SERVICE_HANDLE_DOMAINS=.{{ pds_handle_domain }}"
+
 # Admin password tier:
 #   - shared (default): all PDS deployments under this sgc_pgsk share one
 #     admin password. Salt = `pds.admin`. Lower cost; convenient for a
@@ -11911,7 +12158,7 @@ pds_pro_gid: "{{ sgc_playbook_gid }}"
 
 pds_pro_hostname: ""
 
-pds_pro_session_secret: "{{ '%s' | format(sgc_pgsk) | password_hash('sha512', 'pds-pro.session', rounds=655555) | to_uuid | replace('-', '') }}"
+pds_pro_session_secret: "{{ (sgc_pgsk ~ 'pds.pro.session') | hash('sha512') }}"
 
 # Operator allowlist — override per environment.
 pds_pro_allowlist: []
@@ -12064,6 +12311,38 @@ pds_provisioning_runner_hmac_secret: "{{ ('%s' | format(sgc_pgsk) | password_has
 #                                                                      #
 ########################################################################
 # /role-specific:pds_provisioning_runner
+
+# role-specific:atproto_properties
+########################################################################
+#                                                                      #
+# atproto_properties — PDS placement registry                          #
+#                                                                      #
+########################################################################
+# Placement metadata for properties opted into atproto PDS hosting. The
+# OPT-IN itself is an Authentik signal (Application.group == "atproto-pds",
+# see apps/authentik/scripts/sgc/provision-atproto-marker.py); THIS map
+# supplies what Authentik can't: tier + the PDS hostname + which inventory
+# host to deploy on. The reconcile wrapper joins the Authentik opt-in set
+# with this registry and ensures each property's PDS exists.
+#
+#   tier: community|pro -> shared bskypds.pro ; business -> own host
+#   pds_host: the PDS FQDN (cert + handle domain)
+#   target_host: inventory host to run `just install-service pds -e target=` on
+atproto_properties:
+  eagledrive:
+    tier: business
+    pds_host: pds.eagledrive.live
+    target_host: eagledrive.live
+  ghostrak:
+    tier: business
+    pds_host: pds.ghostrak.pro
+    target_host: go.ghostrak.app
+########################################################################
+#                                                                      #
+# /atproto_properties                                                  #
+#                                                                      #
+########################################################################
+# /role-specific:atproto_properties
 
 
 
@@ -14147,7 +14426,12 @@ stargate_enabled: false
 stargate_network_name: "Default"
 
 # Lighthouse/DHD network identity. Override per deployment.
-stargate_internal_ip_addr: 169.254.1.1
+# NOTE: stargate_internal_ip_addr is intentionally NOT defaulted globally. The
+# stargate preflight (tasks/preflight.yml) scans EVERY host that has this var
+# defined and fails on duplicate values; a shared group default made all 40+
+# non-mesh hosts collide on one IP, so no mesh could ever pass preflight. Set it
+# per-host in host_vars instead (e.g. primebaseball.pro lighthouse = 169.254.41.1).
+# stargate_internal_ip_addr: 169.254.1.1
 dhd_internal_ip_addr: 169.254.1.1
 stargate_dhd_public_hostname: dhd.sgc.ai
 stargate_dhd_public_port: 4242
@@ -15226,6 +15510,72 @@ wg_easy_container_labels_traefik_tls_certResolver: "{{ traefik_certResolver_prim
 #                                                                      #
 ########################################################################
 # /role-specific:wg_easy
+
+
+
+# role-specific:wger
+########################################################################
+#                                                                      #
+# wger                                                                 #
+#                                                                      #
+########################################################################
+
+wger_enabled: false
+
+wger_identifier: "{{ service_id_prefix }}wger"
+
+wger_hostname: "wger.sgc.ai"
+
+wger_container_image: "legitservices/wger:2.6.0-2"
+
+wger_base_path: "{{ sgc_playbook_base_path }}/{{ service_directory_prefix }}wger"
+
+# The legitservices/wger image runs as its baked-in `wger` user (uid/gid 1000).
+wger_uid: "1000"
+wger_gid: "1000"
+
+wger_redis_enabled: true
+wger_celery_enabled: false
+
+# Django SECRET_KEY (set explicitly so sessions survive container restarts).
+wger_secret_key: "{{ (sgc_pgsk + ':wger.sk') | hash('sha512') }}"
+
+wger_systemd_required_services_list_auto: |
+  {{
+    ([postgres_identifier ~ '.service'] if postgres_enabled and wger_database_hostname == postgres_connection_hostname else [])
+    +
+    ([wger_redis_identifier ~ '.service'] if wger_redis_enabled else [])
+  }}
+
+wger_container_additional_networks_auto: |
+  {{
+    ([revproxy_service_networks] if revproxy_service_networks else [])
+    +
+    ([postgres_container_network] if postgres_enabled and wger_database_hostname == postgres_connection_hostname and wger_container_network != postgres_container_network else [])
+    +
+    ([wger_redis_container_network] if wger_redis_enabled and wger_container_network != wger_redis_container_network else [])
+  }}
+
+wger_container_labels_traefik_enabled: "{{ traefik_labels_enabled }}"
+wger_container_labels_traefik_docker_network: "{{ revproxy_service_networks }}"
+
+# role-specific:postgres
+wger_database_hostname: "{{ postgres_connection_hostname if postgres_enabled else '' }}"
+wger_database_port: "{{ postgres_connection_port if postgres_enabled else '5432' }}"
+wger_database_password: "{{ '%s' | format(sgc_pgsk) | password_hash('sha512', 'db.wger', rounds=655555) | to_uuid }}"
+# /role-specific:postgres
+
+# role-specific:traefik
+wger_container_labels_traefik_entrypoints: "{{ traefik_entrypoint_primary }}"
+wger_container_labels_traefik_tls_certResolver: "{{ traefik_certResolver_primary }}"
+# /role-specific:traefik
+
+########################################################################
+#                                                                      #
+# /wger                                                                #
+#                                                                      #
+########################################################################
+# /role-specific:wger
 
 
 
