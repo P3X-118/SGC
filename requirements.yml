@@ -621,7 +621,7 @@
 # /role-specific:pds
 # role-specific:pds_pro
 - src: git+https://github.com/P3X-118/pds-pro-ar.git
-  version: v0.2.3-0
+  version: v0.2.4-0
   name: pds_pro
   activation_prefix: pds_pro_
 # /role-specific:pds_pro
@@ -837,7 +837,7 @@
 #  name: stirling_pdf
 #  activation_prefix: stirling_pdf_
 - src: git+https://github.com/P3X-118/stoked-ar.git
-  version: 0.1.0-2
+  version: 0.1.0-3
   name: stoked
   activation_prefix: stoked_
 - src: git+https://github.com/P3X-118/ansible-role-swap.git
