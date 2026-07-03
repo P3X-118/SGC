@@ -70,6 +70,11 @@ services:
       PEERTUBE_PUBLIC_HOST: "{{ ghosttrak_peertube_public_host }}"
       PEERTUBE_ROSTER_USER: "{{ ghosttrak_peertube_roster_user }}"
       PEERTUBE_ROSTER_PASSWORD: "{{ ghosttrak_peertube_roster_password }}"
+      CORS_ALLOWED_ORIGINS: "{{ ghosttrak_cors_allowed_origins }}"
+      AUTH_RETURN_ORIGINS: "{{ ghosttrak_auth_return_origins }}"
+      VIDEO_CURATOR_GROUPS: "{{ ghosttrak_video_curator_groups }}"
+      VIDEO_LIBRARY_CHANNEL: "{{ ghosttrak_video_library_channel }}"
+      VIDEO_LIBRARY_CHANNEL_NAME: "{{ ghosttrak_video_library_channel_name }}"
       COOKIE_SECURE: "true"
     depends_on:
       {{ ghosttrak_redis_container_name }}:

@@ -135,6 +135,22 @@ ghosttrak_peertube_public_host: ""            # e.g. training.ghostrak.pro
 ghosttrak_peertube_roster_user: "ghostrak-roster"
 ghosttrak_peertube_roster_password: ""
 
+# --- wger ↔ PeerTube integration (/api/wger/*) --------------------------
+# Exact origins allowed to call the BFF cross-origin WITH credentials
+# (comma-separated) — set to the wger origin (e.g. https://train.<domain>).
+# Empty = the /api/wger/* surface stays same-origin-only.
+ghosttrak_cors_allowed_origins: ""
+# Origins /api/auth/login may bounce back to via ?return_to= (absolute URLs).
+# Usually the same wger origin. Empty = only root-relative paths allowed.
+ghosttrak_auth_return_origins: ""
+# Groups allowed to curate the shared exercise library (attach demo videos to
+# wger exercises, upload into the library channel). Empty = BFF default
+# (ghostrak-admins,prime-admins,ghostrak-coaches,ghostrak-facility-owners).
+ghosttrak_video_curator_groups: ""
+# Roster-owned PeerTube channel that holds the wger exercise demo library.
+ghosttrak_video_library_channel: "exercise-library"
+ghosttrak_video_library_channel_name: "Exercise Library"
+
 # --- Redis sidecar (session store) -------------------------------------
 # Internal-only redis on the ghosttrak docker network. AOF + RDB persistence
 # on a named volume so sessions survive a redis restart; LRU eviction caps

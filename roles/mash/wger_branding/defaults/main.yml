@@ -49,3 +49,15 @@ wger_branding_palette:
 wger_branding_font_import: "https://fonts.googleapis.com/css2?family=Montserrat:wght@500;600;700&family=Poppins:wght@300;400;500;600&display=swap"
 wger_branding_font_body: "'Poppins', system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif"
 wger_branding_font_heading: "'Montserrat', system-ui, sans-serif"
+
+# ---------------------------------------------------------------------------
+# prime-video.js — the wger ↔ PeerTube overlay (templates/prime-video.js.j2).
+# Rendered into /media/branding/prime-video.js and loaded by the image's
+# CUSTOM_JS_URL seam (wger_custom_js_url on the base role, image >= 2.6.0-5).
+# It talks to the ghostrak BFF (/api/wger/*) with credentials and turns
+# PeerTube watch links into click-to-play embeds, adds exercise demo videos,
+# and offers in-wger uploads. Both base URLs must be set for it to render.
+# ---------------------------------------------------------------------------
+wger_branding_render_video_js: false
+wger_branding_video_bff_base: ""     # e.g. https://app.primebaseball.pro (no trailing slash)
+wger_branding_video_clips_base: ""   # e.g. https://clips.primebaseball.pro (no trailing slash)

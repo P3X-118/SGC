@@ -44,3 +44,15 @@
         owner: "{{ wger_branding_uid }}"
         group: "{{ wger_branding_gid }}"
       when: wger_branding_render_css | bool
+
+    - name: Render the PeerTube video overlay JS
+      ansible.builtin.template:
+        src: prime-video.js.j2
+        dest: "{{ wger_branding_media_path }}/prime-video.js"
+        mode: "0644"
+        owner: "{{ wger_branding_uid }}"
+        group: "{{ wger_branding_gid }}"
+      when:
+        - wger_branding_render_video_js | bool
+        - wger_branding_video_bff_base | length > 0
+        - wger_branding_video_clips_base | length > 0

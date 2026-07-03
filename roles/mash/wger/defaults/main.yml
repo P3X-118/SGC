@@ -222,6 +222,9 @@ wger_site_name: ""
 wger_brand_logo_url: ""
 wger_brand_favicon_url: ""
 wger_custom_css_url: ""
+# Per-host script injected as a single <script defer> (image >= 2.6.0-5).
+# Deployed via wger_branding (e.g. /media/branding/prime-video.js?v=1).
+wger_custom_js_url: ""
 wger_brand_color_mode: ""            # "", "dark" or "light" -> <html data-bs-theme=...>
 # New SSO users' default weight unit ("", "kg" or "lb"); "" keeps wger's default (kg).
 wger_sso_default_weight_unit: ""

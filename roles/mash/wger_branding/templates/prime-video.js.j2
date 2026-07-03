@@ -1,0 +1,636 @@
+/* prime-video.js — wger ↔ PeerTube overlay. Managed by Ansible (wger_branding
+ * role, templates/prime-video.js.j2); served from /media/branding/ and loaded
+ * by the wger image's CUSTOM_JS_URL seam. Bump the ?v= in wger_custom_js_url
+ * on every change (nginx caches /media for 30d).
+ *
+ * What it does on train.<domain> pages:
+ *   - turns links to the PeerTube instance (clips.<domain>/w/...) anywhere in
+ *     page content into click-to-play embed cards
+ *   - shows the exercise's demo video on exercise-detail pages (mapping is
+ *     stored in the ghostrak BFF); curators can attach/replace/remove it
+ *   - adds a ▶ badge next to exercise links on routine pages that have demos
+ *   - adds a navbar "Videos" item: browse the exercise library, browse your
+ *     own uploads, and upload straight to PeerTube from wger
+ *
+ * All data flows through the BFF (app.<domain>) with the caller's own SSO
+ * session (same-site cookie). First use may require a one-click "connect"
+ * that bounces through Authentik and straight back.
+ */
+(function () {
+  'use strict';
+  if (window.__primeVideo) return;
+  window.__primeVideo = true;
+
+  const BFF = "{{ wger_branding_video_bff_base }}";
+  const CLIPS = "{{ wger_branding_video_clips_base }}";
+{% raw %}
+  const EMBED_PARAMS = 'title=0&warningTitle=0&peertubeLink=0';
+  const IFRAME_SANDBOX = 'allow-same-origin allow-scripts allow-popups allow-forms';
+
+  /* ---------------------------------------------------------------- utils */
+
+  function h(tag, attrs, children) {
+    const el = document.createElement(tag);
+    if (attrs) {
+      for (const k of Object.keys(attrs)) {
+        if (k === 'style') el.setAttribute('style', attrs[k]);
+        else if (k === 'text') el.textContent = attrs[k];
+        else if (k.startsWith('on')) el.addEventListener(k.slice(2), attrs[k]);
+        else el.setAttribute(k, attrs[k]);
+      }
+    }
+    (children || []).forEach((c) => { if (c) el.appendChild(c); });
+    return el;
+  }
+
+  async function bff(path, opts) {
+    const res = await fetch(BFF + path, Object.assign({ credentials: 'include' }, opts || {}));
+    let data = null;
+    try { data = await res.json(); } catch (e) { /* empty/204 */ }
+    return { status: res.status, ok: res.ok, data: data };
+  }
+
+  function copyText(t) {
+    if (navigator.clipboard && navigator.clipboard.writeText) {
+      return navigator.clipboard.writeText(t);
+    }
+    return Promise.reject(new Error('clipboard unavailable'));
+  }
+
+  // /w/<ref>, /videos/watch/<ref>, /videos/embed/<ref> on our CLIPS host.
+  const REF_RE = new RegExp(
+    CLIPS.replace(/[.*+?^${}()|[\]\\]/g, '\\$&') + '/(?:w|videos/(?:watch|embed))/([A-Za-z0-9-]+)'
+  );
+  function videoRefFrom(url) {
+    const m = String(url || '').match(REF_RE);
+    return m ? m[1] : null;
+  }
+  function embedUrlFor(ref, autoplay) {
+    return CLIPS + '/videos/embed/' + ref + '?' + EMBED_PARAMS + (autoplay ? '&autoplay=1' : '');
+  }
+
+  // Best-effort title/thumbnail via PeerTube's anonymous oEmbed (works for
+  // public + unlisted). Never throws.
+  async function oembed(ref) {
+    try {
+      const u = CLIPS + '/services/oembed?url=' + encodeURIComponent(CLIPS + '/w/' + ref) + '&format=json';
+      const res = await fetch(u);
+      if (!res.ok) return null;
+      return await res.json();
+    } catch (e) { return null; }
+  }
+
+  /* ------------------------------------------------------------ state */
+
+  let mePromise = null;
+  function getMe() {
+    if (!mePromise) {
+      mePromise = bff('/api/wger/me').then(
+        (r) => (r.ok ? r.data : { authenticated: false }),
+        () => ({ authenticated: false })
+      );
+    }
+    return mePromise;
+  }
+
+  function connectUrl() {
+    return BFF + '/api/auth/login?return_to=' + encodeURIComponent(location.href);
+  }
+
+  // exercise id -> uuid (immutable; cached in sessionStorage)
+  async function exerciseUuid(id) {
+    const key = 'pv-ex-uuid:' + id;
+    const cached = sessionStorage.getItem(key);
+    if (cached) return cached;
+    try {
+      const res = await fetch('/api/v2/exerciseinfo/' + id + '/?format=json', { credentials: 'same-origin' });
+      if (!res.ok) return null;
+      const data = await res.json();
+      if (data && data.uuid) { sessionStorage.setItem(key, data.uuid); return data.uuid; }
+    } catch (e) { /* ignore */ }
+    return null;
+  }
+
+  const mappingCache = new Map(); // uuid -> mapping | null
+  async function getMappings(uuids) {
+    const missing = uuids.filter((u) => !mappingCache.has(u));
+    if (missing.length) {
+      const r = await bff('/api/wger/exercise-videos?uuids=' + missing.join(','));
+      if (r.status === 401) return { unauthenticated: true, map: mappingCache };
+      const videos = (r.ok && r.data && r.data.videos) || {};
+      missing.forEach((u) => mappingCache.set(u, videos[u] || null));
+    }
+    return { unauthenticated: false, map: mappingCache };
+  }
+
+  /* -------------------------------------------------------------- style */
+
+  function injectCss() {
+    const css = [
+      '.pv-card{max-width:640px;margin:.5rem 0;border:1px solid var(--bs-border-color,#3d3737);border-radius:.5rem;overflow:hidden;background:var(--bs-body-bg,#1f1c1c)}',
+      '.pv-thumb{position:relative;aspect-ratio:16/9;background:#000 center/cover no-repeat;cursor:pointer;display:flex;align-items:center;justify-content:center}',
+      '.pv-thumb:hover .pv-playbtn{transform:scale(1.08)}',
+      '.pv-playbtn{width:64px;height:64px;border-radius:50%;border:0;background:rgba(221,23,23,.92);color:#fff;font-size:1.5rem;line-height:1;cursor:pointer;transition:transform .15s}',
+      '.pv-cardtitle{position:absolute;left:0;right:0;bottom:0;padding:.35rem .6rem;font-size:.85rem;color:#fff;background:linear-gradient(transparent,rgba(0,0,0,.75));text-shadow:0 1px 2px #000;pointer-events:none}',
+      '.pv-frame{aspect-ratio:16/9;width:100%;border:0;display:block;background:#000}',
+      '.pv-badge{display:inline-flex;align-items:center;justify-content:center;margin-left:.35rem;width:1.5rem;height:1.5rem;border-radius:50%;border:0;background:rgba(221,23,23,.9);color:#fff;font-size:.7rem;cursor:pointer;vertical-align:middle}',
+      '.pv-section{margin:.75rem 0 1rem}',
+      '.pv-section h6{display:flex;align-items:center;gap:.5rem;margin-bottom:.4rem}',
+      '.pv-overlay{position:fixed;inset:0;background:rgba(0,0,0,.6);z-index:2000;display:flex;align-items:flex-start;justify-content:center;padding:4vh 1rem;overflow-y:auto}',
+      '.pv-modal{background:var(--bs-body-bg,#262222);color:var(--bs-body-color,#ece6e2);border:1px solid var(--bs-border-color,#3d3737);border-radius:.6rem;width:100%;max-width:760px;box-shadow:0 12px 40px rgba(0,0,0,.5)}',
+      '.pv-modal-head{display:flex;align-items:center;gap:.75rem;padding:.75rem 1rem;border-bottom:1px solid var(--bs-border-color,#3d3737)}',
+      '.pv-modal-head .pv-x{margin-left:auto;background:none;border:0;color:inherit;font-size:1.3rem;cursor:pointer;line-height:1}',
+      '.pv-modal-body{padding:1rem;max-height:72vh;overflow-y:auto}',
+      '.pv-tab{background:none;border:0;border-bottom:2px solid transparent;color:inherit;padding:.25rem .1rem;cursor:pointer;font-weight:600;opacity:.65}',
+      '.pv-tab.pv-active{border-bottom-color:#dd1717;opacity:1}',
+      '.pv-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(210px,1fr));gap:.75rem}',
+      '.pv-tile{border:1px solid var(--bs-border-color,#3d3737);border-radius:.5rem;overflow:hidden;background:var(--bs-tertiary-bg,#2e2929)}',
+      '.pv-tile .pv-thumb{aspect-ratio:16/9}',
+      '.pv-tile .pv-playbtn{width:44px;height:44px;font-size:1rem}',
+      '.pv-tilebody{padding:.45rem .55rem;font-size:.82rem}',
+      '.pv-tilebody .pv-name{display:block;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;font-weight:600}',
+      '.pv-tileacts{display:flex;gap:.4rem;margin-top:.35rem}',
+      '.pv-mini{font-size:.72rem;padding:.15rem .5rem;border-radius:.35rem;border:1px solid var(--bs-border-color,#3d3737);background:transparent;color:inherit;cursor:pointer}',
+      '.pv-mini:hover{border-color:#dd1717}',
+      '.pv-primary{background:#dd1717;border-color:#dd1717;color:#fff}',
+      '.pv-input{width:100%;padding:.4rem .6rem;border-radius:.4rem;border:1px solid var(--bs-border-color,#3d3737);background:var(--bs-body-bg,#383232);color:inherit}',
+      '.pv-row{display:flex;gap:.5rem;align-items:center;margin:.5rem 0;flex-wrap:wrap}',
+      '.pv-muted{opacity:.7;font-size:.85rem}',
+      '.pv-progress{height:8px;border-radius:4px;background:var(--bs-tertiary-bg,#332e2e);overflow:hidden;flex:1}',
+      '.pv-progress>div{height:100%;width:0;background:#dd1717;transition:width .2s}',
+      '.pv-alert{border:1px solid var(--bs-border-color,#3d3737);border-left:3px solid #dd1717;border-radius:.4rem;padding:.6rem .8rem;margin:.5rem 0;font-size:.87rem}',
+    ].join('\n');
+    document.head.appendChild(h('style', { id: 'pv-style', text: css }));
+  }
+
+  /* ------------------------------------------------------- embed cards */
+
+  function playInto(container, ref) {
+    container.innerHTML = '';
+    container.appendChild(h('iframe', {
+      class: 'pv-frame',
+      src: embedUrlFor(ref, true),
+      sandbox: IFRAME_SANDBOX,
+      allow: 'fullscreen; autoplay',
+      allowfullscreen: '',
+    }));
+  }
+
+  function makeCard(ref, title, thumbnailUrl) {
+    const thumb = h('div', { class: 'pv-thumb' }, [
+      h('button', { class: 'pv-playbtn', type: 'button', 'aria-label': 'Play video', text: '▶' }),
+      title ? h('div', { class: 'pv-cardtitle', text: title }) : null,
+    ]);
+    if (thumbnailUrl) thumb.style.backgroundImage = 'url("' + thumbnailUrl + '")';
+    const card = h('div', { class: 'pv-card', 'data-pv-ref': ref }, [thumb]);
+    thumb.addEventListener('click', () => playInto(card, ref));
+    if (!title || !thumbnailUrl) {
+      oembed(ref).then((o) => {
+        if (!o || card.querySelector('iframe')) return;
+        if (!thumbnailUrl && o.thumbnail_url) thumb.style.backgroundImage = 'url("' + o.thumbnail_url + '")';
+        if (!title && o.title && !card.querySelector('.pv-cardtitle')) {
+          thumb.appendChild(h('div', { class: 'pv-cardtitle', text: o.title }));
+        }
+      });
+    }
+    return card;
+  }
+
+  /* ------------------------------------------------- link transformation */
+
+  function transformLinks(root) {
+    if (!root) return;
+    // Anchors pointing at the clips instance → hide + insert card after.
+    root.querySelectorAll('a[href*="' + CLIPS.replace('https://', '') + '/"]').forEach((a) => {
+      if (a.dataset.pvDone) return;
+      const ref = videoRefFrom(a.getAttribute('href'));
+      if (!ref) return;
+      a.dataset.pvDone = '1';
+      if (a.closest('.pv-card,.pv-modal,nav')) return;
+      const label = (a.textContent || '').trim();
+      const card = makeCard(ref, /^https?:\/\//.test(label) ? '' : label, '');
+      a.style.display = 'none';
+      a.parentNode && a.parentNode.insertBefore(card, a.nextSibling);
+    });
+    // Plain-text URLs.
+    const walker = document.createTreeWalker(root, NodeFilter.SHOW_TEXT, {
+      acceptNode(n) {
+        if (!n.nodeValue || n.nodeValue.indexOf(CLIPS) === -1) return NodeFilter.FILTER_SKIP;
+        const p = n.parentElement;
+        if (!p || p.closest('script,style,textarea,input,select,a,[contenteditable],.pv-card,.pv-modal')) {
+          return NodeFilter.FILTER_SKIP;
+        }
+        return NodeFilter.FILTER_ACCEPT;
+      },
+    });
+    const nodes = [];
+    while (walker.nextNode()) nodes.push(walker.currentNode);
+    nodes.forEach((node) => {
+      const m = node.nodeValue.match(REF_RE);
+      if (!m) return;
+      const ref = m[1];
+      const idx = node.nodeValue.indexOf(m[0]);
+      const after = node.splitText(idx);
+      after.nodeValue = after.nodeValue.slice(m[0].length);
+      const card = makeCard(ref, '', '');
+      after.parentNode && after.parentNode.insertBefore(card, after);
+    });
+  }
+
+  /* -------------------------------------------------- exercise demo UI */
+
+  async function exercisePage() {
+    const m = location.pathname.match(/\/exercise\/(\d+)\/view/);
+    if (!m) return;
+    const exId = m[1];
+    if (document.querySelector('#pv-demo[data-ex="' + exId + '"]')) return;
+    const container = document.querySelector('#main .container');
+    if (!container) return;
+    // Claim the slot synchronously so concurrent passes don't double-insert.
+    const section = h('div', { class: 'pv-section', id: 'pv-demo', 'data-ex': exId });
+    const old = document.getElementById('pv-demo');
+    if (old) old.remove();
+    container.insertBefore(section, container.firstChild);
+
+    // NB: never remove the section on "nothing to show" — the empty section
+    // is the done-marker that stops the MutationObserver → passes() cycle
+    // from re-running this (and re-hitting the APIs) forever.
+    const uuid = await exerciseUuid(exId);
+    if (!uuid) { section.style.display = 'none'; return; }
+    const me = await getMe();
+    const res = await getMappings([uuid]);
+    const mapping = res.map.get(uuid) || null;
+
+    if (res.unauthenticated || !me.authenticated) {
+      // Only advertise the connect step where there's something to gain.
+      section.appendChild(h('div', { class: 'pv-alert' }, [
+        h('span', { text: 'Connect your Prime account to see exercise demo videos. ' }),
+        h('button', {
+          class: 'pv-mini pv-primary', type: 'button', text: 'Connect',
+          onclick: () => { location.href = connectUrl(); },
+        }),
+      ]));
+      return;
+    }
+
+    const head = h('h6', {}, [h('span', { text: '🎬 Demo video' })]);
+    section.appendChild(head);
+    if (mapping) {
+      section.appendChild(makeCard(mapping.shortUuid || mapping.videoUuid, mapping.title || '', ''));
+    }
+    if (me.curator) {
+      const actions = h('div', { class: 'pv-row' });
+      actions.appendChild(h('button', {
+        class: 'pv-mini', type: 'button',
+        text: mapping ? 'Replace demo video' : 'Set demo video',
+        onclick: () => openAttachModal(uuid, exId),
+      }));
+      if (mapping) {
+        actions.appendChild(h('button', {
+          class: 'pv-mini', type: 'button', text: 'Remove',
+          onclick: async () => {
+            await bff('/api/wger/exercise-videos/' + uuid, { method: 'DELETE' });
+            mappingCache.delete(uuid);
+            section.remove();
+            exercisePage();
+          },
+        }));
+      }
+      section.appendChild(actions);
+    } else if (!mapping) {
+      section.style.display = 'none'; // nothing to show non-curators
+    }
+  }
+
+  /* ------------------------------------------------- routine ▶ badges */
+
+  async function routineBadges() {
+    if (location.pathname.indexOf('/routine/') === -1) return;
+    const anchors = Array.from(document.querySelectorAll('#main a[href*="/exercise/"]'))
+      .filter((a) => !a.dataset.pvBadged && /\/exercise\/(\d+)\//.test(a.getAttribute('href') || ''));
+    if (!anchors.length) return;
+    anchors.forEach((a) => { a.dataset.pvBadged = '1'; });
+    const byId = new Map();
+    anchors.forEach((a) => {
+      const id = a.getAttribute('href').match(/\/exercise\/(\d+)\//)[1];
+      if (!byId.has(id)) byId.set(id, []);
+      byId.get(id).push(a);
+    });
+    const ids = Array.from(byId.keys()).slice(0, 40);
+    const uuids = {};
+    await Promise.all(ids.map(async (id) => { uuids[id] = await exerciseUuid(id); }));
+    const list = Object.values(uuids).filter(Boolean);
+    if (!list.length) return;
+    const res = await getMappings(list);
+    if (res.unauthenticated) return;
+    ids.forEach((id) => {
+      const uuid = uuids[id];
+      const mapping = uuid ? res.map.get(uuid) : null;
+      if (!mapping) return;
+      byId.get(id).forEach((a) => {
+        const badge = h('button', {
+          class: 'pv-badge', type: 'button', title: 'Watch demo video', text: '▶',
+          onclick: (ev) => {
+            ev.preventDefault();
+            ev.stopPropagation();
+            openLightbox(mapping.shortUuid || mapping.videoUuid, mapping.title || '');
+          },
+        });
+        a.insertAdjacentElement('afterend', badge);
+      });
+    });
+  }
+
+  /* --------------------------------------------------------- modals */
+
+  function modalShell(titleText) {
+    const body = h('div', { class: 'pv-modal-body' });
+    const head = h('div', { class: 'pv-modal-head' }, [
+      h('strong', { text: titleText }),
+      h('button', { class: 'pv-x', type: 'button', 'aria-label': 'Close', text: '×' }),
+    ]);
+    const modal = h('div', { class: 'pv-modal' }, [head, body]);
+    const overlay = h('div', { class: 'pv-overlay' }, [modal]);
+    const close = () => overlay.remove();
+    head.querySelector('.pv-x').addEventListener('click', close);
+    overlay.addEventListener('click', (e) => { if (e.target === overlay) close(); });
+    document.body.appendChild(overlay);
+    return { body: body, head: head, close: close };
+  }
+
+  function openLightbox(ref, title) {
+    const mm = modalShell(title || 'Video');
+    const holder = h('div', { class: 'pv-card', style: 'max-width:100%' });
+    mm.body.appendChild(holder);
+    playInto(holder, ref);
+  }
+
+  function connectPane(body, message) {
+    body.innerHTML = '';
+    body.appendChild(h('div', { class: 'pv-alert' }, [
+      h('div', { text: message || 'Connect your Prime account to use videos here. You will bounce through the Prime sign-in and land right back on this page.' }),
+      h('div', { class: 'pv-row' }, [
+        h('button', {
+          class: 'pv-mini pv-primary', type: 'button', text: 'Connect now',
+          onclick: () => { location.href = connectUrl(); },
+        }),
+      ]),
+    ]));
+  }
+
+  function videoTile(v, onPick) {
+    const thumb = h('div', { class: 'pv-thumb' }, [
+      h('button', { class: 'pv-playbtn', type: 'button', text: '▶' }),
+    ]);
+    if (v.thumbnailUrl) thumb.style.backgroundImage = 'url("' + v.thumbnailUrl + '")';
+    const acts = h('div', { class: 'pv-tileacts' });
+    const tile = h('div', { class: 'pv-tile' }, [
+      thumb,
+      h('div', { class: 'pv-tilebody' }, [
+        h('span', { class: 'pv-name', title: v.title || '', text: v.title || '(untitled)' }),
+        acts,
+      ]),
+    ]);
+    thumb.addEventListener('click', () => openLightbox(v.shortUuid || v.uuid, v.title || ''));
+    if (onPick) {
+      acts.appendChild(h('button', { class: 'pv-mini pv-primary', type: 'button', text: 'Use this', onclick: () => onPick(v) }));
+    } else {
+      acts.appendChild(h('button', {
+        class: 'pv-mini', type: 'button', text: 'Copy link',
+        onclick: (ev) => {
+          copyText(v.watchUrl).then(() => { ev.target.textContent = 'Copied!'; setTimeout(() => { ev.target.textContent = 'Copy link'; }, 1500); });
+        },
+      }));
+    }
+    return tile;
+  }
+
+  async function renderLibraryPane(body, onPick) {
+    body.innerHTML = '';
+    const grid = h('div', { class: 'pv-grid' });
+    const search = h('input', { class: 'pv-input', type: 'search', placeholder: 'Search the exercise library…' });
+    body.appendChild(h('div', { class: 'pv-row' }, [search]));
+    body.appendChild(grid);
+    let t = null;
+    async function load() {
+      grid.innerHTML = '';
+      grid.appendChild(h('div', { class: 'pv-muted', text: 'Loading…' }));
+      const r = await bff('/api/wger/library?search=' + encodeURIComponent(search.value || ''));
+      grid.innerHTML = '';
+      if (r.status === 401) return connectPane(body);
+      if (!r.ok) return grid.appendChild(h('div', { class: 'pv-muted', text: 'Library unavailable.' }));
+      const vids = (r.data && r.data.videos) || [];
+      if (!vids.length) return grid.appendChild(h('div', { class: 'pv-muted', text: 'No videos yet.' }));
+      vids.forEach((v) => grid.appendChild(videoTile(v, onPick)));
+    }
+    search.addEventListener('input', () => { clearTimeout(t); t = setTimeout(load, 350); });
+    load();
+  }
+
+  async function renderMinePane(body) {
+    body.innerHTML = '';
+    const grid = h('div', { class: 'pv-grid' });
+    body.appendChild(grid);
+    grid.appendChild(h('div', { class: 'pv-muted', text: 'Loading…' }));
+    const r = await bff('/api/wger/my-videos');
+    grid.innerHTML = '';
+    if (r.status === 401) return connectPane(body);
+    if (!r.ok) return grid.appendChild(h('div', { class: 'pv-muted', text: 'Listing unavailable.' }));
+    if (r.data && r.data.reason === 'no-player-profile') {
+      return body.appendChild(h('div', { class: 'pv-alert', text: 'No player profile is linked to your account yet — ask your coach to add you to a facility roster. You can still watch library videos.' }));
+    }
+    const vids = (r.data && r.data.videos) || [];
+    if (!vids.length) return grid.appendChild(h('div', { class: 'pv-muted', text: 'You have not uploaded any videos from wger yet.' }));
+    vids.forEach((v) => grid.appendChild(videoTile(v)));
+  }
+
+  function renderUploadPane(body, me, onDone) {
+    body.innerHTML = '';
+    const title = h('input', { class: 'pv-input', type: 'text', placeholder: 'Video title', maxlength: '120' });
+    const target = h('select', { class: 'pv-input', style: 'max-width:220px' });
+    if (me.canPersonalUpload) target.appendChild(h('option', { value: 'personal', text: 'My videos (unlisted)' }));
+    if (me.curator) target.appendChild(h('option', { value: 'library', text: 'Exercise library (unlisted)' }));
+    const file = h('input', { class: 'pv-input', type: 'file', accept: 'video/*' });
+    const bar = h('div', { class: 'pv-progress' }, [h('div')]);
+    const result = h('div');
+    const btn = h('button', { class: 'pv-mini pv-primary', type: 'button', text: 'Upload' });
+
+    if (!me.canPersonalUpload && !me.curator) {
+      body.appendChild(h('div', { class: 'pv-alert', text: 'Uploads need a player profile (ask your coach to add you to a roster) or a coach/admin account.' }));
+      return;
+    }
+
+    btn.addEventListener('click', () => {
+      const f = file.files && file.files[0];
+      if (!f) { result.textContent = 'Pick a video file first.'; return; }
+      btn.disabled = true;
+      const xhr = new XMLHttpRequest();
+      const q = '?title=' + encodeURIComponent(title.value || f.name.replace(/\.[^.]+$/, '')) +
+                '&target=' + encodeURIComponent(target.value || 'personal');
+      xhr.open('POST', BFF + '/api/wger/videos' + q);
+      xhr.withCredentials = true;
+      xhr.setRequestHeader('Content-Type', f.type || 'application/octet-stream');
+      xhr.upload.addEventListener('progress', (e) => {
+        if (e.lengthComputable) bar.firstChild.style.width = Math.round((e.loaded / e.total) * 100) + '%';
+      });
+      xhr.addEventListener('load', () => {
+        btn.disabled = false;
+        if (xhr.status === 401) return connectPane(body);
+        if (xhr.status >= 300) {
+          let msg = 'Upload failed (' + xhr.status + ').';
+          try { msg = JSON.parse(xhr.responseText).error || msg; } catch (e) { /* keep */ }
+          result.innerHTML = '';
+          result.appendChild(h('div', { class: 'pv-alert', text: msg }));
+          return;
+        }
+        bar.firstChild.style.width = '100%';
+        const v = JSON.parse(xhr.responseText);
+        result.innerHTML = '';
+        result.appendChild(h('div', { class: 'pv-alert' }, [
+          h('div', { text: 'Uploaded! It may take a minute to finish processing.' }),
+          h('div', { class: 'pv-row' }, [
+            h('input', { class: 'pv-input', type: 'text', readonly: '', value: v.watchUrl, style: 'flex:1' }),
+            h('button', {
+              class: 'pv-mini', type: 'button', text: 'Copy link',
+              onclick: (ev) => copyText(v.watchUrl).then(() => { ev.target.textContent = 'Copied!'; }),
+            }),
+          ]),
+          h('div', { class: 'pv-muted', text: 'Paste this link into any exercise or routine description — it becomes a player automatically.' }),
+        ]));
+        if (onDone) onDone(v);
+      });
+      xhr.addEventListener('error', () => { btn.disabled = false; result.textContent = 'Upload failed (network).'; });
+      xhr.send(f);
+    });
+
+    body.appendChild(h('div', { class: 'pv-row' }, [title]));
+    body.appendChild(h('div', { class: 'pv-row' }, [target, file]));
+    body.appendChild(h('div', { class: 'pv-row' }, [bar, btn]));
+    body.appendChild(result);
+  }
+
+  async function openVideosModal() {
+    const mm = modalShell('Prime video library');
+    mm.body.appendChild(h('div', { class: 'pv-muted', text: 'Loading…' }));
+    const me = await getMe();
+    if (!me.authenticated) return connectPane(mm.body);
+    const tabs = h('div', { class: 'pv-row', style: 'gap:1rem;margin:0 0 .75rem' });
+    const pane = h('div');
+    mm.body.innerHTML = '';
+    mm.body.appendChild(tabs);
+    mm.body.appendChild(pane);
+    const defs = [
+      ['Library', () => renderLibraryPane(pane)],
+      ['My videos', () => renderMinePane(pane)],
+      ['Upload', () => renderUploadPane(pane, me)],
+    ];
+    defs.forEach(([label, render], i) => {
+      const b = h('button', { class: 'pv-tab' + (i === 0 ? ' pv-active' : ''), type: 'button', text: label });
+      b.addEventListener('click', () => {
+        tabs.querySelectorAll('.pv-tab').forEach((x) => x.classList.remove('pv-active'));
+        b.classList.add('pv-active');
+        render();
+      });
+      tabs.appendChild(b);
+    });
+    renderLibraryPane(pane);
+  }
+
+  // Curator: attach a demo video to an exercise (paste URL / pick / upload).
+  async function openAttachModal(exerciseUuidVal, exId) {
+    const mm = modalShell('Set demo video');
+    const me = await getMe();
+    if (!me.authenticated) return connectPane(mm.body);
+
+    const url = h('input', { class: 'pv-input', type: 'text', placeholder: 'Paste a clips link (https://…/w/…)', style: 'flex:1' });
+    const status = h('div', { class: 'pv-muted' });
+    const save = h('button', { class: 'pv-mini pv-primary', type: 'button', text: 'Save' });
+    save.addEventListener('click', async () => {
+      save.disabled = true;
+      status.textContent = 'Saving…';
+      const r = await bff('/api/wger/exercise-videos/' + exerciseUuidVal, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ url: url.value }),
+      });
+      save.disabled = false;
+      if (r.status === 401) return connectPane(mm.body);
+      if (!r.ok) { status.textContent = (r.data && r.data.error) || 'Save failed.'; return; }
+      mappingCache.set(exerciseUuidVal, r.data);
+      mm.close();
+      const sec = document.getElementById('pv-demo');
+      if (sec) sec.remove();
+      exercisePage();
+    });
+
+    mm.body.appendChild(h('div', { class: 'pv-row' }, [url, save]));
+    mm.body.appendChild(status);
+    mm.body.appendChild(h('div', { class: 'pv-muted', style: 'margin:.75rem 0 .25rem', text: 'Or pick from the exercise library:' }));
+    const pickHolder = h('div');
+    mm.body.appendChild(pickHolder);
+    renderLibraryPane(pickHolder, (v) => { url.value = v.watchUrl; status.textContent = 'Selected: ' + (v.title || v.watchUrl); });
+    mm.body.appendChild(h('div', { class: 'pv-muted', style: 'margin:.75rem 0 .25rem', text: 'Or upload a new demo into the library:' }));
+    const upHolder = h('div');
+    mm.body.appendChild(upHolder);
+    renderUploadPane(upHolder, Object.assign({}, me, { canPersonalUpload: false }), (v) => {
+      url.value = v.watchUrl;
+      status.textContent = 'Selected the new upload: ' + (v.title || v.watchUrl);
+    });
+  }
+
+  /* --------------------------------------------------------- navbar */
+
+  function navItem() {
+    if (document.getElementById('pv-nav')) return;
+    const nav = document.querySelector('ul.navbar-nav');
+    if (!nav) return;
+    const a = h('a', { class: 'nav-link', href: '#', id: 'pv-nav-link' }, [
+      h('span', { text: '🎥 Videos' }),
+    ]);
+    a.addEventListener('click', (e) => { e.preventDefault(); openVideosModal(); });
+    nav.appendChild(h('li', { class: 'nav-item', id: 'pv-nav' }, [a]));
+  }
+
+  /* ----------------------------------------------------------- boot */
+
+  let scheduled = null;
+  function passes() {
+    scheduled = null;
+    try { navItem(); } catch (e) { /* noop */ }
+    try {
+      // Drop a stale demo section after client-side navigation away from an
+      // exercise page (guarded: only removed when the route no longer matches,
+      // so this can't ping-pong with exercisePage's insert).
+      if (!/\/exercise\/\d+\/view/.test(location.pathname)) {
+        const stale = document.getElementById('pv-demo');
+        if (stale) stale.remove();
+      }
+    } catch (e) { /* noop */ }
+    try { exercisePage().catch(() => {}); } catch (e) { /* noop */ }
+    try { routineBadges().catch(() => {}); } catch (e) { /* noop */ }
+    try { transformLinks(document.getElementById('main') || document.body); } catch (e) { /* noop */ }
+  }
+  function schedule() {
+    if (scheduled) return;
+    scheduled = setTimeout(passes, 250);
+  }
+
+  function boot() {
+    try { injectCss(); } catch (e) { /* noop */ }
+    passes();
+    const mo = new MutationObserver(schedule);
+    mo.observe(document.body, { childList: true, subtree: true });
+    ['pushState', 'replaceState'].forEach((fn) => {
+      const orig = history[fn];
+      history[fn] = function () { const r = orig.apply(this, arguments); schedule(); return r; };
+    });
+    window.addEventListener('popstate', schedule);
+  }
+
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', boot);
+  } else {
+    boot();
+  }
+})();
+{% endraw %}
