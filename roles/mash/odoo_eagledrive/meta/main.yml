@@ -1,0 +1,22 @@
+---
+galaxy_info:
+  author: Oneill
+  company: SGC
+  role_name: odoo_eagledrive
+  namespace: SGC
+  description: |
+    Provisions Odoo-side state for the eagledrive.live business-dossier mirror:
+    the eagledrive-service JSON-RPC user (Contacts manager, default company =
+    Eagledrive Live) that the eagledrive scrapers' odoo-sync job authenticates
+    as to upsert res.partner business profiles. One-way mirror — the eagledrive
+    Postgres is the source of truth. Reproducible/idempotent. Does NOT create
+    the company (odoo_sgc_companies does, list-driven) nor install modules
+    (contacts already present) — zero downtime, one-shot `odoo-bin shell` only.
+    Mirrors mash/odoo_texasmodern's provisioning pattern.
+  license: MIT
+  min_ansible_version: "2.10"
+  platforms:
+    - name: Debian
+      versions: [all]
+    - name: Ubuntu
+      versions: [all]

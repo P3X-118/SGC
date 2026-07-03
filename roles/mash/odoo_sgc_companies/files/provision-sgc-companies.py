@@ -100,15 +100,28 @@ for u in U.search([('share', '=', False), ('active', '=', True)]):
 CT = env['account.chart.template'].sudo()
 A = env['account.account'].sudo()
 coa_loaded = []
+coa_failed = []
 for comp in all_companies:
     has_recv = A.search_count([('account_type', '=', 'asset_receivable'),
                                ('company_ids', 'in', comp.id)])
     if not has_recv:
-        CT.try_loading('generic_coa', company=comp, install_demo=False)
-        coa_loaded.append(comp.name)
-        changed = True
+        # Fail-SOFT per company: a CoA template collision (seen live: loading a
+        # new company's CoA tripped "no company crossover" against 30A's Bank
+        # journal) must not roll back company creation / confinement for
+        # everyone. Companies that only hold contacts (e.g. the eagledrive
+        # dossier mirror) don't need accounting; load CoA for the ones that
+        # can, WARN loudly for the ones that can't.
+        try:
+            with env.cr.savepoint():
+                CT.try_loading('generic_coa', company=comp, install_demo=False)
+            coa_loaded.append(comp.name)
+            changed = True
+        except Exception as e:  # noqa: BLE001 — surfaced in the play output
+            coa_failed.append(f"{comp.name}: {e}")
 if coa_loaded:
     env.cr.commit()
+if coa_failed:
+    print("WARN coa_load_failed=" + "; ".join(coa_failed))
 
 env.cr.commit()
 companies = sorted(C.search([]).mapped('name'))

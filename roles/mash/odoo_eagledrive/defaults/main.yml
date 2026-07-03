@@ -1,0 +1,45 @@
+---
+# odoo_eagledrive — Odoo-side provisioning for the eagledrive.live dossier
+# mirror, modelled on odoo_texasmodern. Provisions ONLY the
+# `eagledrive-service` JSON-RPC user (Contacts manager, default company =
+# Eagledrive Live); the company itself is created by odoo_sgc_companies
+# (add "Eagledrive Live" to odoo_sgc_companies_managed) and all needed
+# modules (contacts) are already installed — zero downtime, one-shot shells.
+#
+# The eagledrive scrapers VM re-derives the same service password from this
+# Odoo host's sgc_pgsk (sha256("<sgc_pgsk>.odoo.eagledrive")) — no operator
+# hand-off; same pattern as texasmodern-service / learningwell-service.
+#
+# Enable per-host in host_vars/odoo/vars.yml:  odoo_eagledrive_enabled: true
+# Then:  just install-service odoo_eagledrive --limit odoo
+
+odoo_eagledrive_enabled: false
+
+# Odoo database (the `do` role's per-service DB on this host).
+odoo_eagledrive_database_name: "{{ do_database_name | default('sgc-do') }}"
+
+# The managed company (created by odoo_sgc_companies; referenced by name here).
+odoo_eagledrive_company_name: "Eagledrive Live"
+
+# --- Service user (the scrapers odoo-sync job authenticates as this) --------
+odoo_eagledrive_provision_service_user: true
+odoo_eagledrive_service_user_login: "eagledrive-service"
+odoo_eagledrive_service_user_name: "Eagledrive Live (service account)"
+# Derived from THIS odoo host's sgc_pgsk; the scrapers VM carries the same
+# derived value in its .env (never committed).
+odoo_eagledrive_service_user_password: "{{ ((sgc_pgsk | default('')) ~ '.odoo.eagledrive') | hash('sha256') }}"
+# Minimal groups: internal user + Contacts manager (create/write res.partner
+# and res.partner.category). No sales/accounting access — this user only
+# mirrors business profiles.
+odoo_eagledrive_service_user_groups:
+  - base.group_user
+  - base.group_partner_manager
+
+# --- One-shot docker-run plumbing (mirrors odoo_texasmodern; defaults match
+#     the `do` role's systemd unit on the odoo host) -----------------------
+odoo_eagledrive_install_do_base_path: "{{ do_base_path | default('/' ~ (sgc_playbook_identifier | default('sgc-do')) ~ '/' ~ (do_identifier | default('do'))) }}"
+odoo_eagledrive_install_do_image: "sgc-do:{{ do_version | default('19.0') }}-{{ do_image_release | default('01') }}"
+# DB-only network — the shell short-circuits HTTP with --no-http.
+odoo_eagledrive_install_network: "sgc-postgres"
+odoo_eagledrive_install_user: "{{ (sgc_playbook_uid | default(999)) ~ ':' ~ (sgc_playbook_gid | default(988)) }}"
+odoo_eagledrive_install_add_hosts: []

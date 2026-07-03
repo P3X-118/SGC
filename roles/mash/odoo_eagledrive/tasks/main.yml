@@ -1,0 +1,86 @@
+---
+# odoo_eagledrive — provision the eagledrive-service JSON-RPC user the
+# eagledrive scrapers' odoo-sync job authenticates as (Contacts manager,
+# default company = Eagledrive Live). One-shot `odoo-bin shell --no-http`
+# docker run (same image/mounts/network as the long-running do service; own DB
+# session, no downtime). `changed_when` keys off the script's "changed=True".
+#
+# The Eagledrive Live company is created by odoo_sgc_companies; contacts is
+# already installed — so this role provisions ONLY the service user.
+
+- name: odoo_eagledrive — validate inputs
+  ansible.builtin.assert:
+    that:
+      - odoo_eagledrive_database_name | length > 0
+      - odoo_eagledrive_company_name | length > 0
+    fail_msg: "odoo_eagledrive requires database_name and company_name"
+  tags:
+    - setup-all
+    - setup-odoo_eagledrive
+    - install-all
+    - install-odoo_eagledrive
+  when: odoo_eagledrive_enabled | bool
+
+- name: odoo_eagledrive — assert service-user password resolved
+  ansible.builtin.assert:
+    that:
+      - odoo_eagledrive_service_user_password | length > 32
+    fail_msg: >
+      odoo_eagledrive_service_user_password didn't resolve. Check sgc_pgsk is
+      set on this (odoo) host — vault_sgc_pgsk in host_vars/odoo/vault.yml.
+  tags:
+    - setup-all
+    - setup-odoo_eagledrive
+    - install-all
+    - install-odoo_eagledrive
+  when:
+    - odoo_eagledrive_enabled | bool
+    - odoo_eagledrive_provision_service_user | bool
+
+- name: odoo_eagledrive — provision eagledrive-service Odoo user (one-shot odoo shell)
+  ansible.builtin.shell:
+    cmd: >-
+      docker run --rm -i
+      --user={{ odoo_eagledrive_install_user }}
+      --cap-drop=ALL
+      --network={{ odoo_eagledrive_install_network }}
+      -e EAGLEDRIVE_SERVICE_PASSWORD={{ odoo_eagledrive_service_user_password | quote }}
+      -e EAGLEDRIVE_SERVICE_LOGIN={{ odoo_eagledrive_service_user_login | quote }}
+      -e EAGLEDRIVE_SERVICE_NAME={{ odoo_eagledrive_service_user_name | quote }}
+      -e EAGLEDRIVE_COMPANY_NAME={{ odoo_eagledrive_company_name | quote }}
+      -e EAGLEDRIVE_SERVICE_GROUPS={{ (odoo_eagledrive_service_user_groups | join(',')) | quote }}
+      --mount type=bind,src={{ odoo_eagledrive_install_do_base_path }}/odoo.conf,dst=/etc/odoo/odoo.conf,readonly
+      --mount type=bind,src={{ odoo_eagledrive_install_do_base_path }}/data,dst=/var/lib/odoo
+      --mount type=bind,src={{ odoo_eagledrive_install_do_base_path }}/extra-addons,dst=/mnt/extra-addons,readonly
+      {% for h in odoo_eagledrive_install_add_hosts %}--add-host={{ h }} {% endfor %}
+      {{ odoo_eagledrive_install_do_image }}
+      odoo-bin shell -c /etc/odoo/odoo.conf --no-http -d {{ odoo_eagledrive_database_name }}
+    stdin: "{{ lookup('file', 'provision-eagledrive-service-user.py') }}"
+  register: odoo_eagledrive_user
+  # cmd inlines the password via -e EAGLEDRIVE_SERVICE_PASSWORD=…. Suppress.
+  no_log: true
+  changed_when: "odoo_eagledrive_user.stdout is search('changed=True')"
+  failed_when:
+    - odoo_eagledrive_user.rc != 0
+    - odoo_eagledrive_user.stdout is not search('OK ')
+  tags:
+    - setup-all
+    - setup-odoo_eagledrive
+    - install-all
+    - install-odoo_eagledrive
+  when:
+    - odoo_eagledrive_enabled | bool
+    - odoo_eagledrive_provision_service_user | bool
+
+- name: odoo_eagledrive — report service-user result (status only, no secret)
+  ansible.builtin.debug:
+    msg: "{{ odoo_eagledrive_user.stdout | default('(skipped)') }}"
+  tags:
+    - setup-all
+    - setup-odoo_eagledrive
+    - install-all
+    - install-odoo_eagledrive
+  when:
+    - odoo_eagledrive_enabled | bool
+    - odoo_eagledrive_provision_service_user | bool
+    - odoo_eagledrive_user is defined

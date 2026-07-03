@@ -360,6 +360,18 @@
       tags: [setup-all, setup-odoo_texasmodern, install-all, install-odoo_texasmodern]
     # /role-specific:odoo_texasmodern
 
+    # role-specific:odoo_eagledrive
+    # Provisions the eagledrive-service JSON-RPC user the eagledrive scrapers'
+    # odoo-sync job authenticates as (Contacts manager, company = Eagledrive
+    # Live) to mirror business dossiers into res.partner profiles. Does NOT
+    # create the company (odoo_sgc_companies does) nor install modules — zero
+    # downtime. One-shot odoo-bin shell; idempotent. Runs AFTER
+    # odoo_sgc_companies so the company exists. No-op unless odoo_eagledrive_enabled.
+    - when: odoo_eagledrive_enabled | default(false) | bool
+      role: mash/odoo_eagledrive
+      tags: [setup-all, setup-odoo_eagledrive, install-all, install-odoo_eagledrive]
+    # /role-specific:odoo_eagledrive
+
     # role-specific:odoo_sgc_branding
     # Per-company document/email colors on the do.sgc.ai multi-company Odoo,
     # sourced from the Authentik brand identities. Idempotent one-shot odoo-bin
