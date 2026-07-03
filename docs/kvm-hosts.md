@@ -256,6 +256,7 @@ this does NOT help the dex LLM bottleneck — dex (LocalAI) runs on the Jetson
 | `scrapeEagleDrive` | malp | macvtap `eth0.192` + **2nd NIC untagged `eth0`** for dex at `10.20.0.55:8081`; wg0 → t05 `10.77.0.3` | scrapers + scheduler + Playwright | eagledrive / **30A** |
 | `geomeEagleDrive` | malp | macvtap `eth0.192`; wg0 → t05 `10.77.0.4` | geome live event map | eagledrive |
 | `flareface` | malp | macvtap `eth0.192`, DHCP 192.168.14.184 (residential egress) | FlareSolverr (Cloudflare solver) | eagledrive |
+| `caddy-courses` | malp | macvtap `eth0.192` DHCP 192.168.1.67 + **2nd NIC untagged `eth0`** 10.20.1.68 (dex, MAC-pinned `…ca:dd:01/02`, netplan matches by MAC, dex NIC `use-routes: false`) | caddi backend (`caddy.courses`: sync/backup + LLM proxy behind a Cloudflare Tunnel) | **caddi** |
 | `p3x-989` (= `ssh prod`) | asgard | macvtap `eno3`, 10.13.0.21 | prod | (prod) |
 | `beege-flaresolverr` | asgard | macvtap `eno3`, **static 10.13.0.120/22** (reachable inline from prod/BEEGE) | FlareSolverr | digger |
 | `odoo` | asgard | macvtap `eno2`, **static 10.6.6.120/20** (q35, guest-agent; reachable directly from the controller) | Odoo back-office (do.sgc.ai) | **30A** |
