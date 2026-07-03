@@ -107,7 +107,7 @@
 # When caddy-ar is published, restore the git+ entry below and switch
 # setup.yml back to `galaxy/caddy`.
 #- src: git+https://github.com/P3X-118/caddy-ar.git
-#  version: v0.1.0-0
+#  version: 0.1.0-0
 #  name: caddy
 #  activation_prefix: caddy_
 # /role-specific:caddy
@@ -138,7 +138,7 @@
 # no galaxy fetch. When published, restore the git+ entry below and switch
 # setup.yml back to `galaxy/cloudflared`.
 #- src: git+https://github.com/P3X-118/cloudflared-ar.git
-#  version: v2025.2.0-0
+#  version: 2025.2.0-0
 #  name: cloudflared
 #  activation_prefix: cloudflared_
 # /role-specific:cloudflared

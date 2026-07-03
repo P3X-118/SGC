@@ -28,9 +28,16 @@ document consolidates what was scattered across per-project memories so there is
 | Root | `sudo` available | **No sudo / no `su` pw** — but `ssh asgard-root` (root@169.254.0.27:2269, key `~/.ssh/oneill`); the `docker` group is root-equiv |
 | NIC pattern | **Tagged VLANs** — `eth0.192` (→192.168.0.0/20 residential LAN), `eth0.40`, etc. Each VLAN has a `macvlan<tag>@eth0.<tag>` host-shim | **Untagged** physical NICs: `eno1`=10.9.0.10/20 (default route), `eno2`=10.6.6.0/20, `eno3`=10.13.0.0/22, eno4 down. Each has a `macvlanN@enoN` host-shim |
 | VM disks | `/mnt/tb/<vm>.qcow2` | **`/mnt/ssd2/<vm>.qcow2`** (libvirt SSD2 pool) |
-| Machine type | (libvirt default works) | **q35 REQUIRED** — every working asgard VM is `pc-q35-5.2`; i440fx fails to get network |
+| Machine type | **q35** — all current malp VMs are `pc-q35-10.0` (live-verified 2026-06-30) | **q35 REQUIRED** — every working asgard VM is `pc-q35-5.2`; i440fx fails to get network |
 | `virt-install` | installed | **NOT installed by default** (the build script installs it); `virt-customize` + `genisoimage` are present |
 | Tooling access | `sudo virsh` | `virsh -c qemu:///system …` works WITHOUT sudo (in `libvirt`/`kvm`/`docker` groups); can't write `/mnt/ssd2` directly → create disks via libvirt storage pools |
+
+### malp RAM is TIGHT — size new VMs modestly
+
+malp has 20 cores but only **31 GiB RAM**, chronically ~27 GiB in use (live-verified
+2026-06-30: <1 GiB free). Check `free -h` on malp before building, and keep new VMs to
+**4–8 GiB** (the existing fleet: scrape0 16 GiB, the three eagledrive VMs 8 GiB each).
+Disk is comfortable (`/mnt/tb` ~687 G free) — RAM is the constraint.
 
 ### asgard disk is PRECARIOUS — never write to `/`
 
