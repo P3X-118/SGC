@@ -28,6 +28,7 @@ const desired = {
   shortDescription: {{ peertube_branding_short_description | trim | to_json }},
   theme: {{ peertube_branding_theme_customization | to_json }},
   css: {{ peertube_branding_custom_css | to_json }},
+  js: {{ peertube_branding_custom_js | default('') | to_json }},
 };
 
 function curl(args) {
@@ -70,6 +71,7 @@ try {
   Object.assign(cfg.theme.customization, desired.theme);
   cfg.instance.customizations = cfg.instance.customizations || {};
   cfg.instance.customizations.css = desired.css;
+  cfg.instance.customizations.javascript = desired.js;
   fs.writeFileSync('/tmp/.gr-cfg.json', JSON.stringify(cfg));
   curl([...auth, '-X', 'PUT', '-H', 'Content-Type: application/json',
     '--data', '@/tmp/.gr-cfg.json', `${BASE}/api/v1/config/custom`]);

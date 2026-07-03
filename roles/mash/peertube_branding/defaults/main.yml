@@ -34,6 +34,9 @@ peertube_branding_theme_customization:
 
 # Extra CSS injected via instance.customizations.css (optional).
 peertube_branding_custom_css: ""
+# Custom JS injected as instance.customizations.javascript (runs on every page).
+# Used for the SSO auto-login redirect on /login (see host_vars). Empty = none.
+peertube_branding_custom_js: ""
 
 # Instance avatar (the ghost). `src` is a path on the CONTROLLER; it's copied
 # to the host, streamed into the container's writable /data (the rootfs is
