@@ -1,18 +1,17 @@
 ---
-# odoo_prime_mesh — installs the prime_mesh custom Odoo
-# module on the Prime Odoo. The module ships:
-#   - a Prime company tree (prime_parent_company_id + prime_company_path) decoupled
-#     from native parent_id, so it survives odoo_sgc_companies' flattening,
-#   - the ORG-ADMIN access tier on top of sgc_login (org-admins expand to their
-#     organization's subtree + the company switcher, isolated from other orgs),
-#   - a post_init_hook that marks the operator company (base.main_company) as HQ.
+# odoo_prime_mesh — installs the prime_mesh custom Odoo module on the Prime Odoo.
+# The module is the "VPN Mesh" admin panel: a prime.mesh.client model + form that
+# issues Nebula mesh client certs by calling the on-box prime-mesh-signer over
+# host.docker.internal:8347 (the CA private key never enters Odoo). Device-key by
+# default (admin pastes the phone's exported public key); central-key optional.
+# Reads PRIME_MESH_SIGNER_URL/TOKEN from the do container env (set in host_vars).
 #
 # Sourced from `~/b2b/primeBaseball/odoo-addons/prime_mesh/` on the
 # controller; rsynced into the host's do_extra_addons_path and installed via
 # a one-shot `docker run` that mirrors the running prime-do systemd unit's
 # image/mounts/network/add-host. Same idempotency pattern as
 # mash/odoo_ghostrak — a content-hash marker on the host gates whether the
-# stop/install/start cycle fires. Run AFTER odoo_sgc_companies + odoo_ghostrak.
+# stop/install/start cycle fires. Depends on base only (no ordering requirement).
 #
 # Enable per-host (on primebaseball.pro):
 #   odoo_prime_mesh_enabled: true

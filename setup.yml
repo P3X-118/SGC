@@ -425,6 +425,17 @@
       tags: [setup-all, setup-odoo_prime_company_hierarchy, install-all, install-odoo_prime_company_hierarchy]
     # /role-specific:odoo_prime_company_hierarchy
 
+    # role-specific:odoo_prime_mesh
+    # Installs the prime_mesh addon: the "VPN Mesh" admin panel that issues Nebula
+    # mesh client certs by calling the on-box prime-mesh-signer (CA key stays on the
+    # box). Source ~/b2b/primeBaseball/odoo-addons/prime_mesh. Needs the signer
+    # service deployed + PRIME_MESH_SIGNER_URL/TOKEN in the do env. No-op unless
+    # odoo_prime_mesh_enabled.
+    - when: odoo_prime_mesh_enabled | default(false) | bool
+      role: mash/odoo_prime_mesh
+      tags: [setup-all, setup-odoo_prime_mesh, install-all, install-odoo_prime_mesh]
+    # /role-specific:odoo_prime_mesh
+
     # role-specific:docker_registry
     #- role: galaxy/docker_registry
     # /role-specific:docker_registry
