@@ -99,6 +99,56 @@ for u in U.search([('share', '=', False), ('active', '=', True)]):
 # the partner's A/R + A/P default to the operator's accounts.
 CT = env['account.chart.template'].sudo()
 A = env['account.account'].sudo()
+
+# Legacy self-heal: companies created in the pre-multi-company era carry
+# company-default account pointers at the OPERATOR's accounts (bank suspense,
+# cash-difference gain/loss, inter-bank transfer). The CoA loader honors
+# pre-set pointers, so loading a chart for such a company wires its new Bank
+# journal to ANOTHER company's suspense account -> Odoo aborts with "no
+# company crossover" and the whole load rolls back (this is exactly what
+# blocked 30A/TMW/The Collection/TLW while a fresh company loaded fine). A
+# pointer at an account the company does not own is invalid config in every
+# scenario -> clear it; the CoA load (or first journal creation) then creates
+# the company's OWN accounts, as it does for fresh companies. Idempotent.
+def _owner_company_ids(rec):
+    # account.account carries company_ids (m2m); journals/taxes carry company_id.
+    rec = rec.sudo()
+    if 'company_ids' in rec._fields:
+        return set(rec.company_ids.ids)
+    if 'company_id' in rec._fields:
+        return {rec.company_id.id} if rec.company_id else set()
+    return None  # unknown ownership model -> leave untouched
+
+pointers_healed = []
+for comp in all_companies:
+    stale = {}
+    # GENERIC sweep: any company-default m2o at an account/journal/tax the
+    # company does not own is invalid config (Odoo's own _check_company would
+    # reject it) — clear it. Catches suspense/cash-diff/transfer AND the
+    # income/expense/tax defaults the first (hardcoded) pass missed.
+    for fname, f in comp._fields.items():
+        if f.type != 'many2one' or f.comodel_name not in ('account.account', 'account.journal', 'account.tax'):
+            continue
+        rec = comp[fname]
+        if not rec:
+            continue
+        owners = _owner_company_ids(rec)
+        if owners is not None and comp.id not in owners:
+            stale[fname] = False
+    # A chart_template MARKER without any actual accounts is a lie from the
+    # legacy era — it flips try_loading into reload-an-installed-template mode,
+    # which resolves defaults against other companies' records. Clear it so the
+    # load runs as a fresh install (exactly why template-NULL TMW loaded clean).
+    owns_accounts = A.search_count([('company_ids', 'in', comp.id)])
+    if comp.chart_template and not owns_accounts:
+        stale['chart_template'] = False
+    if stale:
+        comp.write(stale)
+        pointers_healed.append('%s(%s)' % (comp.name, ','.join(sorted(stale))))
+        changed = True
+if pointers_healed:
+    env.cr.commit()
+
 coa_loaded = []
 coa_failed = []
 for comp in all_companies:
@@ -127,5 +177,5 @@ env.cr.commit()
 companies = sorted(C.search([]).mapped('name'))
 supers = sorted(U.search([('share', '=', False), ('active', '=', True)]).filtered(
     lambda x: x.id in break_glass or admin_grp in x.group_ids).mapped('login'))
-print("OK operator=%s managed=%s all=%s superadmins=%s coa_loaded=%s changed=%s" % (
-    operator_name, managed, companies, supers, coa_loaded, changed))
+print("OK operator=%s managed=%s all=%s superadmins=%s coa_loaded=%s pointers_healed=%s changed=%s" % (
+    operator_name, managed, companies, supers, coa_loaded, pointers_healed, changed))
