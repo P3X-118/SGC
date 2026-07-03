@@ -121,6 +121,9 @@ wger_collectstatic_on_startup: "True"
 
 wger_allow_registration: "True"
 wger_allow_guest_users: "True"
+# Anonymous site-root landing: "" (image default = stock 'features' page) or
+# "login" to send anon visitors to the SSO-first login (private/SSO-gated sites).
+wger_anon_landing: ""
 
 # Free-form extra lines appended verbatim to the env file (KEY=value per line).
 wger_environment_variables_additional_variables: ""

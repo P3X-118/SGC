@@ -167,3 +167,66 @@
 
 /* 13. Legacy alert links compiled color:black in workout-manager.css. */
 [data-bs-theme="dark"] div.warning a, [data-bs-theme="dark"] div.success a, [data-bs-theme="dark"] div.info a { color: var(--bs-link-color); }
+
+/* 14. Footer — keep the bar + its vertical space, but blank the upstream wger
+   content (app-store badges, Imprint/ToS links, language picker). Prime branding. */
+[data-bs-theme="dark"] #main-footer .row { visibility: hidden; }
+
+/* 15. React components (MUI/Emotion: routine, nutrition plan, weight,
+   measurements). MUI injects its light theme at RUNTIME, so plain CSS misses it;
+   override the stable .Mui* classes with !important to match the dark palette. */
+[data-bs-theme="dark"] .MuiPaper-root { background-color: {{ p.raised }} !important; color: {{ p.text }} !important; background-image: none !important; }
+[data-bs-theme="dark"] .MuiCard-root { background-color: {{ p.raised }} !important; color: {{ p.text }} !important; }
+[data-bs-theme="dark"] .MuiAppBar-root { background-color: {{ p.surface }} !important; color: {{ p.text }} !important; }
+[data-bs-theme="dark"] .MuiTypography-root { color: {{ p.text }} !important; }
+[data-bs-theme="dark"] .MuiTypography-colorTextSecondary,
+[data-bs-theme="dark"] .MuiTypography-body2 { color: {{ p.muted }} !important; }
+[data-bs-theme="dark"] .MuiLink-root { color: {{ p.accent }} !important; }
+
+/* tables */
+[data-bs-theme="dark"] .MuiTableContainer-root { background-color: {{ p.raised }} !important; }
+[data-bs-theme="dark"] .MuiTableCell-root { color: {{ p.text }} !important; border-color: {{ p.border }} !important; }
+[data-bs-theme="dark"] .MuiTableCell-head { background-color: {{ p.input }} !important; }
+[data-bs-theme="dark"] .MuiTableRow-root:hover { background-color: rgba(255,255,255,.05) !important; }
+
+/* inputs / selects */
+[data-bs-theme="dark"] .MuiOutlinedInput-root,
+[data-bs-theme="dark"] .MuiInputBase-root { background-color: {{ p.input }} !important; color: {{ p.text }} !important; }
+[data-bs-theme="dark"] .MuiOutlinedInput-notchedOutline { border-color: {{ p.border }} !important; }
+[data-bs-theme="dark"] .MuiInputBase-input { color: {{ p.text }} !important; }
+[data-bs-theme="dark"] .MuiInputLabel-root,
+[data-bs-theme="dark"] .MuiFormHelperText-root { color: {{ p.muted }} !important; }
+[data-bs-theme="dark"] .MuiSelect-icon { color: {{ p.muted }} !important; }
+
+/* overlays: menus, popovers, dialogs, autocomplete, tooltips */
+[data-bs-theme="dark"] .MuiMenu-paper, [data-bs-theme="dark"] .MuiPopover-paper,
+[data-bs-theme="dark"] .MuiDialog-paper, [data-bs-theme="dark"] .MuiAutocomplete-paper { background-color: {{ p.raised }} !important; color: {{ p.text }} !important; }
+[data-bs-theme="dark"] .MuiMenuItem-root, [data-bs-theme="dark"] .MuiListItemText-primary { color: {{ p.text }} !important; }
+[data-bs-theme="dark"] .MuiListItemText-secondary { color: {{ p.muted }} !important; }
+[data-bs-theme="dark"] .MuiMenuItem-root:hover,
+[data-bs-theme="dark"] .MuiListItemButton-root:hover { background-color: {{ p.input }} !important; }
+[data-bs-theme="dark"] .MuiTooltip-tooltip { background-color: {{ p.input }} !important; color: {{ p.text }} !important; }
+
+/* misc surfaces */
+[data-bs-theme="dark"] .MuiChip-root { background-color: {{ p.input }} !important; color: {{ p.text }} !important; }
+[data-bs-theme="dark"] .MuiAccordion-root,
+[data-bs-theme="dark"] .MuiAccordionSummary-root { background-color: {{ p.raised }} !important; color: {{ p.text }} !important; }
+[data-bs-theme="dark"] .MuiDivider-root { border-color: {{ p.border }} !important; }
+
+/* buttons: keep brand red for primary; readable text/outlined/icon */
+[data-bs-theme="dark"] .MuiButton-containedPrimary,
+[data-bs-theme="dark"] .MuiFab-primary { background-color: {{ p.primary }} !important; color: #fff !important; }
+[data-bs-theme="dark"] .MuiButton-containedPrimary:hover { background-color: {{ p.primary_hover }} !important; }
+[data-bs-theme="dark"] .MuiButton-textPrimary,
+[data-bs-theme="dark"] .MuiButton-outlinedPrimary { color: {{ p.accent }} !important; }
+[data-bs-theme="dark"] .MuiButton-outlinedPrimary { border-color: {{ p.primary }} !important; }
+[data-bs-theme="dark"] .MuiButton-text, [data-bs-theme="dark"] .MuiIconButton-root { color: {{ p.muted }} !important; }
+
+/* tabs */
+[data-bs-theme="dark"] .MuiTab-root { color: {{ p.muted }} !important; }
+[data-bs-theme="dark"] .MuiTab-root.Mui-selected { color: {{ p.primary }} !important; }
+[data-bs-theme="dark"] .MuiTabs-indicator { background-color: {{ p.primary }} !important; }
+
+/* MUI X charts (weight / measurements) */
+[data-bs-theme="dark"] .MuiChartsAxis-line, [data-bs-theme="dark"] .MuiChartsAxis-tick { stroke: {{ p.chart_axis }} !important; }
+[data-bs-theme="dark"] .MuiChartsAxis-tickLabel, [data-bs-theme="dark"] .MuiChartsAxis-label { fill: {{ p.muted }} !important; }
