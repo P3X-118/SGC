@@ -45,14 +45,14 @@ learningwell_stripe_secret_key: ""
 # /api/stripe/webhook endpoint stays inert (503). Provide via vault.
 learningwell_stripe_webhook_secret: ""
 
-# --- Payments: Authorize.Net (runtime) -------------------------------------
-# Sandbox until production creds are provided. Empty API login/transaction key =
-# /checkout places orders WITHOUT charging. Transaction key is a secret (vault);
-# API Login ID + Client Key are publishable (Accept.js uses them in the browser).
-learningwell_authorizenet_env: "sandbox"
-learningwell_authorizenet_api_login_id: ""
-learningwell_authorizenet_transaction_key: ""
-learningwell_authorizenet_client_key: ""
+# --- Payments: Deposyt (runtime) -------------------------------------------
+# Sandbox until a production Access Token + activated terminal are provided.
+# Empty token/terminal = /checkout places orders WITHOUT charging. The access
+# token is a Bearer secret (vault); the terminal must be activated for Hosted
+# Fields card processing on the Deposyt side.
+learningwell_deposyt_env: "sandbox"
+learningwell_deposyt_access_token: ""
+learningwell_deposyt_terminal_id: ""
 
 # --- Email: transactional mail via the mailcow inbox (runtime) --------------
 # Order confirmations + quote/subscribe lead delivery. Port 465 (implicit TLS) —
