@@ -20,7 +20,7 @@ radio_bot_enabled: false
 radio_bot_identifier: "radio-cooey-bot"
 radio_bot_base_path: "/sgc/{{ radio_bot_identifier }}"
 
-radio_bot_version: "0.1.1"
+radio_bot_version: "0.1.2"
 radio_bot_image: "docker.io/legitservices/radio-cooey-bot:{{ radio_bot_version }}"
 
 # Host bind for the bot's HTTP/WS (webhook receiver + panel API). Keep it
