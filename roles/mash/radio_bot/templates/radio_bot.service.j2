@@ -17,6 +17,9 @@ ExecStartPre=-/usr/bin/docker rm -f {{ radio_bot_identifier }}
 ExecStart=/usr/bin/docker run --rm --name {{ radio_bot_identifier }} \
     --env-file={{ radio_bot_base_path }}/env \
     --mount type=bind,src={{ radio_bot_base_path }}/config.json,dst=/app/config.json,ro \
+{% if radio_bot_container_network %}
+    --network {{ radio_bot_container_network }} \
+{% endif %}
     -p {{ radio_bot_bind }}:8790 \
     --read-only --tmpfs /tmp \
     --cap-drop=ALL --security-opt no-new-privileges \

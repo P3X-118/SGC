@@ -20,13 +20,19 @@ radio_bot_enabled: false
 radio_bot_identifier: "radio-cooey-bot"
 radio_bot_base_path: "/sgc/{{ radio_bot_identifier }}"
 
-radio_bot_version: "0.1.0"
+radio_bot_version: "0.1.1"
 radio_bot_image: "docker.io/legitservices/radio-cooey-bot:{{ radio_bot_version }}"
 
 # Host bind for the bot's HTTP/WS (webhook receiver + panel API). Keep it
 # loopback unless/until the panel API needs public exposure -- the Discord
 # gateway is outbound-only and the okast webhook is same-host.
 radio_bot_bind: "127.0.0.1:8790"
+
+# Docker network to join (usually the okast instance's network so the okast
+# container reaches the bot via container DNS, e.g. webhook URL
+# http://radio-cooey-bot:8790/... and the bot reaches okast at
+# http://<okast-container>:8080). Empty = default bridge only.
+radio_bot_container_network: ""
 
 # Discord application bot token (Discord Developer Portal -> Bot).
 radio_bot_discord_token: ""
@@ -37,6 +43,7 @@ radio_bot_dex_api_base: "https://dex.sgc.ai/v1"
 radio_bot_dex_api_key: ""
 radio_bot_dex_model: "qwen3.5-9b-glm5.1-distill-v1"
 radio_bot_recall_api_base: "https://recall.sgc.ai"
+radio_bot_recall_api_key: ""
 radio_bot_recall_collection: "radio-cooey"
 
 # Per-okast-instance secrets, keyed by the instance id used inside
