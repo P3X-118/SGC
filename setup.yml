@@ -530,7 +530,7 @@
     # /role-specific:filebrowser
 
     # role-specific:filebrowser_quantum
-    #- role: galaxy/filebrowser_quantum
+    - role: galaxy/filebrowser_quantum
     # /role-specific:filebrowser_quantum
 
     # role-specific:firezone
@@ -978,6 +978,16 @@
     - when: okast_admin_sso_enabled | bool
       role: mash/okast_admin_sso
     # /role-specific:okast_admin_sso
+
+    # role-specific:radio_bot
+    # Self-hosted Discord bridge + AI participant for okast (gated
+    # multi-channel chat). First-party replacement for the abandoned
+    # WidgetBot iframe: discord.js gateway <-> okast webhook/integrations
+    # relay, dex.sgc.ai brain + LocalRecall memory, gated-panel API for the
+    # okast web tabs. App source: ~/sgc/apps/cooeyclub/radio-bot.
+    - when: radio_bot_enabled | bool
+      role: mash/radio_bot
+    # /role-specific:radio_bot
 
     # role-specific:oxitraffic
     #- role: galaxy/oxitraffic

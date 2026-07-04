@@ -1,0 +1,18 @@
+---
+galaxy_info:
+  author: SGC
+  description: |
+    Self-hosted Discord bridge + AI participant for okast instances (gated
+    multi-channel chat). Replaces the third-party WidgetBot iframe design:
+    the bridge is a first-party bot (discord.js gateway <-> okast webhook /
+    integrations API) with a dex.sgc.ai (LocalAI) brain and LocalRecall RAG
+    memory. Serves the gated-panel REST/WS API consumed by the okast web
+    tabs. App source: ~/sgc/apps/cooeyclub/radio-bot.
+  license: AGPL-3.0-or-later
+  min_ansible_version: '2.12'
+  platforms:
+    - name: Debian
+      versions: [bookworm, trixie]
+    - name: Ubuntu
+      versions: [jammy, noble]
+dependencies: []

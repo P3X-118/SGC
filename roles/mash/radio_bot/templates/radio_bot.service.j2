@@ -1,0 +1,30 @@
+[Unit]
+Description=radio-cooey bot: self-hosted Discord bridge + AI participant (gated multi-channel chat)
+After=docker.service
+Requires=docker.service
+{% for service in radio_bot_systemd_required_services_list_auto %}
+Requires={{ service }}
+After={{ service }}
+{% endfor %}
+{% for service in radio_bot_systemd_wanted_services_list_auto %}
+Wants={{ service }}
+After={{ service }}
+{% endfor %}
+
+[Service]
+Type=simple
+ExecStartPre=-/usr/bin/docker rm -f {{ radio_bot_identifier }}
+ExecStart=/usr/bin/docker run --rm --name {{ radio_bot_identifier }} \
+    --env-file={{ radio_bot_base_path }}/env \
+    --mount type=bind,src={{ radio_bot_base_path }}/config.json,dst=/app/config.json,ro \
+    -p {{ radio_bot_bind }}:8790 \
+    --read-only --tmpfs /tmp \
+    --cap-drop=ALL --security-opt no-new-privileges \
+    {{ radio_bot_image }}
+ExecStop=-/usr/bin/docker stop {{ radio_bot_identifier }}
+Restart=always
+RestartSec=10
+SyslogIdentifier={{ radio_bot_identifier }}
+
+[Install]
+WantedBy=multi-user.target

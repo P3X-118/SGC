@@ -1,0 +1,59 @@
+---
+# radio_bot -- self-hosted Discord bridge + AI participant for okast
+# instances (gated multi-channel chat). Source: ~/sgc/apps/cooeyclub/radio-bot
+# (image legitservices/radio-cooey-bot). See its docs/DESIGN.md.
+#
+# What it does when enabled:
+#   - joins the configured Discord channels (discord.js gateway),
+#   - receives the okast CHAT webhook and relays two-way per channel policy
+#     (only SSO-authenticated viewers' messages cross INTO Discord),
+#   - answers @mentions / !dex via dex.sgc.ai (LocalAI, serialized single
+#     warm model) with LocalRecall RAG memory,
+#   - serves the gated-panel REST/WS API the okast web tabs consume
+#     (Phase 2 of the okast fork; fails closed until then).
+#
+# Secrets are LITERAL host_vars values for now (same sgc_pgsk gap as the
+# okast instances themselves); rotate together when sgc_pgsk lands.
+
+radio_bot_enabled: false
+
+radio_bot_identifier: "radio-cooey-bot"
+radio_bot_base_path: "/sgc/{{ radio_bot_identifier }}"
+
+radio_bot_version: "0.1.0"
+radio_bot_image: "docker.io/legitservices/radio-cooey-bot:{{ radio_bot_version }}"
+
+# Host bind for the bot's HTTP/WS (webhook receiver + panel API). Keep it
+# loopback unless/until the panel API needs public exposure -- the Discord
+# gateway is outbound-only and the okast webhook is same-host.
+radio_bot_bind: "127.0.0.1:8790"
+
+# Discord application bot token (Discord Developer Portal -> Bot).
+radio_bot_discord_token: ""
+
+# dex.sgc.ai / LocalRecall (hal). From non-Nebula hosts use the LAN base
+# http://10.20.0.55:8081/v1 for dex -- the 169.254.x address blackholes.
+radio_bot_dex_api_base: "https://dex.sgc.ai/v1"
+radio_bot_dex_api_key: ""
+radio_bot_dex_model: "qwen3.5-9b-glm5.1-distill-v1"
+radio_bot_recall_api_base: "https://recall.sgc.ai"
+radio_bot_recall_collection: "radio-cooey"
+
+# Per-okast-instance secrets, keyed by the instance id used inside
+# radio_bot_configuration.okast:
+#   radio_bot_okast_secrets:
+#     radio:
+#       token: "<okast admin -> Access Tokens (Can send chat messages)>"
+#       hook_secret: "<shared secret in the okast webhook URL>"
+radio_bot_okast_secrets: {}
+
+# Structural config rendered verbatim to config.json -- okast instances,
+# channels (guildId/channelId snowflakes, relay + gate policy), agent
+# persona. See config.example.json in the app repo for the shape.
+radio_bot_configuration: {}
+
+# Extra KEY=VALUE lines appended to the env file.
+radio_bot_environment_variables_additional_variables: ""
+
+radio_bot_systemd_required_services_list_auto: []
+radio_bot_systemd_wanted_services_list_auto: []
