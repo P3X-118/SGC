@@ -97,6 +97,32 @@
     return BFF + '/api/auth/login?return_to=' + encodeURIComponent(location.href);
   }
 
+  function getCookie(name) {
+    const m = document.cookie.match('(?:^|; )' + name + '=([^;]*)');
+    return m ? decodeURIComponent(m[1]) : '';
+  }
+
+  // Append a watch URL to a routine's description via wger's OWN API
+  // (read-modify-write, session + CSRF). Ownership is enforced by wger:
+  // routines you don't own 404 here. Returns 'added' | 'already'.
+  async function appendToRoutine(routineId, watchUrl) {
+    const res = await fetch('/api/v2/routine/' + routineId + '/?format=json', { credentials: 'same-origin' });
+    if (res.status === 404) throw new Error('You can only add videos to your own routines.');
+    if (!res.ok) throw new Error('Could not read the routine (' + res.status + ').');
+    const r = await res.json();
+    const desc = (r.description || '').replace(/\s+$/, '');
+    if (desc.indexOf(watchUrl) !== -1) return 'already';
+    const patch = await fetch('/api/v2/routine/' + routineId + '/', {
+      method: 'PATCH',
+      credentials: 'same-origin',
+      headers: { 'Content-Type': 'application/json', 'X-CSRFToken': getCookie('csrftoken') },
+      body: JSON.stringify({ description: desc ? desc + '\n\n' + watchUrl : watchUrl }),
+    });
+    if (patch.status === 403) throw new Error('Session/CSRF check failed — reload the page and try again.');
+    if (!patch.ok) throw new Error('Save failed (' + patch.status + ').');
+    return 'added';
+  }
+
   // exercise id -> uuid (immutable; cached in sessionStorage)
   async function exerciseUuid(id) {
     const key = 'pv-ex-uuid:' + id;
@@ -427,7 +453,7 @@
     load();
   }
 
-  async function renderMinePane(body) {
+  async function renderMinePane(body, onPick) {
     body.innerHTML = '';
     const grid = h('div', { class: 'pv-grid' });
     body.appendChild(grid);
@@ -441,7 +467,7 @@
     }
     const vids = (r.data && r.data.videos) || [];
     if (!vids.length) return grid.appendChild(h('div', { class: 'pv-muted', text: 'You have not uploaded any videos from wger yet.' }));
-    vids.forEach((v) => grid.appendChild(videoTile(v)));
+    vids.forEach((v) => grid.appendChild(videoTile(v, onPick)));
   }
 
   function renderUploadPane(body, me, onDone) {
@@ -578,6 +604,87 @@
     });
   }
 
+  /* ------------------------------------------- add-to-routine picker */
+
+  // "🎥 Add video" on /routine/<id>/view|edit pages. Picking a video appends
+  // its watch link to the routine description through wger's own API (so
+  // only the owner can), and the linkify pass renders it as a player.
+  function routineAddButton() {
+    const m = location.pathname.match(/\/routine\/(\d+)\/(?:view|edit)/);
+    const existing = document.getElementById('pv-routine-add');
+    if (!m) { if (existing) existing.remove(); return; }
+    const routineId = m[1];
+    if (existing) {
+      if (existing.dataset.routine === routineId) return;
+      existing.remove();
+    }
+    const container = document.querySelector('#main .container');
+    if (!container) return;
+    const bar = h('div', { class: 'pv-section', id: 'pv-routine-add', 'data-routine': routineId });
+    bar.appendChild(h('button', {
+      class: 'pv-mini', type: 'button', text: '🎥 Add video to this routine',
+      onclick: () => { openRoutinePicker(routineId); },
+    }));
+    container.insertBefore(bar, container.firstChild);
+  }
+
+  async function openRoutinePicker(routineId) {
+    const mm = modalShell('Add a video to this routine');
+    mm.body.appendChild(h('div', { class: 'pv-muted', text: 'Loading…' }));
+    const me = await getMe();
+    if (!me.authenticated) return connectPane(mm.body);
+
+    let added = 0;
+    const tabs = h('div', { class: 'pv-row', style: 'gap:1rem;margin:0 0 .75rem' });
+    const status = h('div');
+    const pane = h('div');
+    mm.body.innerHTML = '';
+    mm.body.appendChild(tabs);
+    mm.body.appendChild(status);
+    mm.body.appendChild(pane);
+
+    const pick = async (v) => {
+      status.innerHTML = '';
+      status.appendChild(h('div', { class: 'pv-muted', text: 'Adding "' + (v.title || v.watchUrl) + '"…' }));
+      try {
+        const outcome = await appendToRoutine(routineId, v.watchUrl);
+        if (outcome === 'added') added += 1;
+        status.innerHTML = '';
+        status.appendChild(h('div', { class: 'pv-alert' }, [
+          h('span', {
+            text: outcome === 'already'
+              ? 'That video is already in this routine. '
+              : 'Added ✓ It will show as a player in the routine description. ',
+          }),
+          h('button', {
+            class: 'pv-mini pv-primary', type: 'button',
+            text: added ? 'Done — reload to see it' : 'Close',
+            onclick: () => { mm.close(); if (added) location.reload(); },
+          }),
+        ]));
+      } catch (err) {
+        status.innerHTML = '';
+        status.appendChild(h('div', { class: 'pv-alert', text: String((err && err.message) || 'Failed to add.') }));
+      }
+    };
+
+    const defs = [
+      ['My videos', () => renderMinePane(pane, pick)],
+      ['Library', () => renderLibraryPane(pane, pick)],
+      ['Upload', () => renderUploadPane(pane, me, pick)],
+    ];
+    defs.forEach(([label, render], i) => {
+      const b = h('button', { class: 'pv-tab' + (i === 0 ? ' pv-active' : ''), type: 'button', text: label });
+      b.addEventListener('click', () => {
+        tabs.querySelectorAll('.pv-tab').forEach((x) => x.classList.remove('pv-active'));
+        b.classList.add('pv-active');
+        render();
+      });
+      tabs.appendChild(b);
+    });
+    renderMinePane(pane, pick);
+  }
+
   /* --------------------------------------------------------- navbar */
 
   function navItem() {
@@ -607,6 +714,7 @@
       }
     } catch (e) { /* noop */ }
     try { exercisePage().catch(() => {}); } catch (e) { /* noop */ }
+    try { routineAddButton(); } catch (e) { /* noop */ }
     try { routineBadges().catch(() => {}); } catch (e) { /* noop */ }
     try { transformLinks(document.getElementById('main') || document.body); } catch (e) { /* noop */ }
   }
