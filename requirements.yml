@@ -262,7 +262,7 @@
 #  name: filebrowser
 #  activation_prefix: filebrowser_
 - src: git+https://github.com/P3X-118/filebrowser-quantum-ar.git
-  version: v1.0.3-2
+  version: v1.0.3-3
   name: filebrowser_quantum
   activation_prefix: filebrowser_quantum_
 #- src: git+https://github.com/P3X-118/ansible-role-firezone.git
