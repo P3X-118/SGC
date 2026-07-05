@@ -5,15 +5,27 @@
  * {{ wger_site_name | default('wger') }} dark skin — MANAGED BY ANSIBLE (wger_branding role).
  * Loaded LAST (after bootstrap-compiled.css, bootstrap-custom.css, the React
  * bundle CSS) via CUSTOM_CSS_URL, and assumes <html data-bs-theme="dark">
- * (BRAND_COLOR_MODE=dark). It re-points Bootstrap 5.3's compiled dark palette to
- * the warm-grey/red brand palette, plus explicit overrides where the variable
- * system doesn't reach (theme-color buttons, the navbar, the footer, the D3
- * chart and the jQuery-UI autocompleter). MUI/Emotion React widgets keep their
- * own surfaces — they sit on the dark shell but aren't reachable by plain CSS.
+ * (BRAND_COLOR_MODE=dark). Three layers:
+ *   A) Bootstrap 5.3 dark palette re-pointed to the warm-grey/red brand palette
+ *      (plus literal overrides where the variable system doesn't reach).
+ *   B) MUI/Emotion React widgets: MUI injects its LIGHT theme at runtime, so
+ *      every .Mui* surface/text needs !important overrides. Covers Paper/Card/
+ *      DataGrid/Tables/Inputs/X-Pickers/overlays/disabled states/charts.
+ *   C) Version-pinned selectors (emotion css-* hashes + css-module _*_hash
+ *      classes) for components styled with hardcoded light sx colors.
+ *      >>> After bumping the wger image, re-run the theme audit crawler
+ *      >>> (~/b2b/primeBaseball/wger/theme-audit.js) and refresh section C
+ *      >>> if the @wger-project/react-components version changed.
  */
+
+/* ==========================================================================
+ * A. BOOTSTRAP / DJANGO PAGES
+ * ========================================================================== */
 
 /* 1. Re-point Bootstrap's dark palette. */
 [data-bs-theme="dark"] {
+  color-scheme: dark; /* native widgets: scrollbars, date inputs, <select> popups */
+
   --bs-body-bg: {{ p.shell }};
   --bs-body-bg-rgb: {{ p.shell_rgb }};
   --bs-body-color: {{ p.text }};
@@ -76,15 +88,31 @@
   --bs-btn-hover-bg: {{ p.primary }}; --bs-btn-hover-border-color: {{ p.primary }}; --bs-btn-hover-color: #fff;
   --bs-btn-active-bg: {{ p.primary }}; --bs-btn-active-border-color: {{ p.primary }};
 }
+/* .btn-light: wger ships literal bg/color on it too, so vars alone lose — force literals. */
 [data-bs-theme="dark"] .btn-light {
+  background-color: {{ p.input }} !important; border-color: {{ p.border }} !important; color: {{ p.text }} !important;
+}
+[data-bs-theme="dark"] .btn-light:hover,
+[data-bs-theme="dark"] .btn-light:active { background-color: #443c3c !important; border-color: #4a4242 !important; color: #fff !important; }
+[data-bs-theme="dark"] .btn-secondary {
   --bs-btn-bg: {{ p.input }}; --bs-btn-border-color: {{ p.border }}; --bs-btn-color: {{ p.text }};
   --bs-btn-hover-bg: #443c3c; --bs-btn-hover-border-color: #4a4242; --bs-btn-hover-color: #fff;
   --bs-btn-active-bg: #4a4242; --bs-btn-active-color: #fff;
 }
+[data-bs-theme="dark"] .btn-outline-secondary {
+  --bs-btn-color: {{ p.muted }}; --bs-btn-border-color: {{ p.border }};
+  --bs-btn-hover-bg: {{ p.input }}; --bs-btn-hover-border-color: {{ p.border }}; --bs-btn-hover-color: #fff;
+  --bs-btn-active-bg: {{ p.input }}; --bs-btn-active-color: #fff;
+}
+[data-bs-theme="dark"] .btn-outline-danger {
+  --bs-btn-color: #f1808b; --bs-btn-border-color: #a3313d;
+  --bs-btn-hover-bg: #a3313d; --bs-btn-hover-border-color: #a3313d; --bs-btn-hover-color: #fff;
+  --bs-btn-active-bg: #a3313d; --bs-btn-active-color: #fff;
+}
 [data-bs-theme="dark"] .btn-link { --bs-btn-color: {{ p.accent }}; --bs-btn-hover-color: {{ p.link_hover }}; }
 /* .btn-success (Save) keeps Bootstrap green — readable on dark. */
 
-/* 5. Surfaces: cards / modals / dropdowns / list groups / popovers. */
+/* 5. Surfaces: cards / modals / dropdowns / list groups / popovers / toasts / offcanvas. */
 [data-bs-theme="dark"] .card {
   --bs-card-bg: {{ p.raised }}; --bs-card-cap-bg: {{ p.raised_cap }}; --bs-card-border-color: var(--bs-border-color);
 }
@@ -97,8 +125,21 @@
 }
 [data-bs-theme="dark"] .list-group {
   --bs-list-group-bg: {{ p.raised }}; --bs-list-group-border-color: var(--bs-border-color); --bs-list-group-color: {{ p.text }};
+  --bs-list-group-action-hover-bg: {{ p.input }}; --bs-list-group-action-hover-color: #fff;
+  --bs-list-group-action-active-bg: {{ p.input }};
+  --bs-list-group-active-bg: var(--bs-primary); --bs-list-group-active-border-color: var(--bs-primary);
 }
 [data-bs-theme="dark"] .popover { --bs-popover-bg: {{ p.raised }}; --bs-popover-border-color: var(--bs-border-color); }
+[data-bs-theme="dark"] .toast { background-color: {{ p.raised }}; color: {{ p.text }}; border-color: var(--bs-border-color); }
+[data-bs-theme="dark"] .toast-header { background-color: {{ p.raised_cap }}; color: {{ p.muted }}; }
+[data-bs-theme="dark"] .offcanvas { --bs-offcanvas-bg: {{ p.surface }}; --bs-offcanvas-color: {{ p.text }}; }
+[data-bs-theme="dark"] .accordion {
+  --bs-accordion-bg: {{ p.raised }}; --bs-accordion-color: {{ p.text }}; --bs-accordion-border-color: var(--bs-border-color);
+  --bs-accordion-btn-bg: {{ p.raised_cap }}; --bs-accordion-btn-color: {{ p.text }};
+  --bs-accordion-active-bg: {{ p.input }}; --bs-accordion-active-color: #fff;
+}
+[data-bs-theme="dark"] .accordion-button::after { filter: invert(1) grayscale(1) brightness(1.6); }
+[data-bs-theme="dark"] .btn-close { filter: invert(1) grayscale(100%) brightness(1.8); }
 
 /* 6. Tables (incl. datatables.net-bs5). */
 [data-bs-theme="dark"] .table {
@@ -121,6 +162,8 @@
   background-color: {{ p.border }}; border-color: var(--bs-primary); color: #fff;
   box-shadow: 0 0 0 .25rem rgba({{ p.primary_rgb }},.25);
 }
+[data-bs-theme="dark"] .form-control:disabled,
+[data-bs-theme="dark"] .form-select:disabled { background-color: {{ p.surface }}; color: {{ p.muted }}; }
 [data-bs-theme="dark"] .form-control::placeholder { color: #8a8080; }
 [data-bs-theme="dark"] .input-group-text { background-color: {{ p.raised }}; border-color: var(--bs-border-color); color: var(--bs-secondary-color); }
 [data-bs-theme="dark"] .form-check-input { background-color: {{ p.input }}; border-color: var(--bs-border-color); }
@@ -136,6 +179,8 @@
 [data-bs-theme="dark"] .bg-light { background-color: {{ p.surface }} !important; }
 [data-bs-theme="dark"] .bg-white { background-color: {{ p.raised }} !important; }
 [data-bs-theme="dark"] .text-dark, [data-bs-theme="dark"] .text-black { color: var(--bs-body-color) !important; }
+/* Bootstrap red is illegible on the dark greys — brighten danger text. */
+[data-bs-theme="dark"] .text-danger { color: #f1808b !important; }
 
 /* 10. Pagination / breadcrumbs / progress / nav-tabs. */
 [data-bs-theme="dark"] .page-link { background-color: {{ p.raised }}; border-color: var(--bs-border-color); color: var(--bs-link-color); }
@@ -172,61 +217,229 @@
    content (app-store badges, Imprint/ToS links, language picker). Prime branding. */
 [data-bs-theme="dark"] #main-footer .row { visibility: hidden; }
 
-/* 15. React components (MUI/Emotion: routine, nutrition plan, weight,
-   measurements). MUI injects its light theme at RUNTIME, so plain CSS misses it;
-   override the stable .Mui* classes with !important to match the dark palette. */
+/* 15. Upstream marketing pages (/software/features etc.) ship their own white
+   sections — pull them onto the dark shell. */
+[data-bs-theme="dark"] main { background-color: transparent !important; }
+[data-bs-theme="dark"] .main-section,
+[data-bs-theme="dark"] section.bg-light-blue, [data-bs-theme="dark"] .bg-light-blue,
+[data-bs-theme="dark"] section.bg-bottom-menu, [data-bs-theme="dark"] .bg-bottom-menu {
+  background-color: {{ p.surface }} !important; color: {{ p.text }};
+}
+
+/* ==========================================================================
+ * B. REACT (MUI/EMOTION) — routine, exercises, weight, measurements,
+ *    nutrition, gallery, dashboard. MUI injects a LIGHT theme at runtime;
+ *    every stable .Mui* class gets re-skinned here with !important.
+ * ========================================================================== */
+
+/* 16. Core surfaces + typography. */
 [data-bs-theme="dark"] .MuiPaper-root { background-color: {{ p.raised }} !important; color: {{ p.text }} !important; background-image: none !important; }
 [data-bs-theme="dark"] .MuiCard-root { background-color: {{ p.raised }} !important; color: {{ p.text }} !important; }
+/* Routine-detail day cards etc. set hardcoded grey sx headers — flatten them all. */
+[data-bs-theme="dark"] .MuiCardHeader-root { background-color: {{ p.raised_cap }} !important; color: {{ p.text }} !important; }
+[data-bs-theme="dark"] .MuiCardHeader-subheader { color: {{ p.muted }} !important; }
+/* Image placeholder boxes inside card media (exercise cards). */
+[data-bs-theme="dark"] .MuiCardMedia-root > .MuiBox-root { background-color: {{ p.input }} !important; }
 [data-bs-theme="dark"] .MuiAppBar-root { background-color: {{ p.surface }} !important; color: {{ p.text }} !important; }
 [data-bs-theme="dark"] .MuiTypography-root { color: {{ p.text }} !important; }
 [data-bs-theme="dark"] .MuiTypography-colorTextSecondary,
 [data-bs-theme="dark"] .MuiTypography-body2 { color: {{ p.muted }} !important; }
+[data-bs-theme="dark"] .MuiTypography-h3, [data-bs-theme="dark"] .MuiTypography-h4,
+[data-bs-theme="dark"] .MuiTypography-h5, [data-bs-theme="dark"] .MuiTypography-h6 { font-family: {{ wger_branding_font_heading }}; }
 [data-bs-theme="dark"] .MuiLink-root { color: {{ p.accent }} !important; }
+[data-bs-theme="dark"] .MuiDialogContentText-root { color: {{ p.muted }} !important; }
 
-/* tables */
+/* 17. Tables (routine table/logs views hardcode white cell backgrounds). */
 [data-bs-theme="dark"] .MuiTableContainer-root { background-color: {{ p.raised }} !important; }
-[data-bs-theme="dark"] .MuiTableCell-root { color: {{ p.text }} !important; border-color: {{ p.border }} !important; }
+[data-bs-theme="dark"] .MuiTableCell-root {
+  background-color: transparent !important; color: {{ p.text }} !important; border-color: {{ p.border }} !important;
+}
+[data-bs-theme="dark"] .MuiTableHead-root,
 [data-bs-theme="dark"] .MuiTableCell-head { background-color: {{ p.input }} !important; }
 [data-bs-theme="dark"] .MuiTableRow-root:hover { background-color: rgba(255,255,255,.05) !important; }
 
-/* inputs / selects */
+/* 18. MUI X DataGrid (body weight / measurements) — fully light by default. */
+[data-bs-theme="dark"] .MuiDataGrid-root {
+  --DataGrid-containerBackground: {{ p.input }};
+  --DataGrid-pinnedBackground: {{ p.raised }};
+  --DataGrid-rowBorderColor: {{ p.border }};
+  background-color: {{ p.raised }} !important; color: {{ p.text }} !important; border-color: {{ p.border }} !important;
+}
+[data-bs-theme="dark"] .MuiDataGrid-columnHeaders, [data-bs-theme="dark"] .MuiDataGrid-columnHeader,
+[data-bs-theme="dark"] .MuiDataGrid-filler, [data-bs-theme="dark"] .MuiDataGrid-scrollbarFiller { background-color: {{ p.input }} !important; }
+[data-bs-theme="dark"] .MuiDataGrid-columnHeaderTitle { color: {{ p.text }} !important; font-weight: 600; }
+[data-bs-theme="dark"] .MuiDataGrid-columnSeparator { color: {{ p.border }} !important; }
+[data-bs-theme="dark"] .MuiDataGrid-cell { color: {{ p.text }} !important; border-top-color: {{ p.border }} !important; }
+[data-bs-theme="dark"] .MuiDataGrid-virtualScroller { background-color: transparent !important; }
+[data-bs-theme="dark"] .MuiDataGrid-row:hover { background-color: rgba(255,255,255,.05) !important; }
+[data-bs-theme="dark"] .MuiDataGrid-footerContainer { background-color: {{ p.raised_cap }} !important; border-top-color: {{ p.border }} !important; }
+[data-bs-theme="dark"] .MuiDataGrid-overlay { background-color: transparent !important; color: {{ p.muted }} !important; }
+[data-bs-theme="dark"] .MuiDataGrid-menuIcon .MuiSvgIcon-root,
+[data-bs-theme="dark"] .MuiDataGrid-sortIcon { color: {{ p.muted }} !important; }
+[data-bs-theme="dark"] .MuiTablePagination-root, [data-bs-theme="dark"] .MuiTablePagination-selectLabel,
+[data-bs-theme="dark"] .MuiTablePagination-displayedRows, [data-bs-theme="dark"] .MuiTablePagination-select,
+[data-bs-theme="dark"] .MuiTablePagination-selectIcon { color: {{ p.text }} !important; }
+
+/* 19. Inputs / selects / autocomplete. */
 [data-bs-theme="dark"] .MuiOutlinedInput-root,
 [data-bs-theme="dark"] .MuiInputBase-root { background-color: {{ p.input }} !important; color: {{ p.text }} !important; }
 [data-bs-theme="dark"] .MuiOutlinedInput-notchedOutline { border-color: {{ p.border }} !important; }
 [data-bs-theme="dark"] .MuiInputBase-input { color: {{ p.text }} !important; }
+[data-bs-theme="dark"] .MuiInputBase-input::placeholder { color: #8a8080 !important; opacity: 1; }
 [data-bs-theme="dark"] .MuiInputLabel-root,
+[data-bs-theme="dark"] .MuiFormLabel-root,
 [data-bs-theme="dark"] .MuiFormHelperText-root { color: {{ p.muted }} !important; }
-[data-bs-theme="dark"] .MuiSelect-icon { color: {{ p.muted }} !important; }
+[data-bs-theme="dark"] .MuiSelect-icon, [data-bs-theme="dark"] .MuiNativeSelect-icon { color: {{ p.muted }} !important; }
+[data-bs-theme="dark"] .MuiInputAdornment-root { color: {{ p.muted }} !important; }
+[data-bs-theme="dark"] .MuiAutocomplete-clearIndicator,
+[data-bs-theme="dark"] .MuiAutocomplete-popupIndicator { color: {{ p.muted }} !important; }
+[data-bs-theme="dark"] .MuiAutocomplete-option { color: {{ p.text }} !important; }
+[data-bs-theme="dark"] .MuiAutocomplete-option.Mui-focused,
+[data-bs-theme="dark"] .MuiAutocomplete-option[aria-selected="true"] { background-color: {{ p.input }} !important; }
+[data-bs-theme="dark"] .MuiAutocomplete-noOptions, [data-bs-theme="dark"] .MuiAutocomplete-loading { color: {{ p.muted }} !important; }
 
-/* overlays: menus, popovers, dialogs, autocomplete, tooltips */
+/* 20. MUI X date/time pickers — field text renders in spans (not inputs) and
+   the popup calendar/clock ships light. Both go dark here. */
+[data-bs-theme="dark"] .MuiPickersInputBase-root,
+[data-bs-theme="dark"] .MuiPickersSectionList-root,
+[data-bs-theme="dark"] .MuiPickersInputBase-sectionContent { color: {{ p.text }} !important; }
+[data-bs-theme="dark"] .MuiPickersOutlinedInput-root,
+[data-bs-theme="dark"] .MuiPickersFilledInput-root { background-color: {{ p.input }} !important; }
+[data-bs-theme="dark"] .MuiPickersOutlinedInput-notchedOutline { border-color: {{ p.border }} !important; }
+[data-bs-theme="dark"] .MuiPickersLayout-root,
+[data-bs-theme="dark"] .MuiPickersLayout-contentWrapper { background-color: {{ p.raised }} !important; color: {{ p.text }} !important; }
+[data-bs-theme="dark"] .MuiPickersCalendarHeader-label { color: {{ p.text }} !important; }
+[data-bs-theme="dark"] .MuiPickersCalendarHeader-switchViewButton,
+[data-bs-theme="dark"] .MuiPickersArrowSwitcher-button { color: {{ p.muted }} !important; }
+[data-bs-theme="dark"] .MuiDayCalendar-weekDayLabel { color: {{ p.muted }} !important; }
+[data-bs-theme="dark"] .MuiPickersDay-root { background-color: transparent !important; color: {{ p.text }} !important; }
+[data-bs-theme="dark"] .MuiPickersDay-root.Mui-selected { background-color: {{ p.primary }} !important; color: #fff !important; }
+[data-bs-theme="dark"] .MuiPickersDay-today:not(.Mui-selected) { border-color: {{ p.accent }} !important; }
+[data-bs-theme="dark"] .MuiYearCalendar-button, [data-bs-theme="dark"] .MuiMonthCalendar-button { color: {{ p.text }} !important; }
+[data-bs-theme="dark"] .MuiYearCalendar-button.Mui-selected,
+[data-bs-theme="dark"] .MuiMonthCalendar-button.Mui-selected { background-color: {{ p.primary }} !important; color: #fff !important; }
+[data-bs-theme="dark"] .MuiTimeClock-root { background-color: transparent !important; }
+[data-bs-theme="dark"] .MuiClock-clock { background-color: {{ p.input }} !important; }
+[data-bs-theme="dark"] .MuiClockNumber-root { color: {{ p.text }} !important; }
+[data-bs-theme="dark"] .MuiClock-pin, [data-bs-theme="dark"] .MuiClockPointer-root,
+[data-bs-theme="dark"] .MuiClockPointer-thumb { background-color: {{ p.primary }} !important; border-color: {{ p.primary }} !important; }
+[data-bs-theme="dark"] .MuiDigitalClock-item, [data-bs-theme="dark"] .MuiMultiSectionDigitalClockSection-item { color: {{ p.text }} !important; }
+[data-bs-theme="dark"] .MuiDigitalClock-item:hover,
+[data-bs-theme="dark"] .MuiMultiSectionDigitalClockSection-item:hover { background-color: {{ p.input }} !important; }
+[data-bs-theme="dark"] .MuiDigitalClock-item.Mui-selected,
+[data-bs-theme="dark"] .MuiMultiSectionDigitalClockSection-item.Mui-selected { background-color: {{ p.primary }} !important; color: #fff !important; }
+[data-bs-theme="dark"] .MuiPickersToolbar-root { background-color: {{ p.raised_cap }} !important; }
+[data-bs-theme="dark"] .MuiPickersToolbarText-root { color: {{ p.muted }} !important; }
+[data-bs-theme="dark"] .MuiPickersToolbarText-root.Mui-selected { color: {{ p.text }} !important; }
+
+/* 21. Overlays: menus, popovers, dialogs, drawers, tooltips, subheaders. */
 [data-bs-theme="dark"] .MuiMenu-paper, [data-bs-theme="dark"] .MuiPopover-paper,
-[data-bs-theme="dark"] .MuiDialog-paper, [data-bs-theme="dark"] .MuiAutocomplete-paper { background-color: {{ p.raised }} !important; color: {{ p.text }} !important; }
+[data-bs-theme="dark"] .MuiDialog-paper, [data-bs-theme="dark"] .MuiAutocomplete-paper,
+[data-bs-theme="dark"] .MuiDrawer-paper { background-color: {{ p.raised }} !important; color: {{ p.text }} !important; }
 [data-bs-theme="dark"] .MuiMenuItem-root, [data-bs-theme="dark"] .MuiListItemText-primary { color: {{ p.text }} !important; }
 [data-bs-theme="dark"] .MuiListItemText-secondary { color: {{ p.muted }} !important; }
+[data-bs-theme="dark"] .MuiListItemIcon-root { color: {{ p.muted }} !important; }
+[data-bs-theme="dark"] .MuiListSubheader-root { background-color: {{ p.raised }} !important; color: {{ p.muted }} !important; }
 [data-bs-theme="dark"] .MuiMenuItem-root:hover,
 [data-bs-theme="dark"] .MuiListItemButton-root:hover { background-color: {{ p.input }} !important; }
 [data-bs-theme="dark"] .MuiTooltip-tooltip { background-color: {{ p.input }} !important; color: {{ p.text }} !important; }
 
-/* misc surfaces */
-[data-bs-theme="dark"] .MuiChip-root { background-color: {{ p.input }} !important; color: {{ p.text }} !important; }
-[data-bs-theme="dark"] .MuiAccordion-root,
-[data-bs-theme="dark"] .MuiAccordionSummary-root { background-color: {{ p.raised }} !important; color: {{ p.text }} !important; }
-[data-bs-theme="dark"] .MuiDivider-root { border-color: {{ p.border }} !important; }
-
-/* buttons: keep brand red for primary; readable text/outlined/icon */
+/* 22. Buttons / icon buttons / tabs / toggle groups. */
 [data-bs-theme="dark"] .MuiButton-containedPrimary,
 [data-bs-theme="dark"] .MuiFab-primary { background-color: {{ p.primary }} !important; color: #fff !important; }
 [data-bs-theme="dark"] .MuiButton-containedPrimary:hover { background-color: {{ p.primary_hover }} !important; }
 [data-bs-theme="dark"] .MuiButton-textPrimary,
 [data-bs-theme="dark"] .MuiButton-outlinedPrimary { color: {{ p.accent }} !important; }
 [data-bs-theme="dark"] .MuiButton-outlinedPrimary { border-color: {{ p.primary }} !important; }
+/* wger's theme "secondary" is a dark navy — unreadable here; neutralize other outlined/text buttons. */
+[data-bs-theme="dark"] .MuiButton-outlined:not(.MuiButton-outlinedPrimary) { color: {{ p.text }} !important; border-color: {{ p.border }} !important; }
 [data-bs-theme="dark"] .MuiButton-text, [data-bs-theme="dark"] .MuiIconButton-root { color: {{ p.muted }} !important; }
-
-/* tabs */
-[data-bs-theme="dark"] .MuiTab-root { color: {{ p.muted }} !important; }
-[data-bs-theme="dark"] .MuiTab-root.Mui-selected { color: {{ p.primary }} !important; }
+[data-bs-theme="dark"] .MuiTab-root { background-color: transparent !important; color: {{ p.muted }} !important; }
+[data-bs-theme="dark"] .MuiTab-root.Mui-selected { color: {{ p.primary_hover }} !important; }
 [data-bs-theme="dark"] .MuiTabs-indicator { background-color: {{ p.primary }} !important; }
+[data-bs-theme="dark"] .MuiToggleButton-root { color: {{ p.muted }} !important; border-color: {{ p.border }} !important; background-color: transparent !important; }
+[data-bs-theme="dark"] .MuiToggleButton-root.Mui-selected { color: #fff !important; background-color: {{ p.primary }} !important; }
 
-/* MUI X charts (weight / measurements) */
+/* 23. Disabled states — MUI's rgba(0,0,0,…) greys vanish on dark. */
+[data-bs-theme="dark"] .Mui-disabled {
+  color: rgba({{ p.text_rgb }},.38) !important;
+  -webkit-text-fill-color: rgba({{ p.text_rgb }},.38) !important;
+}
+[data-bs-theme="dark"] .MuiButton-contained.Mui-disabled { background-color: rgba(255,255,255,.10) !important; }
+[data-bs-theme="dark"] .MuiPickersDay-root.Mui-disabled { color: rgba({{ p.text_rgb }},.30) !important; }
+
+/* 24. Selection controls + progress + skeleton. */
+[data-bs-theme="dark"] .MuiSwitch-track { background-color: rgba(255,255,255,.30) !important; }
+[data-bs-theme="dark"] .MuiSwitch-thumb { background-color: #d8d0cc !important; }
+[data-bs-theme="dark"] .MuiSwitch-switchBase.Mui-checked .MuiSwitch-thumb { background-color: {{ p.primary_hover }} !important; }
+[data-bs-theme="dark"] .MuiSwitch-switchBase.Mui-checked + .MuiSwitch-track { background-color: rgba({{ p.primary_rgb }},.55) !important; }
+[data-bs-theme="dark"] .MuiCheckbox-root, [data-bs-theme="dark"] .MuiRadio-root { color: {{ p.muted }} !important; }
+[data-bs-theme="dark"] .MuiCheckbox-root.Mui-checked, [data-bs-theme="dark"] .MuiRadio-root.Mui-checked { color: {{ p.primary_hover }} !important; }
+[data-bs-theme="dark"] .MuiSlider-root { color: {{ p.primary }} !important; }
+[data-bs-theme="dark"] .MuiSlider-rail { background-color: {{ p.border }} !important; }
+[data-bs-theme="dark"] .MuiSlider-markLabel { color: {{ p.muted }} !important; }
+[data-bs-theme="dark"] .MuiLinearProgress-root { background-color: {{ p.input }} !important; }
+[data-bs-theme="dark"] .MuiLinearProgress-bar { background-color: {{ p.primary }} !important; }
+[data-bs-theme="dark"] .MuiCircularProgress-root { color: {{ p.accent }} !important; }
+[data-bs-theme="dark"] .MuiSkeleton-root { background-color: rgba(255,255,255,.08) !important; }
+
+/* 25. Chips / accordions / dividers / steppers / alerts / avatars. */
+[data-bs-theme="dark"] .MuiChip-root { background-color: {{ p.input }} !important; color: {{ p.text }} !important; }
+[data-bs-theme="dark"] .MuiAccordion-root,
+[data-bs-theme="dark"] .MuiAccordionSummary-root { background-color: {{ p.raised }} !important; color: {{ p.text }} !important; }
+[data-bs-theme="dark"] .MuiDivider-root { border-color: {{ p.border }} !important; }
+[data-bs-theme="dark"] .MuiStepLabel-label { color: {{ p.muted }} !important; }
+[data-bs-theme="dark"] .MuiStepLabel-label.Mui-active,
+[data-bs-theme="dark"] .MuiStepLabel-label.Mui-completed { color: {{ p.text }} !important; }
+[data-bs-theme="dark"] .MuiStepIcon-root { color: {{ p.input }} !important; }
+[data-bs-theme="dark"] .MuiStepIcon-root.Mui-active { color: {{ p.primary }} !important; }
+[data-bs-theme="dark"] .MuiStepIcon-root.Mui-completed { color: {{ p.primary_active }} !important; }
+[data-bs-theme="dark"] .MuiStepIcon-text { fill: #fff !important; }
+[data-bs-theme="dark"] .MuiStepConnector-line, [data-bs-theme="dark"] .MuiStepContent-root { border-color: {{ p.border }} !important; }
+[data-bs-theme="dark"] .MuiAlert-standardInfo, [data-bs-theme="dark"] .MuiAlert-standardSuccess,
+[data-bs-theme="dark"] .MuiAlert-standardWarning, [data-bs-theme="dark"] .MuiAlert-standardError {
+  background-color: {{ p.raised_cap }} !important; color: {{ p.text }} !important;
+}
+[data-bs-theme="dark"] .MuiAvatar-root { background-color: {{ p.input }} !important; color: {{ p.text }} !important; }
+[data-bs-theme="dark"] .MuiPaginationItem-root { color: {{ p.text }} !important; border-color: {{ p.border }} !important; }
+[data-bs-theme="dark"] .MuiPaginationItem-root.Mui-selected { background-color: {{ p.primary }} !important; color: #fff !important; }
+
+/* 26. Charts: MUI X (measurements) + recharts (dashboard/weight) + slick carousel. */
 [data-bs-theme="dark"] .MuiChartsAxis-line, [data-bs-theme="dark"] .MuiChartsAxis-tick { stroke: {{ p.chart_axis }} !important; }
 [data-bs-theme="dark"] .MuiChartsAxis-tickLabel, [data-bs-theme="dark"] .MuiChartsAxis-label { fill: {{ p.muted }} !important; }
+[data-bs-theme="dark"] .MuiChartsLegend-root text, [data-bs-theme="dark"] .MuiChartsLegend-series text { fill: {{ p.text }} !important; }
+[data-bs-theme="dark"] .recharts-legend-item-text { color: {{ p.text }} !important; }
+[data-bs-theme="dark"] .recharts-cartesian-axis-tick text { fill: {{ p.muted }} !important; }
+[data-bs-theme="dark"] .recharts-default-tooltip { background-color: {{ p.raised }} !important; border-color: {{ p.border }} !important; }
+[data-bs-theme="dark"] .recharts-tooltip-item, [data-bs-theme="dark"] .recharts-tooltip-label { color: {{ p.text }} !important; }
+/* wger's navy "secondary" series (trend line) disappears on dark — repaint to the accent. */
+[data-bs-theme="dark"] .recharts-wrapper path[stroke="#2a4c7d"],
+[data-bs-theme="dark"] .recharts-wrapper path[stroke="#2A4C7D"] { stroke: {{ p.accent }} !important; }
+[data-bs-theme="dark"] .recharts-wrapper [fill="#2a4c7d"],
+[data-bs-theme="dark"] .recharts-wrapper [fill="#2A4C7D"] { fill: {{ p.accent }} !important; }
+[data-bs-theme="dark"] .slick-loading .slick-list { background-color: {{ p.raised }} !important; }
+
+/* ==========================================================================
+ * C. VERSION-PINNED SELECTORS — hardcoded light sx colors compile to emotion
+ *    css-* hashes, and the exercise-detail header uses css-module classes.
+ *    Hashes verified against wger image 2.6.0-8. After an image bump, re-run
+ *    ~/b2b/primeBaseball/wger/theme-audit.js and refresh anything that moved.
+ * ========================================================================== */
+
+/* 27. Routine edit page: grey day-form panel + white exercise rows. */
+[data-bs-theme="dark"] .css-1513vrh { background-color: {{ p.surface }} !important; }
+[data-bs-theme="dark"] .css-13cor0f, [data-bs-theme="dark"] .css-19tvv69 { background-color: transparent !important; }
+/* Exercise overview: light "Missing a certain exercise?" callout (hash + stable :has fallback). */
+[data-bs-theme="dark"] .css-1gadzyf,
+[data-bs-theme="dark"] .MuiBox-root:has(> a[href*="contribute"]) { background-color: {{ p.raised_cap }} !important; }
+/* Exercise card image placeholder (lightgrey box behind the icon). */
+[data-bs-theme="dark"] .css-1umrmq2 { background-color: {{ p.input }} !important; }
+
+/* 28. Exercise-detail header + language switcher (css-module component; the
+   middle hash changes when @wger-project/react-components is rebuilt, so match
+   on the stable name prefix and anchor _root_ via :has()). */
+[data-bs-theme="dark"] div[class*="_root_"]:has(> div[class*="_detail_language_"]) { background-color: {{ p.surface }} !important; }
+[data-bs-theme="dark"] div[class*="_detail_language_"] { color: {{ p.muted }} !important; }
+[data-bs-theme="dark"] div[class*="_language_"] { background-color: {{ p.input }} !important; }
+[data-bs-theme="dark"] div[class*="_language_menu_"] { background-color: {{ p.raised }} !important; border-color: {{ p.border }} !important; }
+[data-bs-theme="dark"] div[class*="_detail_arrow_"]:hover { background-color: {{ p.input }} !important; }
