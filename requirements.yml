@@ -621,7 +621,7 @@
 # /role-specific:pds
 # role-specific:pds_pro
 - src: git+https://github.com/P3X-118/pds-pro-ar.git
-  version: v0.2.4-0
+  version: v0.2.6-0
   name: pds_pro
   activation_prefix: pds_pro_
 # /role-specific:pds_pro
