@@ -344,9 +344,14 @@
 [data-bs-theme="dark"] .MuiListItemButton-root:hover { background-color: {{ p.input }} !important; }
 [data-bs-theme="dark"] .MuiTooltip-tooltip { background-color: {{ p.input }} !important; color: {{ p.text }} !important; }
 
-/* 22. Buttons / icon buttons / tabs / toggle groups. */
+/* 22. Buttons / icon buttons / tabs / toggle groups.
+   NB: this MUI is v7 — the composed color classes (MuiButton-containedPrimary
+   etc.) no longer exist, so contained buttons are recolored GENERICALLY from
+   wger's navy to the brand red. */
+[data-bs-theme="dark"] .MuiButton-contained,
 [data-bs-theme="dark"] .MuiButton-containedPrimary,
 [data-bs-theme="dark"] .MuiFab-primary { background-color: {{ p.primary }} !important; color: #fff !important; }
+[data-bs-theme="dark"] .MuiButton-contained:hover,
 [data-bs-theme="dark"] .MuiButton-containedPrimary:hover { background-color: {{ p.primary_hover }} !important; }
 [data-bs-theme="dark"] .MuiButton-textPrimary,
 [data-bs-theme="dark"] .MuiButton-outlinedPrimary { color: {{ p.accent }} !important; }
@@ -440,6 +445,9 @@
    on the stable name prefix and anchor _root_ via :has()). */
 [data-bs-theme="dark"] div[class*="_root_"]:has(> div[class*="_detail_language_"]) { background-color: {{ p.surface }} !important; }
 [data-bs-theme="dark"] div[class*="_detail_language_"] { color: {{ p.muted }} !important; }
+/* Breadcrumb links inside the header kept wger's navy (fine on the old light bg,
+   invisible on dark) — repaint to the accent. */
+[data-bs-theme="dark"] div[class*="_detail_language_"] a { color: {{ p.accent }} !important; }
 [data-bs-theme="dark"] div[class*="_language_"] { background-color: {{ p.input }} !important; }
 [data-bs-theme="dark"] div[class*="_language_menu_"] { background-color: {{ p.raised }} !important; border-color: {{ p.border }} !important; }
 [data-bs-theme="dark"] div[class*="_detail_arrow_"]:hover { background-color: {{ p.input }} !important; }
