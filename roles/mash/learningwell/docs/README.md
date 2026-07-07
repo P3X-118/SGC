@@ -33,4 +33,5 @@ applies it).
 ## Required vars
 
 `learningwell_hostname`, `learningwell_site_url`, `learningwell_caddy_network`.
-Secrets (`learningwell_stripe_secret_key`, etc.) via vault. See `defaults/main.yml`.
+Secrets (`learningwell_deposyt_security_key`, `learningwell_smtp_pass`, etc.) via
+vault — or set directly in the host `.env` for launch. See `defaults/main.yml`.

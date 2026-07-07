@@ -15,8 +15,8 @@
 #
 # NOTE on build-time vs runtime: NEXT_PUBLIC_SITE_URL and AMAZON_AFFILIATE_TAG
 # are baked into the statically-rendered pages at image BUILD time (deploy.sh).
-# Rotating them needs a deploy.sh rebuild, not just this role's restart.
-# STRIPE_SECRET_KEY is read at runtime, so this role's restart applies it.
+# Rotating them needs a deploy.sh rebuild, not just this role's restart. The
+# Deposyt/SMTP/Odoo secrets are read at runtime, so this role's restart applies them.
 
 learningwell_enabled: false
 
@@ -38,21 +38,15 @@ learningwell_hostname: "thelearningwell.eagledrive.live"
 learningwell_site_url: "https://{{ learningwell_hostname }}"
 learningwell_amazon_affiliate_tag: ""
 
-# Read at runtime. Bundle checkout returns 503 until this is set. Provide via vault.
-learningwell_stripe_secret_key: ""
-
-# Stripe webhook signing secret — paid orders → Odoo sale.order. Empty = the
-# /api/stripe/webhook endpoint stays inert (503). Provide via vault.
-learningwell_stripe_webhook_secret: ""
-
-# --- Payments: Deposyt (runtime) -------------------------------------------
-# Sandbox until a production Access Token + activated terminal are provided.
-# Empty token/terminal = /checkout places orders WITHOUT charging. The access
-# token is a Bearer secret (vault); the terminal must be activated for Hosted
-# Fields card processing on the Deposyt side.
-learningwell_deposyt_env: "sandbox"
-learningwell_deposyt_access_token: ""
-learningwell_deposyt_terminal_id: ""
+# --- Payments: Deposyt via its NMI gateway (runtime) -----------------------
+# The browser tokenizes the card with Collect.js (public TOKENIZATION key) and
+# the server charges the token via transact.php (private SECURITY key). Empty
+# SECURITY key = /checkout places orders WITHOUT charging. The SECURITY key is a
+# secret (vault); the TOKENIZATION key is public. Gateway host defaults to
+# Deposyt's white-label NMI origin.
+learningwell_deposyt_gateway_url: "https://deposyt.transactiongateway.com"
+learningwell_deposyt_security_key: ""
+learningwell_deposyt_tokenization_key: ""
 
 # --- Email: transactional mail via the mailcow inbox (runtime) --------------
 # Order confirmations + quote/subscribe lead delivery. Port 465 (implicit TLS) —
