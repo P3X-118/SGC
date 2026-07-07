@@ -78,6 +78,14 @@ learningwell_odoo_api_key: "{{ ((hostvars['odoo'].sgc_pgsk | default('')) ~ '.od
 # numeric ids never have to cross hosts. Must match the odoo_learningwell role.
 learningwell_odoo_company_name: "The Learning Well"
 learningwell_odoo_bundle_product_code: "TLW-BUNDLE"
+# Sales tax: the app charges this on bundles and stamps the matching Odoo tax on
+# sale.order lines so Odoo's total equals the charge. TLW_SALES_TAX_BPS is basis
+# points (825 = 8.25%, TX combined cap); set to 0 to disable (e.g. no permit yet).
+# ODOO_SALES_TAX_NAME must match the account.tax name created under the LW company.
+learningwell_sales_tax_bps: "825"
+learningwell_odoo_sales_tax_name: "TX Sales Tax 8.25%"
+# Email-Marketing list newsletter signups are subscribed to (mass_mailing).
+learningwell_odoo_mailing_list_name: "The Learning Well"
 
 # Shared-edge mode: the docker network of the host's Caddy project so it can
 # reverse_proxy learningwell-web:3000. Verify on the host: `docker network ls`.

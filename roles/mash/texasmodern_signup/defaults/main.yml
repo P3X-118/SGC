@@ -76,3 +76,15 @@ texasmodern_signup_ntfy_topic_view: "tmw-view"
 texasmodern_signup_authentik_host: "https://auth.eagledrive.live"
 # REQUIRED. Provide via vault.
 texasmodern_signup_authentik_outpost_token: ""
+
+# --- Odoo (do.sgc.ai): signups → crm.lead, customers → res.partner + sale.order.
+# The texasmodern-service user + products are provisioned on the odoo host by the
+# odoo_texasmodern role; this only renders the app's connection env. All four of
+# URL/DB/USER/API_KEY must be non-empty for the app's isOdooConfigured() to enable
+# the integration. api_key derives from the odoo host's sgc_pgsk (cross-host
+# hostvars, no hand-off) — same pattern + suffix as odoo_texasmodern sets Odoo-side.
+texasmodern_signup_odoo_url: "https://do.sgc.ai"
+texasmodern_signup_odoo_db: "{{ hostvars['odoo'].do_database_name | default('sgc-do') }}"
+texasmodern_signup_odoo_user: "texasmodern-service"
+texasmodern_signup_odoo_api_key: "{{ ((hostvars['odoo'].sgc_pgsk | default('')) ~ '.odoo.texasmodern') | hash('sha256') }}"
+texasmodern_signup_odoo_company_name: "Texas Modern Waste"
